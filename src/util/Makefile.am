@@ -31,6 +31,9 @@ libutil_la_SOURCES = \
 	divisible.h \
 	dynamic_array.h \
 	floatingpoint.cpp \
+	floatingpoint_mpfr_imp.cpp \
+	floatingpoint_mpfr_imp.h \
+	floatingpoint_size.h \
 	gmp_util.h \
 	hash.h \
 	index.cpp \
@@ -48,6 +51,7 @@ libutil_la_SOURCES = \
 	resource_manager.h \
 	result.cpp \
 	result.h \
+	rounding_mode.h \
 	safe_print.cpp \
 	safe_print.h \
 	sampler.cpp \

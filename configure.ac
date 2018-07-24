@@ -427,6 +427,10 @@ fi
 AM_CONDITIONAL([CVC4_CLN_IMP], [test $cvc4_cln_or_gmp = cln])
 AM_CONDITIONAL([CVC4_GMP_IMP], [test $cvc4_cln_or_gmp = gmp])
 
+CVC4LDFLAGS="${CVC4LDFLAGS:+$CVC4LDFLAGS }-L$ac_abs_confdir/mpfr/src"
+CVC4CPPFLAGS="${CVC4CPPFLAGS:+$CVC4CPPFLAGS }-I$ac_abs_confdir/mpfr/src"
+AC_CHECK_LIB(mpfr, mpfr_init2, , [AC_MSG_ERROR([GNU MPFR not found, see https://www.mpfr.org/])])
+
 # construct the build string
 AC_MSG_CHECKING([for appropriate build string])
 if test -z "$ac_confdir"; then

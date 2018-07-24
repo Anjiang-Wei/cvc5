@@ -42,20 +42,21 @@ UNIT_TESTS += \
 	context/cdmap_white \
 	util/array_store_all_black \
 	util/assert_white \
-	util/check_white \
 	util/binary_heap_black \
 	util/bitvector_black \
-	util/datatype_black \
+	util/boolean_simplification_black \
+	util/check_white \
 	util/configuration_black \
-	util/output_black \
+	util/datatype_black \
 	util/exception_black \
+	util/floatingpoint_mpfr_imp_black \
 	util/integer_black \
 	util/integer_white \
 	util/listener_black \
+	util/output_black \
 	util/rational_black \
 	util/rational_white \
 	util/stats_black \
-	util/boolean_simplification_black \
 	main/interactive_shell_black
 endif
 

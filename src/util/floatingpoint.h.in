@@ -21,99 +21,15 @@
 #define __CVC4__FLOATINGPOINT_H
 
 #include "util/bitvector.h"
+#include "util/floatingpoint_size.h"
+#include "util/rounding_mode.h"
 #include "util/rational.h"
-
-#include <fenv.h>
 
 #if @CVC4_USE_SYMFPU@
 #include <symfpu/core/unpackedFloat.h>
 #endif /* @CVC4_USE_SYMFPU@ */
 
 namespace CVC4 {
-  // Inline these!
-  inline bool CVC4_PUBLIC validExponentSize (unsigned e) { return e >= 2; }
-  inline bool CVC4_PUBLIC validSignificandSize (unsigned s) { return s >= 2; }
-
-  /**
-   * Floating point sorts are parameterised by two non-zero constants
-   * giving the width (in bits) of the exponent and significand
-   * (including the hidden bit).
-   */
-  class CVC4_PUBLIC FloatingPointSize {
-    /*
-      Class invariants:
-      * VALIDEXPONENTSIZE(e)
-      * VALIDSIGNIFCANDSIZE(s)
-     */
-
-  private :
-    unsigned e;
-    unsigned s;
-
-  public :
-    FloatingPointSize (unsigned _e, unsigned _s);
-    FloatingPointSize (const FloatingPointSize &old);
-
-    inline unsigned exponent (void) const {
-      return this->e;
-    }
-
-    inline unsigned significand (void) const {
-      return this->s;
-    }
-
-    bool operator ==(const FloatingPointSize& fps) const {
-      return (e == fps.e) && (s == fps.s);
-    }
-
-    // Implement the interface that symfpu uses for floating-point formats.
-    inline unsigned exponentWidth(void) const { return this->exponent(); }
-    inline unsigned significandWidth(void) const { return this->significand(); }
-    inline unsigned packedWidth(void) const
-    {
-      return this->exponentWidth() + this->significandWidth();
-    }
-    inline unsigned packedExponentWidth(void) const
-    {
-      return this->exponentWidth();
-    }
-    inline unsigned packedSignificandWidth(void) const
-    {
-      return this->significandWidth() - 1;
-    }
-
-  }; /* class FloatingPointSize */
-
-  struct CVC4_PUBLIC FloatingPointSizeHashFunction {
-    static inline size_t ROLL(size_t X, size_t N) {
-      return (((X) << (N)) | ((X) >> (8*sizeof((X)) - (N)) ));
-    }
-
-    inline size_t operator() (const FloatingPointSize& fpt) const {
-      return size_t(ROLL(fpt.exponent(), 4*sizeof(unsigned)) |
-		    fpt.significand());
-    }
-  }; /* struct FloatingPointSizeHashFunction */
-
-
-  /**
-   * A concrete instance of the rounding mode sort
-   */
-  enum CVC4_PUBLIC RoundingMode {
-    roundNearestTiesToEven = FE_TONEAREST,
-    roundTowardPositive = FE_UPWARD,
-    roundTowardNegative = FE_DOWNWARD,
-    roundTowardZero = FE_TOWARDZERO,
-    // Initializes this to the diagonalization of the 4 other values.
-    roundNearestTiesToAway = (((~FE_TONEAREST) & 0x1) | ((~FE_UPWARD) & 0x2) |
-                              ((~FE_DOWNWARD) & 0x4) | ((~FE_TOWARDZERO) & 0x8))
-  }; /* enum RoundingMode */
-
-  struct CVC4_PUBLIC RoundingModeHashFunction {
-    inline size_t operator() (const RoundingMode& rm) const {
-      return size_t(rm);
-    }
-  }; /* struct RoundingModeHashFunction */
 
   /**
    * This is a symfpu literal "back-end".  It allows the library to be used as
@@ -323,7 +239,6 @@ namespace CVC4 {
     FloatingPoint (const FloatingPoint &fp) : fpl(fp.fpl), t(fp.t) {}
     FloatingPoint (const FloatingPointSize &ct, const RoundingMode &rm, const BitVector &bv, bool signedBV);
     FloatingPoint (const FloatingPointSize &ct, const RoundingMode &rm, const Rational &r);
-
 
     static FloatingPoint makeNaN (const FloatingPointSize &t);
     static FloatingPoint makeInf (const FloatingPointSize &t, bool sign);
@@ -537,11 +452,6 @@ namespace CVC4 {
       << " #b" << bv.extract(largestExponentBit, largestSignificandBit + 1)
       << " #b" << bv.extract(largestSignificandBit, 0)
       << ")";
-  }
-
-  inline std::ostream& operator <<(std::ostream& os, const FloatingPointSize& fps) CVC4_PUBLIC;
-  inline std::ostream& operator <<(std::ostream& os, const FloatingPointSize& fps) {
-    return os << "(_ FloatingPoint " << fps.exponent() << " " << fps.significand() << ")";
   }
 
   inline std::ostream& operator <<(std::ostream& os, const FloatingPointConvertSort& fpcs) CVC4_PUBLIC;
