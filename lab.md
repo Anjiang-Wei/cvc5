@@ -47,9 +47,9 @@ decision procedure and model generation.
 
 ### The Decision Procedure
 
-The theory solver takes a set of theory literals of the form `(<= (- x y) n)`
+The theory solver takes a set of theory literals of the form `(<= (- y x) n)`
 (when the SAT solver decided the theory literal to be `true`) and `(not (<= (-
-x y) n))` (when the SAT solver decided the theory literal to be `false`). Note
+y x) n))` (when the SAT solver decided the theory literal to be `false`). Note
 that the negated literals can be recast to be in the same form as the positive
 ones. For the purpose of this lab, we are only considering cases where all the
 theory literals have a value assigned (in CVC4, that's when a check is done at
@@ -73,7 +73,7 @@ information for the file says that the result should be `unsat` (`(set-info
 implement a decision procedure to detect conflicts to fix this.
 
 For IDL, a decision procedure can be implemented as follows: Given a set of
-literals of the form `(<= (- x y) n)`, we can construct a graph where we have
+literals of the form `(<= (- y x) n)`, we can construct a graph where we have
 one node for every integer constant and an edge with weight `n` from the node
 corresponding to `x` to the node corresponding to `y`. Now, the assignment has
 a conflict if and only if the graph contains a negative cycle.
@@ -101,11 +101,11 @@ $ bin/cvc4 --use-theory=idl ../lab/example_idl.smt2
 Compare the assertions in [lab/example_idl.smt2](lab/example_idl.smt2) and
 [lab/example_idl_rewritten.smt2](lab/example_idl_rewritten.smt2). The
 assertions are equivalent but in the latter, all the assertions are of the form
-`(<= (- x y) n)`. The SMT-LIB logic
+`(<= (- y x) n)`. The SMT-LIB logic
 [QF\_IDL](http://smtlib.cs.uiowa.edu/logics-all.shtml#QF_IDL) (quantifier-free
-IDL problems) allows constraints of the form `(op (- x y) n)`, `(op (- x y) (-
-n))`, and `(op x y)` where `op` is one of `<`, `<=`, `>`, `>=`, `=`, or
-`distinct` and not only `(<= (- x y) n)`. We can automatically rewrite these
+IDL problems) allows constraints of the form `(op (- y x) n)`, `(op (- y x) (-
+n))`, and `(op y x)` where `op` is one of `<`, `<=`, `>`, `>=`, `=`, or
+`distinct` and not only `(<= (- y x) n)`. We can automatically rewrite these
 constraints to the latter form in the solver.
 
 **Task**: Complete `TheoryIdl::ppRewrite()` to rewrite the IDL constraints to
