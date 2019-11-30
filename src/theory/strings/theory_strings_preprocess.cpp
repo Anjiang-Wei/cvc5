@@ -291,11 +291,28 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     std::vector<Node> conc2;
     std::vector< TypeNode > argTypes;
     argTypes.push_back(nm->integerType());
-    Node u = d_sc->mkTypedSkolemCached(
-        nm->mkFunctionType(argTypes, nm->integerType()),
-        s,
-        SkolemCache::SK_STOI_U,
-        "U");
+
+    Node offset;
+    Node u;
+    if (s.getKind() == kind::STRING_SUBSTR)
+    {
+      u = d_sc->mkTypedSkolemCached(
+          nm->mkFunctionType(argTypes, nm->integerType()),
+          s[0],
+          SkolemCache::SK_STOI_U,
+          "U");
+      offset = s[1];
+    }
+    else
+    {
+      u = d_sc->mkTypedSkolemCached(
+          nm->mkFunctionType(argTypes, nm->integerType()),
+          s,
+          SkolemCache::SK_STOI_U,
+          "U");
+      offset = d_zero;
+    }
+
     Node us = d_sc->mkTypedSkolemCached(
         nm->mkFunctionType(argTypes, nm->stringType()),
         s,
@@ -304,7 +321,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node ud = d_sc->mkTypedSkolemCached(
         nm->mkFunctionType(argTypes, nm->stringType()),
         s,
-        SkolemCache::SK_STOI_US,
+        SkolemCache::SK_STOI_UD,
         "Ud");
 
     lem = stoit.eqNode(nm->mkNode(APPLY_UF, u, lens));
@@ -327,7 +344,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node g =
         nm->mkNode(AND, nm->mkNode(GEQ, x, d_zero), nm->mkNode(LT, x, lens));
     Node udx = nm->mkNode(APPLY_UF, ud, x);
-    Node ux = nm->mkNode(APPLY_UF, u, x);
+    Node ux = nm->mkNode(PLUS, nm->mkNode(APPLY_UF, u, x), offset);
     Node ux1 = nm->mkNode(APPLY_UF, u, nm->mkNode(PLUS, x, d_one));
     Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
     Node usx = nm->mkNode(APPLY_UF, us, x);
