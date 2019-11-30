@@ -1168,17 +1168,31 @@ void RegExpOpr::simplifyPRegExp( Node s, Node r, std::vector< Node > &new_nodes 
         } else if(r[0].getKind() == kind::REGEXP_SIGMA) {
           conc = d_true;
         } else {
+          NodeManager* nm = NodeManager::currentNM();
           Node se = s.eqNode(d_emptyString);
           Node sinr = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, s, r[0]);
-          Node sk1 = NodeManager::currentNM()->mkSkolem( "rs", s.getType(), "created for regular expression star" );
-          Node sk2 = NodeManager::currentNM()->mkSkolem( "rs", s.getType(), "created for regular expression star" );
-          Node s1nz = sk1.eqNode(d_emptyString).negate();
-          Node s2nz = sk2.eqNode(d_emptyString).negate();
-          Node s1inr = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, sk1, r[0]);
-          Node s2inrs = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, sk2, r);
-          Node s12 = s.eqNode(NodeManager::currentNM()->mkNode(kind::STRING_CONCAT, sk1, sk2));
 
-          conc = NodeManager::currentNM()->mkNode(kind::AND, s12, s1nz, s2nz, s1inr, s2inrs);
+          conc = d_true;
+          for (bool rev : {false, true})
+          {
+            Node sk1 = NodeManager::currentNM()->mkSkolem(
+                "rs", s.getType(), "created for regular expression star");
+            Node sk2 = NodeManager::currentNM()->mkSkolem(
+                "rs", s.getType(), "created for regular expression star");
+            Node s1nz = sk1.eqNode(d_emptyString).negate();
+            Node s2nz = sk2.eqNode(d_emptyString).negate();
+            Node s1inr = NodeManager::currentNM()->mkNode(
+                kind::STRING_IN_REGEXP, sk1, r[0]);
+            Node s2inrs = NodeManager::currentNM()->mkNode(
+                kind::STRING_IN_REGEXP, sk2, r);
+            Node s12 = s.eqNode(nm->mkNode(
+                kind::STRING_CONCAT, rev ? sk1 : sk2, rev ? sk2 : sk1));
+
+            conc = nm->mkNode(
+                kind::AND,
+                nm->mkNode(kind::AND, s12, s1nz, s2nz, s1inr, s2inrs),
+                conc);
+          }
           conc = NodeManager::currentNM()->mkNode(kind::OR, se, sinr, conc);
         }
         break;
