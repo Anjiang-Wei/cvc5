@@ -291,11 +291,21 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     std::vector<Node> conc2;
     std::vector< TypeNode > argTypes;
     argTypes.push_back(nm->integerType());
-    Node u = nm->mkSkolem("U", nm->mkFunctionType(argTypes, nm->integerType()));
-    Node us =
-        nm->mkSkolem("Us", nm->mkFunctionType(argTypes, nm->stringType()));
-    Node ud =
-        nm->mkSkolem("Ud", nm->mkFunctionType(argTypes, nm->stringType()));
+    Node u = d_sc->mkTypedSkolemCached(
+        nm->mkFunctionType(argTypes, nm->integerType()),
+        s,
+        SkolemCache::SK_STOI_U,
+        "U");
+    Node us = d_sc->mkTypedSkolemCached(
+        nm->mkFunctionType(argTypes, nm->stringType()),
+        s,
+        SkolemCache::SK_STOI_US,
+        "Us");
+    Node ud = d_sc->mkTypedSkolemCached(
+        nm->mkFunctionType(argTypes, nm->stringType()),
+        s,
+        SkolemCache::SK_STOI_US,
+        "Ud");
 
     lem = stoit.eqNode(nm->mkNode(APPLY_UF, u, lens));
     conc2.push_back(lem);
@@ -328,7 +338,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node cb =
         nm->mkNode(AND, nm->mkNode(GEQ, c, d_zero), nm->mkNode(LT, c, ten));
 
-    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, eqs, eq, cb));
+    Node lenlem = nm->mkNode(STRING_LENGTH, udx).eqNode(d_one);
+
+    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, eqs, eq, cb, lenlem));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc2.push_back(lem);
 
