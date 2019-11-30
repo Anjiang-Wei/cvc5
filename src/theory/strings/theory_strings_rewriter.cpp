@@ -2061,6 +2061,15 @@ Node TheoryStringsRewriter::rewriteContains( Node node ) {
           return returnRewrite(node, ret, "ctn-lhs-emptystr");
         }
       }
+      else if (checkEntailLengthOne(node[1])) {
+        Node ret = nm->mkConst(String("")).eqNode(node[1]);
+        const std::vector<unsigned>& vec = s.getVec();
+        for (unsigned c : vec) {
+          std::vector<unsigned> sv = { c };
+          ret = nm->mkNode(kind::OR, ret, nm->mkConst(String(sv)).eqNode(node[1]));
+        }
+        return returnRewrite(node, ret, "ctn-split");
+      }
       else if (node[1].getKind() == kind::STRING_CONCAT)
       {
         int firstc, lastc;
