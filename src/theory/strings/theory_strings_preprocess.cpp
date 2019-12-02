@@ -274,14 +274,16 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node lem = stoit.eqNode(d_neg_one);
     conc1.push_back(lem);
 
+    Node baseS = s.getKind() == STRING_SUBSTR ? s[0] : s;
+    Node soff = s.getKind() == STRING_SUBSTR ? s[1] : d_zero;
     Node sEmpty = s.eqNode(d_empty_str);
     Node k = nm->mkSkolem("k", nm->integerType());
-    Node kc1 = nm->mkNode(GEQ, k, d_zero);
+    Node kc1 = nm->mkNode(GEQ, k, soff);
     Node kc2 = nm->mkNode(LT, k, lens);
     Node c0 = nm->mkNode(STRING_CODE, nm->mkConst(String("0")));
     Node codeSk = nm->mkNode(
         MINUS,
-        nm->mkNode(STRING_CODE, nm->mkNode(STRING_SUBSTR, s, k, d_one)),
+        nm->mkNode(STRING_CODE, nm->mkNode(STRING_SUBSTR, baseS, k, d_one)),
         c0);
     Node ten = nm->mkConst(Rational(10));
     Node kc3 = nm->mkNode(
@@ -294,7 +296,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     Node u = d_sc->mkTypedSkolemCached(
         nm->mkFunctionType(argTypes, nm->integerType()),
-        s[0],
+        s,
         SkolemCache::SK_STOI_U,
         "U");
 
@@ -310,7 +312,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     {
       ud = d_sc->mkTypedSkolemCached(
           nm->mkFunctionType(argTypes, nm->stringType()),
-          s,
+          s[0],
           SkolemCache::SK_STOI_UD,
           "Ud");
       offset = s[1];
@@ -344,7 +346,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node xbv = nm->mkNode(BOUND_VAR_LIST, x);
     Node g =
         nm->mkNode(AND, nm->mkNode(GEQ, x, d_zero), nm->mkNode(LT, x, lens));
-    Node udx = nm->mkNode(APPLY_UF, ud, nm->mkNode(PLUS, x, d_one));
+    Node udx = nm->mkNode(APPLY_UF, ud, nm->mkNode(PLUS, x, offset));
     Node ux = nm->mkNode(APPLY_UF, u, x);
     Node ux1 = nm->mkNode(APPLY_UF, u, nm->mkNode(PLUS, x, d_one));
     Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
