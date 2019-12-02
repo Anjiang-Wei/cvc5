@@ -212,16 +212,17 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node xbv = nm->mkNode(BOUND_VAR_LIST, x);
     Node g =
         nm->mkNode(AND, nm->mkNode(GEQ, x, d_zero), nm->mkNode(LT, x, leni));
-    Node udx = nm->mkNode(APPLY_UF, ud, x);
+    // Node udx = nm->mkNode(APPLY_UF, ud, x);
+    Node udx = nm->mkNode(STRING_SUBSTR, itost, x, d_one);
     Node ux = nm->mkNode(APPLY_UF, u, x);
     Node ux1 = nm->mkNode(APPLY_UF, u, xPlusOne);
     Node c0 = nm->mkNode(STRING_CODE, nm->mkConst(String("0")));
     Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
-    Node usx = nm->mkNode(APPLY_UF, us, x);
-    Node usx1 = nm->mkNode(APPLY_UF, us, xPlusOne);
+    // Node usx = nm->mkNode(APPLY_UF, us, x);
+    // Node usx1 = nm->mkNode(APPLY_UF, us, xPlusOne);
 
     Node ten = nm->mkConst(Rational(10));
-    Node eqs = usx.eqNode(nm->mkNode(STRING_CONCAT, udx, usx1));
+    //Node eqs = usx.eqNode(nm->mkNode(STRING_CONCAT, udx, usx1));
     Node eq = ux1.eqNode(nm->mkNode(PLUS, c, nm->mkNode(MULT, ten, ux)));
     Node leadingZeroPos =
         nm->mkNode(AND, x.eqNode(d_zero), nm->mkNode(GT, leni, d_one));
@@ -230,7 +231,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
         nm->mkNode(GEQ, c, nm->mkNode(ITE, leadingZeroPos, d_one, d_zero)),
         nm->mkNode(LT, c, ten));
 
-    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, eqs, eq, cb));
+    Node lenlem = nm->mkNode(STRING_LENGTH, udx).eqNode(d_one);
+
+    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, /*eqs,*/ eq, cb, lenlem));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc.push_back(lem);
 
