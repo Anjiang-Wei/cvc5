@@ -368,11 +368,10 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
         nm->mkNode(STRING_SUBSTR, s, x, d_one),
         SkolemCache::SK_STOI_U,
         "U");
-
     Node lemlem = nm->mkNode(APPLY_UF, usub, d_one).eqNode(c);
 
     lem = nm->mkNode(
-        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem, lemlem));
+        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem /*, lemlem */));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc2.push_back(lem);
 
