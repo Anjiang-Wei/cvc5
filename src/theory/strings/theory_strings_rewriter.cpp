@@ -1685,11 +1685,13 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
       Node c0 = nm->mkNode(STRING_CODE, nm->mkConst(String("0")));
       Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, node[0]), c0);
 
+      /*
       retNode = nm->mkNode(
           ITE,
           nm->mkNode(AND, nm->mkNode(LEQ, zero, c), nm->mkNode(LT, c, ten)),
           c,
           negOne);
+          */
     }
   }
   else if (nk == kind::STRING_IN_REGEXP)
