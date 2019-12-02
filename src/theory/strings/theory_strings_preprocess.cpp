@@ -333,11 +333,13 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     lem = d_zero.eqNode(nm->mkNode(APPLY_UF, u, d_zero));
     conc2.push_back(lem);
 
+    /*
     lem = d_empty_str.eqNode(nm->mkNode(APPLY_UF, us, lens));
     conc2.push_back(lem);
 
     lem = s.eqNode(nm->mkNode(APPLY_UF, us, d_zero));
     conc2.push_back(lem);
+    */
 
     lem = nm->mkNode(GT, lens, d_zero);
     conc2.push_back(lem);
@@ -346,7 +348,8 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node xbv = nm->mkNode(BOUND_VAR_LIST, x);
     Node g =
         nm->mkNode(AND, nm->mkNode(GEQ, x, d_zero), nm->mkNode(LT, x, lens));
-    Node udx = nm->mkNode(APPLY_UF, ud, nm->mkNode(PLUS, x, offset));
+    // Node udx = nm->mkNode(APPLY_UF, ud, nm->mkNode(PLUS, x, offset));
+    Node udx = nm->mkNode(STRING_SUBSTR, s, x, d_one);
     Node ux = nm->mkNode(APPLY_UF, u, x);
     Node ux1 = nm->mkNode(APPLY_UF, u, nm->mkNode(PLUS, x, d_one));
     Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
@@ -360,7 +363,16 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     Node lenlem = nm->mkNode(STRING_LENGTH, udx).eqNode(d_one);
 
-    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, eqs, eq, cb, lenlem));
+    Node usub = d_sc->mkTypedSkolemCached(
+        nm->mkFunctionType(argTypes, nm->integerType()),
+        nm->mkNode(STRING_SUBSTR, s, x, d_one),
+        SkolemCache::SK_STOI_U,
+        "U");
+
+    Node lemlem = nm->mkNode(APPLY_UF, usub, d_one).eqNode(c);
+
+    lem = nm->mkNode(
+        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem, lemlem));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc2.push_back(lem);
 
