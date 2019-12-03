@@ -205,7 +205,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     lem = d_zero.eqNode(nm->mkNode(APPLY_UF, u, d_zero));
     conc.push_back(lem);
     
-    lem = nm->mkNode(LEQ, leni, nm->mkNode(PLUS, n, d_one));
+    lem = nm->mkNode(LEQ, leni, nm->mkNode(PLUS, nm->mkNode(MULT, n, nm->mkConst(Rational(10))), d_one));
     conc.push_back(lem);
 
     /*
