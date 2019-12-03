@@ -205,7 +205,8 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     lem = d_zero.eqNode(nm->mkNode(APPLY_UF, u, d_zero));
     conc.push_back(lem);
     
-    lem = nm->mkNode(LEQ, leni, nm->mkNode(PLUS, nm->mkNode(MULT, n, nm->mkConst(Rational(10))), d_one));
+    Node ten = nm->mkConst(Rational(10));
+    lem = nm->mkNode(LEQ, nm->mkNode(MULT, leni, ten), nm->mkNode(PLUS, n, ten));
     conc.push_back(lem);
 
     /*
@@ -230,7 +231,6 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     // Node usx = nm->mkNode(APPLY_UF, us, x);
     // Node usx1 = nm->mkNode(APPLY_UF, us, xPlusOne);
 
-    Node ten = nm->mkConst(Rational(10));
     //Node eqs = usx.eqNode(nm->mkNode(STRING_CONCAT, udx, usx1));
     Node eq = ux1.eqNode(nm->mkNode(PLUS, c, nm->mkNode(MULT, ten, ux)));
     Node leadingZeroPos =
