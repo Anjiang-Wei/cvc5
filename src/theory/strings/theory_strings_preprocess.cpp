@@ -186,7 +186,11 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     std::vector<Node> conc;
     std::vector< TypeNode > argTypes;
     argTypes.push_back(nm->integerType());
-    Node u = nm->mkSkolem("U", nm->mkFunctionType(argTypes, nm->integerType()));
+    Node u = d_sc->mkTypedSkolemCached(
+        nm->mkFunctionType(argTypes, nm->integerType()),
+        itost,
+        SkolemCache::SK_STOI_U,
+        "U");
     Node us =
         nm->mkSkolem("Us", nm->mkFunctionType(argTypes, nm->stringType()));
     Node ud =
@@ -200,12 +204,17 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     lem = d_zero.eqNode(nm->mkNode(APPLY_UF, u, d_zero));
     conc.push_back(lem);
+    
+    lem = nm->mkNode(LEQ, leni, nm->mkNode(PLUS, n, d_one));
+    conc.push_back(lem);
 
+    /*
     lem = d_empty_str.eqNode(nm->mkNode(APPLY_UF, us, leni));
     conc.push_back(lem);
 
     lem = itost.eqNode(nm->mkNode(APPLY_UF, us, d_zero));
     conc.push_back(lem);
+    */
 
     Node x = nm->mkBoundVar(nm->integerType());
     Node xPlusOne = nm->mkNode(PLUS, x, d_one);
