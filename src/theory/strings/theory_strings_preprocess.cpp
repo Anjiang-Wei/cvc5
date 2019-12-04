@@ -192,7 +192,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
         SkolemCache::SK_STOI_U,
         "U");
     Node us =
-        nm->mkSkolem("Us", nm->mkFunctionType(argTypes, nm->stringType()));
+        nm->mkSkolem("Us", nm->mkFunctionType(argTypes, nm->integerType()));
     Node ud =
         nm->mkSkolem("Ud", nm->mkFunctionType(argTypes, nm->stringType()));
 
@@ -204,9 +204,17 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     lem = d_zero.eqNode(nm->mkNode(APPLY_UF, u, d_zero));
     conc.push_back(lem);
+
+    /*
+    lem = d_one.eqNode(nm->mkNode(APPLY_UF, us, d_zero));
+    conc.push_back(lem);
+    */
     
     Node ten = nm->mkConst(Rational(10));
-    lem = nm->mkNode(LEQ, nm->mkNode(MULT, leni, ten), nm->mkNode(PLUS, n, ten));
+    // lem = nm->mkNode(GEQ, nm->mkNode(APPLY_UF, us, leni), n);
+    // conc.push_back(lem);
+
+    lem = nm->mkNode(LEQ, leni, nm->mkNode(PLUS, n, d_one));
     conc.push_back(lem);
 
     /*
@@ -242,7 +250,15 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     Node lenlem = nm->mkNode(STRING_LENGTH, udx).eqNode(d_one);
 
-    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, /*eqs,*/ eq, cb, lenlem));
+    /*
+    Node usx = nm->mkNode(APPLY_UF, us, x);
+    Node usx1 = nm->mkNode(APPLY_UF, us, xPlusOne);
+    Node uslem = usx1.eqNode(nm->mkNode(MULT, usx, ten));
+    */
+
+    Node uslem = nm->mkNode(GEQ, n, ux1); //.eqNode(nm->mkNode(MULT, usx, ten));
+
+    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, /*eqs,*/ eq, cb, lenlem, uslem));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc.push_back(lem);
 
@@ -382,8 +398,10 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
         "U");
     Node lemlem = nm->mkNode(APPLY_UF, usub, d_one).eqNode(c);
 
+    Node uslem = nm->mkNode(GEQ, stoit, ux1); //.eqNode(nm->mkNode(MULT, usx, ten));
+
     lem = nm->mkNode(
-        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem /*, lemlem */));
+        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem /*, lemlem */, uslem));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc2.push_back(lem);
 
