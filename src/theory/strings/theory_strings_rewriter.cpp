@@ -1691,8 +1691,7 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
           nm->mkNode(AND, nm->mkNode(LEQ, zero, c), nm->mkNode(LT, c, ten)),
           c,
           negOne);
-    }
-    */
+    }*/
   }
   else if (nk == kind::STRING_IN_REGEXP)
   {

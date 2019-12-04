@@ -505,6 +505,7 @@ bool TheoryStrings::collectModelInfo(TheoryModel* m)
   // assert the (relevant) portion of the equality engine to the model
   if (!m->assertEqualityEngine(&d_equalityEngine, &termSet))
   {
+    Trace("strings-model") << "TheoryStrings : assertEqualityEngine ---> :(" << std::endl;
     return false;
   }
 
@@ -1646,7 +1647,7 @@ void TheoryStrings::checkExtfEval( int effort ) {
             Trace("strings-extf") << "  resolve extf : " << sn << " -> " << nrc << std::endl;
             d_im.sendInference(
                 einfo.d_exp, conc, effort == 0 ? "EXTF" : "EXTF-N", true);
-            if (!d_state.isInConflict())
+            if (d_state.isInConflict())
             {
               Trace("strings-extf-debug") << "  conflict, return." << std::endl;
               return;

@@ -363,6 +363,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     lem = d_zero.eqNode(nm->mkNode(APPLY_UF, u, d_zero));
     conc2.push_back(lem);
 
+    lem = nm->mkNode(GEQ, stoit, d_zero);
+    conc2.push_back(lem);
+
     /*
     lem = d_empty_str.eqNode(nm->mkNode(APPLY_UF, us, lens));
     conc2.push_back(lem);
