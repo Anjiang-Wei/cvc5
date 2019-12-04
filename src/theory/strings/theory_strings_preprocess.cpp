@@ -258,7 +258,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     Node uslem = nm->mkNode(GEQ, n, ux1); //.eqNode(nm->mkNode(MULT, usx, ten));
 
-    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, /*eqs,*/ eq, cb, lenlem, uslem));
+    Node uslem2 = nm->mkNode(GEQ, ux1, ux); //.eqNode(nm->mkNode(MULT, usx, ten));
+
+    lem = nm->mkNode(OR, g.negate(), nm->mkNode(AND, /*eqs,*/ eq, cb, lenlem, uslem, uslem2));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc.push_back(lem);
 
@@ -400,8 +402,10 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     Node uslem = nm->mkNode(GEQ, stoit, ux1); //.eqNode(nm->mkNode(MULT, usx, ten));
 
+    Node uslem2 = nm->mkNode(GEQ, ux1, ux); //.eqNode(nm->mkNode(MULT, usx, ten));
+
     lem = nm->mkNode(
-        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem /*, lemlem */, uslem));
+        OR, g.negate(), nm->mkNode(AND, /* eqs, */ eq, cb, lenlem /*, lemlem */, uslem, uslem2));
     lem = nm->mkNode(FORALL, xbv, lem);
     conc2.push_back(lem);
 
