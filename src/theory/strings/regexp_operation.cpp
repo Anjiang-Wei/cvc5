@@ -1172,13 +1172,16 @@ void RegExpOpr::simplifyPRegExp( Node s, Node r, std::vector< Node > &new_nodes 
           Node sinr = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, s, r[0]);
           Node sk1 = NodeManager::currentNM()->mkSkolem( "rs", s.getType(), "created for regular expression star" );
           Node sk2 = NodeManager::currentNM()->mkSkolem( "rs", s.getType(), "created for regular expression star" );
+          Node sk3 = NodeManager::currentNM()->mkSkolem( "rs", s.getType(), "created for regular expression star" );
           Node s1nz = sk1.eqNode(d_emptyString).negate();
-          Node s2nz = sk2.eqNode(d_emptyString).negate();
+          Node s3nz = sk3.eqNode(d_emptyString).negate();
           Node s1inr = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, sk1, r[0]);
           Node s2inrs = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, sk2, r);
-          Node s12 = s.eqNode(NodeManager::currentNM()->mkNode(kind::STRING_CONCAT, sk1, sk2));
+          Node s3inr = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, sk3, r[0]);
+          Node s123 = s.eqNode(NodeManager::currentNM()->mkNode(kind::STRING_CONCAT, sk1, sk2, sk3));
 
-          conc = NodeManager::currentNM()->mkNode(kind::AND, s12, s1nz, s2nz, s1inr, s2inrs);
+          std::vector<Node> concv = { s123, s1nz, s3nz, s1inr, s2inrs, s3inr };
+          conc = NodeManager::currentNM()->mkNode(kind::AND, concv);
           conc = NodeManager::currentNM()->mkNode(kind::OR, se, sinr, conc);
         }
         break;
