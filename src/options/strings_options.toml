@@ -226,3 +226,12 @@ header = "options/strings_options.h"
   handler    = "stringToRegExpInterMode"
   includes   = ["options/strings_modes.h"]
   help       = "determines which regular expressions intersections to compute"
+
+[[option]]
+  name       = "useCode"
+  category   = "expert"
+  long       = "use-code"
+  type       = "bool"
+  default    = "true"
+  read_only  = true
+  help       = "use str.code to encode str.to.int/int.to.str/re.range"

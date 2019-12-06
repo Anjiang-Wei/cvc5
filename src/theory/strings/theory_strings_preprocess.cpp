@@ -234,8 +234,59 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node udx = nm->mkNode(STRING_SUBSTR, itost, x, d_one);
     Node ux = nm->mkNode(APPLY_UF, u, x);
     Node ux1 = nm->mkNode(APPLY_UF, u, xPlusOne);
-    Node c0 = nm->mkNode(STRING_CODE, nm->mkConst(String("0")));
-    Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
+
+    Node c;
+    if (options::useCode())
+    {
+      Node c0 = nm->mkNode(STRING_CODE, nm->mkConst(String("0")));
+      c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
+    }
+    else
+    {
+      c = nm->mkNode(
+          kind::ITE,
+          udx.eqNode(nm->mkConst(String("0"))),
+          nm->mkConst(Rational(0)),
+          nm->mkNode(
+              kind::ITE,
+              udx.eqNode(nm->mkConst(String("1"))),
+              nm->mkConst(Rational(1)),
+              nm->mkNode(
+                  kind::ITE,
+                  udx.eqNode(nm->mkConst(String("2"))),
+                  nm->mkConst(Rational(2)),
+                  nm->mkNode(
+                      kind::ITE,
+                      udx.eqNode(nm->mkConst(String("3"))),
+                      nm->mkConst(Rational(3)),
+                      nm->mkNode(
+                          kind::ITE,
+                          udx.eqNode(nm->mkConst(String("4"))),
+                          nm->mkConst(Rational(4)),
+                          nm->mkNode(
+                              kind::ITE,
+                              udx.eqNode(nm->mkConst(String("5"))),
+                              nm->mkConst(Rational(5)),
+                              nm->mkNode(
+                                  kind::ITE,
+                                  udx.eqNode(nm->mkConst(String("6"))),
+                                  nm->mkConst(Rational(6)),
+                                  nm->mkNode(
+                                      kind::ITE,
+                                      udx.eqNode(nm->mkConst(String("7"))),
+                                      nm->mkConst(Rational(7)),
+                                      nm->mkNode(
+                                          kind::ITE,
+                                          udx.eqNode(nm->mkConst(String("8"))),
+                                          nm->mkConst(Rational(8)),
+                                          nm->mkNode(kind::ITE,
+                                                     udx.eqNode(nm->mkConst(
+                                                         String("9"))),
+                                                     nm->mkConst(Rational(9)),
+                                                     nm->mkConst(Rational(
+                                                         -1))))))))))));
+    }
+
     // Node usx = nm->mkNode(APPLY_UF, us, x);
     // Node usx1 = nm->mkNode(APPLY_UF, us, xPlusOne);
 
@@ -246,7 +297,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node cb = nm->mkNode(
         AND,
         nm->mkNode(GEQ, c, nm->mkNode(ITE, leadingZeroPos, d_one, d_zero)),
-        nm->mkNode(LT, c, ten));
+        options::useCode() ? nm->mkNode(LT, c, ten) : nm->mkConst(true));
 
     Node lenlem = nm->mkNode(STRING_LENGTH, udx).eqNode(d_one);
 
@@ -311,13 +362,29 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node kc1 = nm->mkNode(GEQ, k, soff);
     Node kc2 = nm->mkNode(LT, k, lens);
     Node c0 = nm->mkNode(STRING_CODE, nm->mkConst(String("0")));
-    Node codeSk = nm->mkNode(
-        MINUS,
-        nm->mkNode(STRING_CODE, nm->mkNode(STRING_SUBSTR, baseS, k, d_one)),
-        c0);
+    Node substr = nm->mkNode(STRING_SUBSTR, baseS, k, d_one);
+    Node codeSk = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, substr), c0);
     Node ten = nm->mkConst(Rational(10));
     Node kc3 = nm->mkNode(
         OR, nm->mkNode(LT, codeSk, d_zero), nm->mkNode(GEQ, codeSk, ten));
+
+    if (!options::useCode())
+    {
+      NodeBuilder<> nb(OR);
+      nb << substr.eqNode(nm->mkConst(String("0")));
+      nb << substr.eqNode(nm->mkConst(String("1")));
+      nb << substr.eqNode(nm->mkConst(String("2")));
+      nb << substr.eqNode(nm->mkConst(String("3")));
+      nb << substr.eqNode(nm->mkConst(String("4")));
+      nb << substr.eqNode(nm->mkConst(String("5")));
+      nb << substr.eqNode(nm->mkConst(String("6")));
+      nb << substr.eqNode(nm->mkConst(String("7")));
+      nb << substr.eqNode(nm->mkConst(String("8")));
+      nb << substr.eqNode(nm->mkConst(String("9")));
+      kc3 = nb;
+      kc3 = kc3.negate();
+    }
+
     conc1.push_back(nm->mkNode(OR, sEmpty, nm->mkNode(AND, kc1, kc2, kc3)));
 
     std::vector<Node> conc2;
@@ -385,14 +452,66 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node udx = nm->mkNode(STRING_SUBSTR, s, x, d_one);
     Node ux = nm->mkNode(APPLY_UF, u, x);
     Node ux1 = nm->mkNode(APPLY_UF, u, nm->mkNode(PLUS, x, d_one));
-    Node c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
+
+    Node c;
+    if (options::useCode())
+    {
+      c = nm->mkNode(MINUS, nm->mkNode(STRING_CODE, udx), c0);
+    }
+    else
+    {
+      c = nm->mkNode(
+          kind::ITE,
+          udx.eqNode(nm->mkConst(String("0"))),
+          nm->mkConst(Rational(0)),
+          nm->mkNode(
+              kind::ITE,
+              udx.eqNode(nm->mkConst(String("1"))),
+              nm->mkConst(Rational(1)),
+              nm->mkNode(
+                  kind::ITE,
+                  udx.eqNode(nm->mkConst(String("2"))),
+                  nm->mkConst(Rational(2)),
+                  nm->mkNode(
+                      kind::ITE,
+                      udx.eqNode(nm->mkConst(String("3"))),
+                      nm->mkConst(Rational(3)),
+                      nm->mkNode(
+                          kind::ITE,
+                          udx.eqNode(nm->mkConst(String("4"))),
+                          nm->mkConst(Rational(4)),
+                          nm->mkNode(
+                              kind::ITE,
+                              udx.eqNode(nm->mkConst(String("5"))),
+                              nm->mkConst(Rational(5)),
+                              nm->mkNode(
+                                  kind::ITE,
+                                  udx.eqNode(nm->mkConst(String("6"))),
+                                  nm->mkConst(Rational(6)),
+                                  nm->mkNode(
+                                      kind::ITE,
+                                      udx.eqNode(nm->mkConst(String("7"))),
+                                      nm->mkConst(Rational(7)),
+                                      nm->mkNode(
+                                          kind::ITE,
+                                          udx.eqNode(nm->mkConst(String("8"))),
+                                          nm->mkConst(Rational(8)),
+                                          nm->mkNode(kind::ITE,
+                                                     udx.eqNode(nm->mkConst(
+                                                         String("9"))),
+                                                     nm->mkConst(Rational(9)),
+                                                     nm->mkConst(Rational(
+                                                         -1))))))))))));
+    }
+
     Node usx = nm->mkNode(APPLY_UF, us, x);
     Node usx1 = nm->mkNode(APPLY_UF, us, nm->mkNode(PLUS, x, d_one));
 
     Node eqs = usx.eqNode(nm->mkNode(STRING_CONCAT, udx, usx1));
     Node eq = ux1.eqNode(nm->mkNode(PLUS, c, nm->mkNode(MULT, ten, ux)));
-    Node cb =
-        nm->mkNode(AND, nm->mkNode(GEQ, c, d_zero), nm->mkNode(LT, c, ten));
+    Node cb = options::useCode() ? nm->mkNode(
+                  AND, nm->mkNode(GEQ, c, d_zero), nm->mkNode(LT, c, ten))
+                                 : nm->mkNode(GEQ, c, d_zero);
 
     Node lenlem = nm->mkNode(STRING_LENGTH, udx).eqNode(d_one);
 
