@@ -4097,6 +4097,7 @@ void TheoryStrings::registerTerm( Node n, int effort ) {
   }
   else if (n.getKind() == STRING_CODE)
   {
+    AlwaysAssert(options::useCode()) << n;
     d_has_str_code = true;
     // ite( str.len(s)==1, 0 <= str.code(s) < num_codes, str.code(s)=-1 )
     Node code_len = utils::mkNLength(n[0]).eqNode(d_one);

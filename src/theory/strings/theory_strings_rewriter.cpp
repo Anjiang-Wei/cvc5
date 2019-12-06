@@ -1473,7 +1473,7 @@ Node TheoryStringsRewriter::rewriteMembership(TNode node) {
   }else if(r.getKind() == kind::STRING_TO_REGEXP) {
     retNode = x.eqNode(r[0]);
   }
-  else if (r.getKind() == REGEXP_RANGE)
+  else if (options::useCode() && r.getKind() == REGEXP_RANGE)
   {
     // x in re.range( char_i, char_j ) ---> i <= str.code(x) <= j
     Node xcode = nm->mkNode(STRING_CODE, x);
