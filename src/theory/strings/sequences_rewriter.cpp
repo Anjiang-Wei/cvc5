@@ -18,6 +18,7 @@
 
 #include "expr/attribute.h"
 #include "expr/node_builder.h"
+#include "options/strings_options.h"
 #include "theory/rewriter.h"
 #include "theory/strings/arith_entail.h"
 #include "theory/strings/regexp_entail.h"
@@ -1234,7 +1235,7 @@ Node SequencesRewriter::rewriteMembership(TNode node)
     Node retNode = x.eqNode(r[0]);
     return returnRewrite(node, retNode, Rewrite::RE_IN_CSTRING);
   }
-  else if (r.getKind() == REGEXP_RANGE)
+  else if (options::useCode() && r.getKind() == REGEXP_RANGE)
   {
     // x in re.range( char_i, char_j ) ---> i <= str.code(x) <= j
     Node xcode = nm->mkNode(STRING_TO_CODE, x);
