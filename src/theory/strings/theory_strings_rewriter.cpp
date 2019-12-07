@@ -1476,10 +1476,15 @@ Node TheoryStringsRewriter::rewriteMembership(TNode node) {
   else if (options::useCode() && r.getKind() == REGEXP_RANGE)
   {
     // x in re.range( char_i, char_j ) ---> i <= str.code(x) <= j
-    Node xcode = nm->mkNode(STRING_CODE, x);
-    retNode = nm->mkNode(AND,
-                         nm->mkNode(LEQ, nm->mkNode(STRING_CODE, r[0]), xcode),
-                         nm->mkNode(LEQ, xcode, nm->mkNode(STRING_CODE, r[1])));
+    String startStr = r[0].getConst<String>();
+    String endStr = r[1].getConst<String>();
+    NodeBuilder<> nb(OR);
+    for (unsigned i = startStr.front(), end = endStr.front(); i <= end; i++)
+    {
+      std::vector<unsigned> sv = {c};
+      nb << x.eqNode(nm->mkConst(String(sv)));
+    }
+    retNode = nb;
   }else if(x != node[0] || r != node[1]) {
     retNode = NodeManager::currentNM()->mkNode( kind::STRING_IN_REGEXP, x, r );
   }
