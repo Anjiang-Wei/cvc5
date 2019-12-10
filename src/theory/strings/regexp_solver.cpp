@@ -201,6 +201,7 @@ void RegExpSolver::check(const std::map<Node, std::vector<Node> >& mems)
               d_im.sendInference(nfexp, exp_n, conc, "REGEXP NF simp");
               addedLemma = true;
               d_parent.getExtTheory()->markReduced(assertion);
+              d_regexp_ccached.insert(assertion);
               continue;
           }
         }
