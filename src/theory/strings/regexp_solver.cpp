@@ -194,7 +194,7 @@ void RegExpSolver::check(const std::map<Node, std::vector<Node> >& mems)
               addedLemma = true;
               break;
             }
-          } else if (polarity) {
+          } else if (polarity && tmp != nm->mkNode(STRING_IN_REGEXP, nx, r)) {
               std::vector<Node> exp_n;
               exp_n.push_back(assertion);
               Node conc = tmp;
