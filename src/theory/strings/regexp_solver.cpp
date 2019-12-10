@@ -194,6 +194,14 @@ void RegExpSolver::check(const std::map<Node, std::vector<Node> >& mems)
               addedLemma = true;
               break;
             }
+          } else if (polarity) {
+              std::vector<Node> exp_n;
+              exp_n.push_back(assertion);
+              Node conc = tmp;
+              d_im.sendInference(nfexp, exp_n, conc, "REGEXP NF simp");
+              addedLemma = true;
+              d_parent.getExtTheory()->markReduced(assertion);
+              continue;
           }
         }
         if (e == 1 && repUnfold.find(rep) != repUnfold.end())
