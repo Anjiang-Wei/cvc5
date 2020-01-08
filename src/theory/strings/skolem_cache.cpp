@@ -14,6 +14,7 @@
 
 #include "theory/strings/skolem_cache.h"
 
+#include "options/strings_options.h"
 #include "theory/rewriter.h"
 #include "theory/strings/theory_strings_rewriter.h"
 #include "util/rational.h"
@@ -53,7 +54,7 @@ Node SkolemCache::mkTypedSkolemCached(
   }
 
   std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b].find(id);
-  if (it == d_skolemCache[a][b].end())
+  if (!options::skolemSharing() || it == d_skolemCache[a][b].end())
   {
     Node sk = mkTypedSkolem(tn, c);
     d_skolemCache[a][b][id] = sk;

@@ -233,6 +233,15 @@ header = "options/strings_options.h"
   help       = "do flat form inferences"
 
 [[option]]
+  name       = "skolemSharing"
+  category   = "expert"
+  long       = "skolem-sharing"
+  type       = "bool"
+  default    = "true"
+  read_only  = true
+  help       = "use skolem sharing"
+
+[[option]]
   name       = "stringRegExpInterMode"
   category   = "expert"
   long       = "re-inter-mode=MODE"
