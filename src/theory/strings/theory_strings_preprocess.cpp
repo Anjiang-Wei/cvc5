@@ -79,13 +79,21 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     //length of first skolem is second argument
     Node b12 = nm->mkNode(STRING_LENGTH, sk1).eqNode(n);
     //length of second skolem is abs difference between end point and end of string
+    /*
     Node b13 = nm->mkNode(STRING_LENGTH, sk2)
                    .eqNode(nm->mkNode(ITE,
                                       nm->mkNode(GEQ, lt0, t12),
                                       nm->mkNode(MINUS, lt0, t12),
-                                      d_zero));
+                                      d_zero));*/
 
-    Node b1 = nm->mkNode(AND, b11, b12, b13);
+    Node sk2len = nm->mkNode(STRING_LENGTH, sk2);
+    Node slen = nm->mkNode(STRING_LENGTH, s);
+    Node rlen = nm->mkNode(STRING_LENGTH, skt);
+    Node b13 = nm->mkNode(OR, nm->mkNode(EQUAL, sk2len, nm->mkNode(MINUS, slen, nm->mkNode(PLUS, n, m))), nm->mkNode(EQUAL, sk2len, d_zero));
+    Node b14 = nm->mkNode(LEQ, rlen, m);
+    // Node b15 = nm->mkNode(LEQ, rlen, nm->mkNode(MINUS, slen, n));
+
+    Node b1 = nm->mkNode(AND, b11, b12, b13, b14);
     Node b2 = skt.eqNode(d_empty_str);
     Node lemma = nm->mkNode(ITE, cond, b1, b2);
 
