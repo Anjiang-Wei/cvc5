@@ -78,20 +78,19 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node b11 = s.eqNode(nm->mkNode(STRING_CONCAT, sk1, skt, sk2));
     //length of first skolem is second argument
     Node b12 = nm->mkNode(STRING_LENGTH, sk1).eqNode(n);
-    //length of second skolem is abs difference between end point and end of string
-    /*
-    Node b13 = nm->mkNode(STRING_LENGTH, sk2)
-                   .eqNode(nm->mkNode(ITE,
-                                      nm->mkNode(GEQ, lt0, t12),
-                                      nm->mkNode(MINUS, lt0, t12),
-                                      d_zero));*/
 
     Node sk2len = nm->mkNode(STRING_LENGTH, sk2);
     Node slen = nm->mkNode(STRING_LENGTH, s);
     Node rlen = nm->mkNode(STRING_LENGTH, skt);
-    Node b13 = nm->mkNode(OR, nm->mkNode(EQUAL, sk2len, nm->mkNode(MINUS, slen, nm->mkNode(PLUS, n, m))), nm->mkNode(EQUAL, sk2len, d_zero));
+    // Length of the suffix is either 0 (in the case where m + n > len(s)) or
+    // len(s) - n -m
+    Node b13 = nm->mkNode(
+        OR,
+        nm->mkNode(
+            EQUAL, sk2len, nm->mkNode(MINUS, slen, nm->mkNode(PLUS, n, m))),
+        nm->mkNode(EQUAL, sk2len, d_zero));
+    // Length of the result is at most m
     Node b14 = nm->mkNode(LEQ, rlen, m);
-    // Node b15 = nm->mkNode(LEQ, rlen, nm->mkNode(MINUS, slen, n));
 
     Node b1 = nm->mkNode(AND, b11, b12, b13, b14);
     Node b2 = skt.eqNode(d_empty_str);
@@ -101,7 +100,8 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     // IF    n >=0 AND n < len( s ) AND m > 0
     // THEN: s = sk1 ++ skt ++ sk2 AND
     //       len( sk1 ) = n AND
-    //       len( sk2 ) = ite( len( s ) >= n+m, len( s )-(n+m), 0 )
+    //       ( len( sk2 ) = len( s )-(n+m) OR len( sk2 ) = 0 ) AND
+    //       len( skt ) <= m
     // ELSE: skt = ""
     new_nodes.push_back( lemma );
 
