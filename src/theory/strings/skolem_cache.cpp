@@ -202,6 +202,41 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
     b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, b));
   }
 
+  if (id == SK_STAR_PREFIX)
+  {
+    Node len = TheoryStringsRewriter::getFixedLengthForRegexp(b);
+    if (!len.isNull())
+    {
+      id = SK_PREFIX;
+      b = len;
+    }
+  }
+  else if (id == SK_STAR_MID)
+  {
+    Node len = TheoryStringsRewriter::getFixedLengthForRegexp(b);
+    if (!len.isNull())
+    {
+      id = SK_PURIFY;
+      a = nm->mkNode(
+          STRING_SUBSTR,
+          a,
+          len,
+          nm->mkNode(
+              MINUS, nm->mkNode(STRING_LENGTH, a), nm->mkNode(PLUS, len, len)));
+      b = Node::null();
+    }
+  }
+  else if (id == SK_STAR_SUFFIX)
+  {
+    Node len = TheoryStringsRewriter::getFixedLengthForRegexp(b);
+    if (!len.isNull())
+    {
+      id = SK_SUFFIX_REM;
+      b = Rewriter::rewrite(
+          nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, a), len));
+    }
+  }
+
   if (id == SK_PURIFY && a.getKind() == kind::STRING_SUBSTR)
   {
     Node s = a[0];

@@ -28,8 +28,9 @@ namespace CVC4 {
 namespace theory {
 namespace strings {
 
-RegExpOpr::RegExpOpr()
-    : d_emptyString(NodeManager::currentNM()->mkConst(::CVC4::String(""))),
+RegExpOpr::RegExpOpr(SkolemCache* sc)
+    : d_sc(sc),
+      d_emptyString(NodeManager::currentNM()->mkConst(::CVC4::String(""))),
       d_true(NodeManager::currentNM()->mkConst(true)),
       d_false(NodeManager::currentNM()->mkConst(false)),
       d_emptySingleton(NodeManager::currentNM()->mkNode(kind::STRING_TO_REGEXP,
@@ -1171,12 +1172,12 @@ void RegExpOpr::simplifyPRegExp( Node s, Node r, std::vector< Node > &new_nodes 
           NodeManager* nm = NodeManager::currentNM();
           Node se = s.eqNode(d_emptyString);
           Node sinr = nm->mkNode(kind::STRING_IN_REGEXP, s, r[0]);
-          Node sk1 = nm->mkSkolem(
-              "rs", s.getType(), "created for regular expression star");
-          Node sk2 = nm->mkSkolem(
-              "rs", s.getType(), "created for regular expression star");
-          Node sk3 = nm->mkSkolem(
-              "rs", s.getType(), "created for regular expression star");
+          Node sk1 =
+              d_sc->mkSkolemCached(s, r[0], SkolemCache::SK_STAR_PREFIX, "rs1");
+          Node sk2 =
+              d_sc->mkSkolemCached(s, r[0], SkolemCache::SK_STAR_MID, "rs2");
+          Node sk3 =
+              d_sc->mkSkolemCached(s, r[0], SkolemCache::SK_STAR_SUFFIX, "rs3");
 
           NodeBuilder<> nb(kind::AND);
           nb << sk1.eqNode(d_emptyString).negate();

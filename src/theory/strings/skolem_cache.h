@@ -105,6 +105,11 @@ class SkolemCache
     // b > 0 =>
     //    exists k. a = a' ++ k ^ len( a ) = b
     SK_SUFFIX_REM,
+
+    SK_STAR_PREFIX,
+    SK_STAR_MID,
+    SK_STAR_SUFFIX,
+
     // --------------- integer skolems
     // exists k. ( b occurs k times in a )
     SK_NUM_OCCUR,

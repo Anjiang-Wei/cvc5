@@ -19,14 +19,16 @@
 #ifndef CVC4__THEORY__STRINGS__REGEXP__OPERATION_H
 #define CVC4__THEORY__STRINGS__REGEXP__OPERATION_H
 
-#include <vector>
-#include <set>
 #include <algorithm>
 #include <climits>
+#include <set>
+#include <vector>
+
+#include "theory/rewriter.h"
+#include "theory/strings/skolem_cache.h"
+#include "theory/theory.h"
 #include "util/hash.h"
 #include "util/regexp.h"
-#include "theory/theory.h"
-#include "theory/rewriter.h"
 //#include "context/cdhashmap.h"
 
 namespace CVC4 {
@@ -58,6 +60,7 @@ class RegExpOpr {
   typedef std::pair< Node, Node > PairNodes;
 
  private:
+  SkolemCache* d_sc;
   /** the code point of the last character in the alphabet we are using */
   unsigned d_lastchar;
   Node d_emptyString;
@@ -108,7 +111,7 @@ class RegExpOpr {
   void firstChars(Node r, std::set<unsigned> &pcset, SetNodes &pvset);
 
  public:
-  RegExpOpr();
+  RegExpOpr(SkolemCache* sc);
   ~RegExpOpr();
 
   /**
