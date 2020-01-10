@@ -111,6 +111,13 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
     id = SK_SUFFIX_REM;
     b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, b));
   }
+  else if (id == SK_ID_C_SPT_REV)
+  {
+    // SK_ID_C_SPT_REV(x, y) ---> SK_PREFIX(x, (- (str.len x) (str.len y)))
+    id = SK_PREFIX;
+    b = Rewriter::rewrite(nm->mkNode(
+        MINUS, nm->mkNode(STRING_LENGTH, a), nm->mkNode(STRING_LENGTH, b)));
+  }
   else if (id == SK_ID_VC_SPT)
   {
     // SK_ID_VC_SPT(x, y) ---> SK_SUFFIX_REM(x, 1)
@@ -130,6 +137,36 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
     id = SK_PREFIX;
     b = nm->mkConst(Rational(1));
   }
+  else if (id == SK_ID_V_SPT_X)
+  {
+    // SK_ID_V_SPT_X(x, y) ---> SK_SUFFIX_REM(a, (str.len b))
+    id = SK_SUFFIX_REM;
+    b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, b));
+  }
+  else if (id == SK_ID_V_SPT_REV_X)
+  {
+    // SK_ID_V_SPT_REV_X(x, y) ---> SK_PREFIX(a, (- (str.len a) (str.len b)))
+    id = SK_PREFIX;
+    b = Rewriter::rewrite(nm->mkNode(
+        MINUS, nm->mkNode(STRING_LENGTH, a), nm->mkNode(STRING_LENGTH, b)));
+  }
+  else if (id == SK_ID_V_SPT_Y)
+  {
+    // SK_ID_V_SPT_Y(x, y) ---> SK_SUFFIX_REM(b, (str.len a))
+    id = SK_SUFFIX_REM;
+    Node aOld = a;
+    a = b;
+    b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, aOld));
+  }
+  else if (id == SK_ID_V_SPT_REV_Y)
+  {
+    // SK_ID_V_SPT_REV_Y(x, y) ---> SK_PREFIX(b, (- (str.len b) (str.len a)))
+    id = SK_PREFIX;
+    Node aOld = a;
+    a = b;
+    b = Rewriter::rewrite(nm->mkNode(
+        MINUS, nm->mkNode(STRING_LENGTH, b), nm->mkNode(STRING_LENGTH, aOld)));
+  }
   else if (id == SK_ID_DC_SPT_REM)
   {
     // SK_ID_DC_SPT_REM(x, y) ---> SK_SUFFIX_REM(x, 1)
@@ -148,6 +185,20 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
   {
     // SK_ID_DEQ_Y(x, y) ---> SK_PREFIX(x, (str.len y))
     id = SK_PREFIX;
+    b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, b));
+  }
+  else if (id == SK_ID_DEQ_Z)
+  {
+    // SK_ID_DEQ_Z(x, y) ---> SK_SUFFIX_REM(y, (str.len x))
+    id = SK_SUFFIX_REM;
+    Node aOld = a;
+    a = b;
+    b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, aOld));
+  }
+  else if (id == SK_ID_DEQ_W)
+  {
+    // SK_ID_DEQ_W(x, y) ---> SK_SUFFIX_REM(x, (str.len y))
+    id = SK_SUFFIX_REM;
     b = Rewriter::rewrite(nm->mkNode(STRING_LENGTH, b));
   }
 

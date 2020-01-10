@@ -59,14 +59,16 @@ class SkolemCache
     //    exists k. a = "c" ++ k
     SK_ID_VC_SPT,
     SK_ID_VC_SPT_REV,
-    // a != "" ^ b = "cccccccc" ^ len(a)!=len(b) a ++ a' = b = b' =>
+    // a != "" ^ b = "cccccccc" ^ len(a)!=len(b) a ++ a' = b ++ b' =>
     //    exists k. a = "cccc" ++ k OR ( len(k) > 0 ^ "cccc" = a ++ k )
     SK_ID_VC_BIN_SPT,
     SK_ID_VC_BIN_SPT_REV,
     // a != "" ^ b != "" ^ len(a)!=len(b) ^ a ++ a' = b ++ b' =>
-    //    exists k. len( k )>0 ^ ( a ++ k = b OR a = b ++ k )
-    SK_ID_V_SPT,
-    SK_ID_V_SPT_REV,
+    //    exists k_x k_y. len( k )>0 ^ ( a ++ k_x = b OR a = b ++ k_y )
+    SK_ID_V_SPT_X,
+    SK_ID_V_SPT_REV_X,
+    SK_ID_V_SPT_Y,
+    SK_ID_V_SPT_REV_Y,
     // a != ""  ^ b = "c" ^ a ++ a' != b ++ b' =>
     //    exists k, k_rem.
     //         len( k ) = 1 ^
@@ -74,12 +76,13 @@ class SkolemCache
     SK_ID_DC_SPT,
     SK_ID_DC_SPT_REM,
     // a != ""  ^ b != "" ^ len( a ) != len( b ) ^ a ++ a' != b ++ b' =>
-    //    exists k_x k_y k_z.
+    //    exists k_x k_y k_z k_w.
     //         ( len( k_y ) = len( a ) ^ len( k_x ) = len( b ) ^ len( k_z) > 0
-    //           ( a = k_x ++ k_z OR b = k_y ++ k_z ) )
+    //           ( a = k_x ++ k_z OR b = k_y ++ k_w ) )
     SK_ID_DEQ_X,
     SK_ID_DEQ_Y,
     SK_ID_DEQ_Z,
+    SK_ID_DEQ_W,
     // contains( a, b ) =>
     //    exists k_pre, k_post. a = k_pre ++ b ++ k_post ^
     //                          ~contains(k_pre ++ substr( b, 0, len(b)-1 ), b)
@@ -100,7 +103,7 @@ class SkolemCache
     SK_PREFIX,
     // For integer b,
     // b > 0 =>
-    //    exists k. a = a' ++ k ^ len( k ) = ite( len(a)>b, len(a)-b, 0 )
+    //    exists k. a = a' ++ k ^ len( a ) = b
     SK_SUFFIX_REM,
     // --------------- integer skolems
     // exists k. ( b occurs k times in a )
