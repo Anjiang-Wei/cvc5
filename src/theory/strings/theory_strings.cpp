@@ -3419,21 +3419,6 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                     isRev ? utils::mkNConcat(sk2, nfiv[index])
                           : utils::mkNConcat(nfiv[index], sk2));
 
-                Node eqs = d_true;
-                if (!isRev)
-                {
-                  sk.eqNode(d_sk_cache.mkSkolemCached(
-                                nfiv[index],
-                                nfjv[index],
-                                SkolemCache::SK_FIRST_CTN_POST,
-                                "v_spt1"))
-                      .orNode(sk.eqNode(d_sk_cache.mkSkolemCached(
-                          nfjv[index],
-                          nfiv[index],
-                          SkolemCache::SK_FIRST_CTN_POST,
-                          "v_spt2")));
-                }
-
                 if( lentTestSuccess!=-1 ){
                   info.d_antn.push_back( lentTestExp );
                   info.d_conc = lentTestSuccess==0 ? eq1 : eq2;
@@ -3447,10 +3432,7 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                     info.d_antn.push_back(ldeq);
                   }
                   //set info
-                  info.d_conc = nm->mkNode(
-                      AND,
-                      eqs,
-                      NodeManager::currentNM()->mkNode(kind::OR, eq1, eq2));
+                  info.d_conc = NodeManager::currentNM()->mkNode(kind::OR, eq1, eq2);
                   info.d_id = INFER_SSPLIT_VAR;
                   info_valid = true;
                 }
