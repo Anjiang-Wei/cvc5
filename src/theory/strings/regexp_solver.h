@@ -19,12 +19,14 @@
 #define CVC4__THEORY__STRINGS__REGEXP_SOLVER_H
 
 #include <map>
+
 #include "context/cdhashset.h"
 #include "context/cdlist.h"
 #include "context/context.h"
 #include "expr/node.h"
 #include "theory/strings/inference_manager.h"
 #include "theory/strings/regexp_operation.h"
+#include "theory/strings/skolem_cache.h"
 #include "theory/strings/solver_state.h"
 #include "util/regexp.h"
 
@@ -47,6 +49,7 @@ class RegExpSolver
   RegExpSolver(TheoryStrings& p,
                SolverState& s,
                InferenceManager& im,
+               SkolemCache* sc,
                context::Context* c,
                context::UserContext* u);
   ~RegExpSolver() {}
