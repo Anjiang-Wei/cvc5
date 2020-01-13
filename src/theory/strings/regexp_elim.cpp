@@ -377,7 +377,7 @@ Node RegExpElimination::eliminateConcat(Node atom)
       rexpElimChildren.push_back(c);
     }
   }
-  if (!sConstraints.empty())
+  if (false) // !sConstraints.empty())
   {
     Assert(rexpElimChildren.size() + sConstraints.size() == nchildren);
     Node ss = nm->mkNode(STRING_SUBSTR, x, sStartIndex, sLength);
