@@ -350,19 +350,37 @@ Node RegExpElimination::eliminateConcat(Node atom)
   {
     unsigned index = r == 0 ? 0 : nchildren - 1;
     Node c = children[index];
-    if (c.getKind() == STRING_TO_REGEXP)
+
+    while (true)
     {
-      Assert(children[index + (r == 0 ? 1 : -1)].getKind() != STRING_TO_REGEXP);
-      Node s = c[0];
-      Node lens = nm->mkNode(STRING_LENGTH, s);
-      Node sss = r == 0 ? d_zero : nm->mkNode(MINUS, lenx, lens);
-      Node ss = nm->mkNode(STRING_SUBSTR, x, sss, lens);
-      sConstraints.push_back(ss.eqNode(s));
-      if (r == 0)
+      if (c.getKind() == STRING_TO_REGEXP)
       {
-        sStartIndex = lens;
+        Assert(children[index + (r == 0 ? 1 : -1)].getKind()
+               != STRING_TO_REGEXP);
+        Node s = c[0];
+        Node lens = nm->mkNode(STRING_LENGTH, s);
+        Node sss = r == 0 ? d_zero : nm->mkNode(MINUS, lenx, lens);
+        Node ss = nm->mkNode(STRING_SUBSTR, x, sss, lens);
+        sConstraints.push_back(ss.eqNode(s));
+        if (r == 0)
+        {
+          sStartIndex = nm->mkNode(PLUS, sStartIndex, lens);
+        }
+        sLength = nm->mkNode(MINUS, sLength, lens);
       }
-      sLength = nm->mkNode(MINUS, sLength, lens);
+      else if (c.getKind() == REGEXP_SIGMA)
+      {
+        if (r == 0)
+        {
+          sStartIndex = nm->mkNode(PLUS, sStartIndex, d_one);
+        }
+        sLength = nm->mkNode(MINUS, sLength, d_one);
+      }
+      else
+      {
+        break;
+      }
+      index += (r == 0) ? 1 : -1;
     }
     if (r == 1 && !sConstraints.empty())
     {
