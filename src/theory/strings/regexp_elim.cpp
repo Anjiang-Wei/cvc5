@@ -343,20 +343,18 @@ Node RegExpElimination::eliminateConcat(Node atom)
   Node sStartIndex = d_zero;
   Node sLength = lenx;
   std::vector<Node> sConstraints;
-  std::vector<Node> rexpElimChildren;
-  unsigned nchildren = children.size();
+  size_t nchildren = children.size();
+  size_t rexpElimChildrenStart = 0;
+  size_t rexpElimChildrenEnd = nchildren - 1;
   Assert(nchildren > 1);
   for (unsigned r = 0; r < 2; r++)
   {
     unsigned index = r == 0 ? 0 : nchildren - 1;
-    Node c = children[index];
-
-    while (true)
+    while (index >= 0 && index < nchildren)
     {
+      Node c = children[index];
       if (c.getKind() == STRING_TO_REGEXP)
       {
-        Assert(children[index + (r == 0 ? 1 : -1)].getKind()
-               != STRING_TO_REGEXP);
         Node s = c[0];
         Node lens = nm->mkNode(STRING_LENGTH, s);
         Node sss = r == 0 ? d_zero : nm->mkNode(MINUS, lenx, lens);
@@ -382,26 +380,31 @@ Node RegExpElimination::eliminateConcat(Node atom)
       }
       index += (r == 0) ? 1 : -1;
     }
-    if (r == 1 && !sConstraints.empty())
+    if (r == 0)
     {
-      // add the middle children
-      for (unsigned i = 1; i < (nchildren - 1); i++)
-      {
-        rexpElimChildren.push_back(children[i]);
+      rexpElimChildrenStart = index;
+      if (index == rexpElimChildrenEnd) {
+        break;
       }
     }
-    if (c.getKind() != STRING_TO_REGEXP)
+    else
     {
-      rexpElimChildren.push_back(c);
+      rexpElimChildrenEnd = index;
     }
   }
+
   if (!sConstraints.empty())
   {
-    Assert(rexpElimChildren.size() + sConstraints.size() == nchildren);
-    Node ss = nm->mkNode(STRING_SUBSTR, x, sStartIndex, sLength);
-    Assert(!rexpElimChildren.empty());
-    Node regElim = utils::mkConcat(REGEXP_CONCAT, rexpElimChildren);
-    sConstraints.push_back(nm->mkNode(STRING_IN_REGEXP, ss, regElim));
+    std::vector<Node> rexpElimChildren(children.begin() + rexpElimChildrenStart,
+                                       children.begin() + rexpElimChildrenEnd);
+    if (!rexpElimChildren.empty())
+    {
+      Node ss = nm->mkNode(STRING_SUBSTR, x, sStartIndex, sLength);
+      Node regElim = rexpElimChildren.empty()
+                         ? nm->mkConst(true)
+                         : utils::mkConcat(REGEXP_CONCAT, rexpElimChildren);
+      sConstraints.push_back(nm->mkNode(STRING_IN_REGEXP, ss, regElim));
+    }
     Node ret = nm->mkNode(AND, sConstraints);
     // e.g.
     // x in re.++( "A", R ) ---> substr(x,0,1)="A" ^ substr(x,1,len(x)-1) in R
