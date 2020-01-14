@@ -3177,8 +3177,7 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
           Node length_term_j = d_state.getLength(nfjv[index], lexp);
           //split on equality between string lengths (note that splitting on equality between strings is worse since it is harder to process)
           if (!d_state.areDisequal(length_term_i, length_term_j)
-              && !d_state.areEqual(length_term_i, length_term_j)
-              && !nfiv[index].isConst() && !nfjv[index].isConst())
+              && !d_state.areEqual(length_term_i, length_term_j))
           {  // AJR: remove the latter 2 conditions?
             Trace("strings-solve-debug") << "Non-simple Case 1 : string lengths neither equal nor disequal" << std::endl;
             //try to make the lengths equal via splitting on demand
