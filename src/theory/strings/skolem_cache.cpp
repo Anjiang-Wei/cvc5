@@ -57,6 +57,7 @@ Node SkolemCache::mkTypedSkolemCached(
   {
     Node sk = mkTypedSkolem(tn, c);
     d_skolemCache[a][b][id] = sk;
+    d_skolemToArgs[sk] = { id, a, b };
     return sk;
   }
   return it->second;
@@ -189,6 +190,33 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
     {
       a = a[0];
     }
+  }
+  else if (id == SK_SUFFIX_REM)
+  {
+    std::cout << a << d_skolemToArgs[a].a << std::endl;
+    std::cout << b << std::endl;
+    // SK_SUFFIX_REM(SK_SUFFIX_REM(a, b1), b2) ---> SK_SUFFIX_REM(a, (+ b1 b2))
+    while (d_skolemToArgs.find(a) != d_skolemToArgs.end()
+           && d_skolemToArgs[a].id == SK_SUFFIX_REM)
+    {
+      SkolemInfo info = d_skolemToArgs[a];
+      b = Rewriter::rewrite(nm->mkNode(PLUS, b, info.b));
+      a = info.a;
+      std::cout << a << std::endl;
+    }
+  }
+  else if (id == SK_PREFIX)
+  {
+    std::cout << "pfx" << a << d_skolemToArgs[a].a << std::endl;
+    std::cout << "pfx" << b << std::endl;
+    // SK_PREFIX(SK_PREFIX(a, b1), b2) ---> SK_PREFIX(a, (+ b1 b2))
+    /*
+    while (a.getKind() == kind::APPLY_UF
+           && a.getOperator() == d_skolemUfs[SK_PREFIX])
+    {
+      a = a[0];
+    }
+    */
   }
 
   Trace("skolem-cache") << "normalizeStringSkolem end: (" << id << ", " << a
