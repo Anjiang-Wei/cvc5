@@ -113,6 +113,16 @@ class SkolemCache
     //   where n is the number of occurrences of b in a, and k(0)=0.
     SK_OCCUR_INDEX,
   };
+
+  struct EnumHash
+  {
+    template <typename T>
+    std::size_t operator()(T t) const
+    {
+      return static_cast<std::size_t>(t);
+    }
+  };
+
   /**
    * Returns a skolem of type string that is cached for (a,b,id) and has
    * name c.
@@ -163,7 +173,7 @@ class SkolemCache
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
 
-  std::unordered_map<SkolemId, Node> d_skolemUfs;
+  std::unordered_map<SkolemId, Node, EnumHash> d_skolemUfs;
 };
 
 }  // namespace strings
