@@ -240,7 +240,6 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
     while (a.getKind() == kind::APPLY_UF
            && a.getOperator() == d_skolemUfs[SK_PREFIX])
     {
-      b = Rewriter::rewrite(nm->mkNode(PLUS, b, a[1]));
       a = a[0];
     }
   }
