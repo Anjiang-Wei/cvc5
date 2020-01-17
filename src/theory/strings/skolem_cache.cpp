@@ -55,12 +55,46 @@ Node SkolemCache::mkTypedSkolemCached(
   std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b].find(id);
   if (it == d_skolemCache[a][b].end())
   {
-    Node sk = mkTypedSkolem(tn, c);
-    d_skolemCache[a][b][id] = sk;
+    NodeManager* nm = NodeManager::currentNM();
+    bool useUf = true;
+    if (d_skolemUfs.find(id) == d_skolemUfs.end())
+    {
+      switch (id)
+      {
+        case SK_PREFIX:
+        case SK_SUFFIX_REM:
+          d_skolemUfs[id] = nm->mkSkolem(
+              c,
+              nm->mkFunctionType({nm->stringType(), nm->integerType()},
+                                 nm->stringType()));
+          break;
+        case SK_FIRST_CTN_PRE:
+          d_skolemUfs[id] = nm->mkSkolem(
+              c,
+              nm->mkFunctionType({nm->stringType(), nm->stringType()},
+                                 nm->stringType()));
+          break;
+        default:
+          useUf = false;
+      }
+    }
+
+    Node sk;
+    if (useUf)
+    {
+      sk = nm->mkNode(kind::APPLY_UF, d_skolemUfs[id], a, b);
+      d_skolemCache[a][b][id] = sk;
+    }
+    else
+    {
+      sk = mkTypedSkolem(tn, c);
+      d_skolemCache[a][b][id] = sk;
+    }
     return sk;
   }
   return it->second;
 }
+
 Node SkolemCache::mkTypedSkolemCached(TypeNode tn,
                                       Node a,
                                       SkolemId id,

@@ -162,6 +162,8 @@ class SkolemCache
   std::map<Node, std::map<Node, std::map<SkolemId, Node> > > d_skolemCache;
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
+
+  std::unordered_map<SkolemId, Node> d_skolemUfs;
 };
 
 }  // namespace strings
