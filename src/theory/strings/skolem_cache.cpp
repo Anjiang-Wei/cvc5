@@ -57,7 +57,7 @@ Node SkolemCache::mkTypedSkolemCached(
   {
     NodeManager* nm = NodeManager::currentNM();
     bool useUf = true;
-    if (d_skolemUfs.find(id) == d_skolemUfs.end())
+    if (d_skolemUfs.find(id) == d_skolemUfs.end() || d_skolemUfs[id].isNull())
     {
       switch (id)
       {
@@ -221,6 +221,26 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
     // SK_FIRST_CTN_PRE((str.substr x 0 n), y) ---> SK_FIRST_CTN_PRE(x, y)
     while (a.getKind() == kind::STRING_SUBSTR && a[1] == d_zero)
     {
+      a = a[0];
+    }
+  }
+  else if (id == SK_SUFFIX_REM)
+  {
+    // SK_SUFFIX_REM(SK_SUFFIX_REM(a, b1), b2) ---> SK_SUFFIX_REM(a, (+ b1 b2))
+    while (a.getKind() == kind::APPLY_UF
+           && a.getOperator() == d_skolemUfs[SK_SUFFIX_REM])
+    {
+      b = Rewriter::rewrite(nm->mkNode(PLUS, b, a[1]));
+      a = a[0];
+    }
+  }
+  else if (id == SK_PREFIX)
+  {
+    // SK_PREFIX(SK_PREFIX(a, b1), b2) ---> SK_PREFIX(a, (+ b1 b2))
+    while (a.getKind() == kind::APPLY_UF
+           && a.getOperator() == d_skolemUfs[SK_PREFIX])
+    {
+      b = Rewriter::rewrite(nm->mkNode(PLUS, b, a[1]));
       a = a[0];
     }
   }
