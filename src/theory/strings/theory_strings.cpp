@@ -130,6 +130,9 @@ TheoryStrings::TheoryStrings(context::Context* c,
   getExtTheory()->addFunctionKind(kind::STRING_TOLOWER);
   getExtTheory()->addFunctionKind(kind::STRING_TOUPPER);
   getExtTheory()->addFunctionKind(kind::STRING_REV);
+  getExtTheory()->addFunctionKind(kind::STRING_SK_PREFIX);
+  getExtTheory()->addFunctionKind(kind::STRING_SK_SUFFIX);
+  getExtTheory()->addFunctionKind(kind::STRING_SK_FIRST_CTN_PRE);
 
   // The kinds we are treating as function application in congruence
   d_equalityEngine.addFunctionKind(kind::STRING_LENGTH);
@@ -149,6 +152,9 @@ TheoryStrings::TheoryStrings(context::Context* c,
   d_equalityEngine.addFunctionKind(kind::STRING_TOLOWER);
   d_equalityEngine.addFunctionKind(kind::STRING_TOUPPER);
   d_equalityEngine.addFunctionKind(kind::STRING_REV);
+  d_equalityEngine.addFunctionKind(kind::STRING_SK_PREFIX);
+  d_equalityEngine.addFunctionKind(kind::STRING_SK_SUFFIX);
+  d_equalityEngine.addFunctionKind(kind::STRING_SK_FIRST_CTN_PRE);
 
   d_zero = NodeManager::currentNM()->mkConst( Rational( 0 ) );
   d_one = NodeManager::currentNM()->mkConst( Rational( 1 ) );
@@ -162,6 +168,15 @@ TheoryStrings::TheoryStrings(context::Context* c,
 
 TheoryStrings::~TheoryStrings() {
 
+}
+
+void TheoryStrings::finishInit()
+{
+  TheoryModel* tm = d_valuation.getModel();
+  Assert(tm != nullptr);
+  tm->setSemiEvaluatedKind(STRING_SK_FIRST_CTN_PRE);
+  tm->setSemiEvaluatedKind(STRING_SK_SUFFIX);
+  tm->setSemiEvaluatedKind(STRING_SK_PREFIX);
 }
 
 bool TheoryStrings::areCareDisequal( TNode x, TNode y ) {

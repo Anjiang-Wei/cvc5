@@ -1563,6 +1563,51 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
   {
     retNode = rewriteConcat(node);
   }
+  else if (nk == STRING_SK_PREFIX)
+  {
+    if (node[0].isConst() && node[1].isConst())
+    {
+      String s = node[0].getConst<String>();
+      size_t n = node[1].getConst<Rational>().getNumerator().toUnsignedInt();
+      if (s.size() >= n)
+      {
+        retNode = nm->mkConst(s.prefix(n));
+      }
+    }
+    else if (node[1].getKind() == STRING_LENGTH && node[0] == node[1][0])
+    {
+      retNode = node[0];
+    }
+  }
+  else if (nk == STRING_SK_SUFFIX)
+  {
+    if (node[0].isConst() && node[1].isConst())
+    {
+      String s = node[0].getConst<String>();
+      size_t n = node[1].getConst<Rational>().getNumerator().toUnsignedInt();
+      if (s.size() >= n)
+      {
+        retNode = nm->mkConst(s.suffix(s.size() - n));
+      }
+    }
+    else if (node[1].getKind() == STRING_LENGTH && node[0] == node[1][0])
+    {
+      retNode = nm->mkConst(String());
+    }
+  }
+  else if (nk == STRING_SK_FIRST_CTN_PRE)
+  {
+    if (node[0].isConst() && node[1].isConst())
+    {
+      String s1 = node[0].getConst<String>();
+      String s2 = node[1].getConst<String>();
+      size_t pos = s1.find(s2);
+      if (pos != std::string::npos)
+      {
+        retNode = nm->mkConst(s1.prefix(pos));
+      }
+    }
+  }
   else if (nk == kind::EQUAL)
   {
     retNode = rewriteEquality(node);

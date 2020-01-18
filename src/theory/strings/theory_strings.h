@@ -102,6 +102,8 @@ class TheoryStrings : public Theory {
                 const LogicInfo& logicInfo);
   ~TheoryStrings();
 
+  void finishInit() override;
+
   void setMasterEqualityEngine(eq::EqualityEngine* eq) override;
 
   std::string identify() const override { return std::string("TheoryStrings"); }

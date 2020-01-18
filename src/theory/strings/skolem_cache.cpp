@@ -52,6 +52,17 @@ Node SkolemCache::mkTypedSkolemCached(
     std::tie(id, a, b) = normalizeStringSkolem(id, a, b);
   }
 
+  NodeManager* nm = NodeManager::currentNM();
+  switch (id)
+  {
+    case SK_PREFIX: return nm->mkNode(STRING_SK_PREFIX, a, b); break;
+    case SK_SUFFIX_REM: return nm->mkNode(STRING_SK_SUFFIX, a, b); break;
+    case SK_FIRST_CTN_PRE:
+      return nm->mkNode(STRING_SK_FIRST_CTN_PRE, a, b);
+      break;
+    default: break;
+  }
+
   std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b].find(id);
   if (it == d_skolemCache[a][b].end())
   {
