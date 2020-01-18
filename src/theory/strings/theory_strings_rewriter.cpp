@@ -1578,6 +1578,10 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
     {
       retNode = node[0];
     }
+    else if (node[0].getKind() == STRING_SK_PREFIX)
+    {
+      retNode = nm->mkNode(STRING_SK_PREFIX, node[0][0], node[1]);
+    }
   }
   else if (nk == STRING_SK_SUFFIX)
   {
@@ -1650,6 +1654,17 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
     {
       // len( f( x ) ) == len( x ) where f is tolower, toupper, or rev.
       retNode = nm->mkNode(STRING_LENGTH, node[0][0]);
+    }
+    else if (nk0 == STRING_SK_PREFIX)
+    {
+      //retNode = node[0][1];
+    }
+    else if (nk0 == STRING_SK_SUFFIX)
+    {
+      /*
+      retNode =
+          nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, node[0][0]), node[0][1]);
+      */
     }
   }
   else if (nk == kind::STRING_CHARAT)
