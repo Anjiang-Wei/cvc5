@@ -1582,9 +1582,28 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
     {
       retNode = nm->mkNode(STRING_SK_PREFIX, node[0][0], node[1]);
     }
+    else if (node[0].getKind() == STRING_CONCAT)
+    {
+      std::vector<Node> nvec;
+      utils::getConcat(node[0], nvec);
+
+      Node curr = node[1];
+      std::vector<Node> nres;
+      if (stripSymbolicLength(nvec, nres, 1, curr))
+      {
+        retNode = nm->mkNode(STRING_CONCAT, utils::mkConcat(STRING_CONCAT, nres), nm->mkNode(
+            STRING_SK_PREFIX, utils::mkConcat(STRING_CONCAT, nvec), curr));
+      }
+    }
+
+    if (node[1] == nm->mkConst(Rational(0)))
+    {
+      retNode = nm->mkConst(String());
+    }
   }
   else if (nk == STRING_SK_SUFFIX)
   {
+    // std::cout << node << std::endl;
     if (node[0].isConst() && node[1].isConst())
     {
       String s = node[0].getConst<String>();
@@ -1597,6 +1616,28 @@ RewriteResponse TheoryStringsRewriter::postRewrite(TNode node) {
     else if (node[1].getKind() == STRING_LENGTH && node[0] == node[1][0])
     {
       retNode = nm->mkConst(String());
+    }
+    else if (node[0].getKind() == STRING_SK_SUFFIX)
+    {
+      retNode = nm->mkNode(
+          STRING_SK_SUFFIX, node[0][0], nm->mkNode(PLUS, node[1], node[0][1]));
+    }
+    else if (node[0].getKind() == STRING_CONCAT)
+    {
+      std::vector<Node> nvec;
+      utils::getConcat(node[0], nvec);
+
+      Node curr = node[1];
+      std::vector<Node> nres;
+      if (stripSymbolicLength(nvec, nres, 1, curr)) {
+        retNode = nm->mkNode(
+            STRING_SK_SUFFIX, utils::mkConcat(STRING_CONCAT, nvec), curr);
+      }
+    }
+
+    if (node[1] == nm->mkConst(Rational(0)))
+    {
+      retNode = node[0];
     }
   }
   else if (nk == STRING_SK_FIRST_CTN_PRE)
