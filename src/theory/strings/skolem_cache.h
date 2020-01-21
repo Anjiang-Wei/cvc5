@@ -97,6 +97,13 @@ class SkolemCache
     // of b in a as the witness for contains( a, b ).
     SK_FIRST_CTN_PRE,
     SK_FIRST_CTN_POST,
+
+    SK_FIRST_CTN_IOPRE,
+    SK_FIRST_CTN_IOPOST,
+
+    SK_FIRST_CTN_RFCPRE,
+    SK_FIRST_CTN_RFCPOST,
+
     // For integer b,
     // len( a ) > b =>
     //    exists k. a = k ++ a' ^ len( k ) = b

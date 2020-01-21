@@ -48,13 +48,13 @@ Node SkolemCache::mkTypedSkolemCached(
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
 
-  if (tn == d_strType)
+  if (options::skolemSharing() || tn == d_strType)
   {
     std::tie(id, a, b) = normalizeStringSkolem(id, a, b);
   }
 
   std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b].find(id);
-  if (!options::skolemSharing() || it == d_skolemCache[a][b].end())
+  if (it == d_skolemCache[a][b].end())
   {
     Node sk = mkTypedSkolem(tn, c);
     d_skolemCache[a][b][id] = sk;
@@ -94,6 +94,15 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
                         << ", " << b << ")" << std::endl;
 
   NodeManager* nm = NodeManager::currentNM();
+
+  if (id == SK_FIRST_CTN_IOPRE || id == SK_FIRST_CTN_RFCPRE)
+  {
+    id = SK_FIRST_CTN_PRE;
+  }
+  else if (id == SK_FIRST_CTN_IOPOST || id == SK_FIRST_CTN_RFCPOST)
+  {
+    id = SK_FIRST_CTN_POST;
+  }
 
   if (id == SK_FIRST_CTN_POST)
   {
