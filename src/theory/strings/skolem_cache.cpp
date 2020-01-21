@@ -48,7 +48,7 @@ Node SkolemCache::mkTypedSkolemCached(
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
 
-  if (options::skolemSharing() || tn == d_strType)
+  if (options::skolemSharing() && tn == d_strType)
   {
     std::tie(id, a, b) = normalizeStringSkolem(id, a, b);
   }
