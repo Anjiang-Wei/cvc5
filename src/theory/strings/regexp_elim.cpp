@@ -405,7 +405,8 @@ Node RegExpElimination::eliminateConcat(Node atom)
                          : utils::mkConcat(REGEXP_CONCAT, rexpElimChildren);
       sConstraints.push_back(nm->mkNode(STRING_IN_REGEXP, ss, regElim));
     }
-    Node ret = nm->mkNode(AND, sConstraints);
+    Node ret = sConstraints.size() == 1 ? sConstraints[0]
+                                        : nm->mkNode(AND, sConstraints);
     // e.g.
     // x in re.++( "A", R ) ---> substr(x,0,1)="A" ^ substr(x,1,len(x)-1) in R
     return returnElim(atom, ret, "concat-splice");
