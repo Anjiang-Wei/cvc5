@@ -383,7 +383,7 @@ Node RegExpElimination::eliminateConcat(Node atom)
     if (r == 0)
     {
       rexpElimChildrenStart = index;
-      if (index == rexpElimChildrenEnd) {
+      if (index == nchildren) {
         break;
       }
     }
@@ -395,8 +395,9 @@ Node RegExpElimination::eliminateConcat(Node atom)
 
   if (!sConstraints.empty())
   {
-    std::vector<Node> rexpElimChildren(children.begin() + rexpElimChildrenStart,
-                                       children.begin() + rexpElimChildrenEnd);
+    std::vector<Node> rexpElimChildren(
+        children.begin() + rexpElimChildrenStart,
+        children.begin() + rexpElimChildrenEnd + 1);
     if (!rexpElimChildren.empty())
     {
       Node ss = nm->mkNode(STRING_SUBSTR, x, sStartIndex, sLength);
