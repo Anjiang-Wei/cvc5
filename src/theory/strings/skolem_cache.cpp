@@ -122,7 +122,7 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b, Node c)
         b = len;
         c = Node::null();
       }
-      else if (c.getKind() != REGEXP_CONCAT)
+      else if (c == nm->mkNode(STRING_TO_REGEXP, nm->mkConst(String(""))))
       {
         id = SK_SUFFIX_REM;
         b = nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, a), len);
