@@ -117,6 +117,8 @@ class SkolemCache
     SK_STAR_MID,
     SK_STAR_SUFFIX,
 
+    SK_REGEXP_CONCAT,
+
     // --------------- integer skolems
     // exists k. ( b occurs k times in a )
     SK_NUM_OCCUR,
@@ -130,23 +132,28 @@ class SkolemCache
   };
   /**
    * Returns a skolem of type string that is cached for (a,b,id) and has
-   * name c.
+   * name `name`.
    */
-  Node mkSkolemCached(Node a, Node b, SkolemId id, const char* c);
+  Node mkSkolemCached(Node a, Node b, Node c, SkolemId id, const char* name);
+  /**
+   * Returns a skolem of type string that is cached for (a,b,id) and has
+   * name `name`.
+   */
+  Node mkSkolemCached(Node a, Node b, SkolemId id, const char* name);
   /**
    * Returns a skolem of type string that is cached for (a,[null],id) and has
-   * name c.
+   * name `name`.
    */
-  Node mkSkolemCached(Node a, SkolemId id, const char* c);
+  Node mkSkolemCached(Node a, SkolemId id, const char* name);
   /** Same as above, but the skolem to construct has a custom type tn */
   Node mkTypedSkolemCached(
-      TypeNode tn, Node a, Node b, SkolemId id, const char* c);
+      TypeNode tn, Node a, Node b, Node c, SkolemId id, const char* name);
   /** Same as mkTypedSkolemCached above for (a,[null],id) */
-  Node mkTypedSkolemCached(TypeNode tn, Node a, SkolemId id, const char* c);
-  /** Returns a (uncached) skolem of type string with name c */
-  Node mkSkolem(const char* c);
+  Node mkTypedSkolemCached(TypeNode tn, Node a, SkolemId id, const char* name);
+  /** Returns a (uncached) skolem of type string with name `name` */
+  Node mkSkolem(const char* name);
   /** Same as above, but for custom type tn */
-  Node mkTypedSkolem(TypeNode tn, const char* c);
+  Node mkTypedSkolem(TypeNode tn, const char* name);
   /** Returns true if n is a skolem allocated by this class */
   bool isSkolem(Node n) const;
 
@@ -165,16 +172,18 @@ class SkolemCache
    * @return A tuple with the new skolem id, the new first, and the new second
    * argument
    */
-  std::tuple<SkolemId, Node, Node> normalizeStringSkolem(SkolemId id,
-                                                         Node a,
-                                                         Node b);
+  std::tuple<SkolemId, Node, Node, Node> normalizeStringSkolem(SkolemId id,
+                                                               Node a,
+                                                               Node b,
+                                                               Node c);
 
   /** string type */
   TypeNode d_strType;
   /** Constant node zero */
   Node d_zero;
   /** map from node pairs and identifiers to skolems */
-  std::map<Node, std::map<Node, std::map<SkolemId, Node> > > d_skolemCache;
+  std::map<Node, std::map<Node, std::map<Node, std::map<SkolemId, Node>>>>
+      d_skolemCache;
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
 };

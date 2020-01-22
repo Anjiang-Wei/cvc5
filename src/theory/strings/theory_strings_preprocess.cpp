@@ -416,14 +416,14 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node rpaw = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "rpaw");
 
     Node numOcc = d_sc->mkTypedSkolemCached(
-        nm->integerType(), x, y, SkolemCache::SK_NUM_OCCUR, "numOcc");
+        nm->integerType(), x, y, Node::null(), SkolemCache::SK_NUM_OCCUR, "numOcc");
     std::vector<TypeNode> argTypes;
     argTypes.push_back(nm->integerType());
     Node us =
         nm->mkSkolem("Us", nm->mkFunctionType(argTypes, nm->stringType()));
     TypeNode ufType = nm->mkFunctionType(argTypes, nm->integerType());
     Node uf = d_sc->mkTypedSkolemCached(
-        ufType, x, y, SkolemCache::SK_OCCUR_INDEX, "Uf");
+        ufType, x, y, Node::null(), SkolemCache::SK_OCCUR_INDEX, "Uf");
 
     Node ufno = nm->mkNode(APPLY_UF, uf, numOcc);
     Node usno = nm->mkNode(APPLY_UF, us, numOcc);

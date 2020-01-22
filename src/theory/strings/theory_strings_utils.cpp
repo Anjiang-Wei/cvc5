@@ -105,10 +105,22 @@ void getConcat(Node n, std::vector<Node>& c)
 
 Node mkConcat(Kind k, const std::vector<Node>& c)
 {
-  Assert(!c.empty() || k == STRING_CONCAT);
+  Assert(!c.empty() || k == STRING_CONCAT || k == REGEXP_CONCAT);
   NodeManager* nm = NodeManager::currentNM();
-  return c.size() > 1 ? nm->mkNode(k, c)
-                      : (c.size() == 1 ? c[0] : nm->mkConst(String("")));
+  if (c.size() > 1)
+  {
+    return nm->mkNode(k, c);
+  }
+  else if (c.size() == 1)
+  {
+    return c[0];
+  }
+  else
+  {
+    return k == STRING_CONCAT
+               ? nm->mkConst(String(""))
+               : nm->mkNode(STRING_TO_REGEXP, nm->mkConst(String("")));
+  }
 }
 
 Node mkNConcat(Node n1, Node n2)

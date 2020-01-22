@@ -17,6 +17,7 @@
 #include "options/strings_options.h"
 #include "theory/rewriter.h"
 #include "theory/strings/theory_strings_rewriter.h"
+#include "theory/strings/theory_strings_utils.h"
 #include "util/rational.h"
 
 using namespace CVC4::kind;
@@ -32,32 +33,38 @@ SkolemCache::SkolemCache()
   d_zero = nm->mkConst(Rational(0));
 }
 
-Node SkolemCache::mkSkolemCached(Node a, Node b, SkolemId id, const char* c)
+Node SkolemCache::mkSkolemCached(Node a, Node b, Node c, SkolemId id, const char* name)
 {
-  return mkTypedSkolemCached(d_strType, a, b, id, c);
+  return mkTypedSkolemCached(d_strType, a, b, c, id, name);
 }
 
-Node SkolemCache::mkSkolemCached(Node a, SkolemId id, const char* c)
+Node SkolemCache::mkSkolemCached(Node a, Node b, SkolemId id, const char* name)
 {
-  return mkSkolemCached(a, Node::null(), id, c);
+  return mkTypedSkolemCached(d_strType, a, b, Node::null(), id, name);
+}
+
+Node SkolemCache::mkSkolemCached(Node a, SkolemId id, const char* name)
+{
+  return mkSkolemCached(a, Node::null(), Node::null(), id, name);
 }
 
 Node SkolemCache::mkTypedSkolemCached(
-    TypeNode tn, Node a, Node b, SkolemId id, const char* c)
+    TypeNode tn, Node a, Node b, Node c, SkolemId id, const char* name)
 {
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
+  c = c.isNull() ? c : Rewriter::rewrite(c);
 
   if (options::skolemSharing() && tn == d_strType)
   {
-    std::tie(id, a, b) = normalizeStringSkolem(id, a, b);
+    std::tie(id, a, b, c) = normalizeStringSkolem(id, a, b, c);
   }
 
-  std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b].find(id);
-  if (it == d_skolemCache[a][b].end())
+  std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b][c].find(id);
+  if (it == d_skolemCache[a][b][c].end())
   {
-    Node sk = mkTypedSkolem(tn, c);
-    d_skolemCache[a][b][id] = sk;
+    Node sk = mkTypedSkolem(tn, name);
+    d_skolemCache[a][b][c][id] = sk;
     return sk;
   }
   return it->second;
@@ -65,19 +72,19 @@ Node SkolemCache::mkTypedSkolemCached(
 Node SkolemCache::mkTypedSkolemCached(TypeNode tn,
                                       Node a,
                                       SkolemId id,
-                                      const char* c)
+                                      const char* name)
 {
-  return mkTypedSkolemCached(tn, a, Node::null(), id, c);
+  return mkTypedSkolemCached(tn, a, Node::null(), Node::null(), id, name);
 }
 
-Node SkolemCache::mkSkolem(const char* c)
+Node SkolemCache::mkSkolem(const char* name)
 {
-  return mkTypedSkolem(d_strType, c);
+  return mkTypedSkolem(d_strType, name);
 }
 
-Node SkolemCache::mkTypedSkolem(TypeNode tn, const char* c)
+Node SkolemCache::mkTypedSkolem(TypeNode tn, const char* name)
 {
-  Node n = NodeManager::currentNM()->mkSkolem(c, tn, "string skolem");
+  Node n = NodeManager::currentNM()->mkSkolem(name, tn, "string skolem");
   d_allSkolems.insert(n);
   return n;
 }
@@ -87,8 +94,8 @@ bool SkolemCache::isSkolem(Node n) const
   return d_allSkolems.find(n) != d_allSkolems.end();
 }
 
-std::tuple<SkolemCache::SkolemId, Node, Node>
-SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
+std::tuple<SkolemCache::SkolemId, Node, Node, Node>
+SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b, Node c)
 {
   Trace("skolem-cache") << "normalizeStringSkolem start: (" << id << ", " << a
                         << ", " << b << ")" << std::endl;
@@ -102,6 +109,52 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
   else if (id == SK_FIRST_CTN_IOPOST || id == SK_FIRST_CTN_RFCPOST)
   {
     id = SK_FIRST_CTN_POST;
+  }
+  else if (id == SK_REGEXP_CONCAT)
+  {
+    Node curr = b.getKind() == REGEXP_CONCAT ? b[b.getNumChildren() - 1] : b;
+    Node len = TheoryStringsRewriter::getFixedLengthForRegexp(curr);
+    if (!len.isNull())
+    {
+      if (b.getKind() != REGEXP_CONCAT)
+      {
+        id = SK_PREFIX;
+        b = len;
+        c = Node::null();
+      }
+      else if (c.getKind() != REGEXP_CONCAT)
+      {
+        id = SK_SUFFIX_REM;
+        b = nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, a), len);
+        c = Node::null();
+      }
+      else
+      {
+        std::vector<Node> vprefix(b.begin(), b.end() - 1);
+        Node prefix = utils::mkConcat(REGEXP_CONCAT, vprefix);
+        Node plen = TheoryStringsRewriter::getFixedLengthForRegexp(prefix);
+        Node slen = TheoryStringsRewriter::getFixedLengthForRegexp(c);
+        if (!plen.isNull())
+        {
+          id = SK_SUFFIX_REM;
+          a = mkSkolemCached(a, nm->mkNode(PLUS, len, plen), SK_PREFIX, "pre");
+          b = plen;
+          c = Node::null();
+        }
+        else if (!slen.isNull())
+        {
+          id = SK_PREFIX;
+          a = mkSkolemCached(a,
+                             nm->mkNode(MINUS,
+                                        nm->mkNode(STRING_LENGTH, a),
+                                        nm->mkNode(PLUS, slen, len)),
+                             SK_SUFFIX_REM,
+                             "suf");
+          b = plen;
+          c = Node::null();
+        }
+      }
+    }
   }
 
   if (id == SK_FIRST_CTN_POST)
@@ -289,7 +342,7 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
 
   Trace("skolem-cache") << "normalizeStringSkolem end: (" << id << ", " << a
                         << ", " << b << ")" << std::endl;
-  return std::make_tuple(id, a, b);
+  return std::make_tuple(id, a, b, c);
 }
 
 }  // namespace strings

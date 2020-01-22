@@ -1101,18 +1101,27 @@ void RegExpOpr::simplifyPRegExp( Node s, Node r, std::vector< Node > &new_nodes 
         break;
       }
       case kind::REGEXP_CONCAT: {
+        NodeManager* nm = NodeManager::currentNM();
         std::vector< Node > nvec;
         std::vector< Node > cc;
+        std::vector<Node> prefix;
+        std::vector<Node> suffix(r.begin(), r.end());
         bool emptyflag = false;
         for(unsigned i=0; i<r.getNumChildren(); ++i) {
+          prefix.emplace_back(r[i]);
+          suffix.erase(suffix.begin());
           if(r[i].getKind() == kind::STRING_TO_REGEXP) {
             cc.push_back( r[i][0] );
           } else if(r[i].getKind() == kind::REGEXP_EMPTY) {
             emptyflag = true;
             break;
           } else {
-            Node sk = NodeManager::currentNM()->mkSkolem( "rc", s.getType(), "created for regular expression concat" );
-            Node lem = NodeManager::currentNM()->mkNode(kind::STRING_IN_REGEXP, sk, r[i]);
+            Node sk = d_sc->mkSkolemCached(s,
+                                           utils::mkConcat(REGEXP_CONCAT, prefix),
+                                           utils::mkConcat(REGEXP_CONCAT, suffix),
+                                           SkolemCache::SK_REGEXP_CONCAT,
+                                           "rc");
+            Node lem = nm->mkNode(kind::STRING_IN_REGEXP, sk, r[i]);
             nvec.push_back(lem);
             cc.push_back(sk);
           }
