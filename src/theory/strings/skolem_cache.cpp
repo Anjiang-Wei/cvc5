@@ -60,11 +60,41 @@ Node SkolemCache::mkTypedSkolemCached(
     std::tie(id, a, b, c) = normalizeStringSkolem(id, a, b, c);
   }
 
-  std::map<SkolemId, Node>::iterator it = d_skolemCache[a][b][c].find(id);
-  if (it == d_skolemCache[a][b][c].end())
+  std::tuple<Node, Node, Node, SkolemId> args = std::make_tuple(a, b, c, id);
+  const auto& it = d_skolemCache.find(args);
+  if (it == d_skolemCache.end())
   {
-    Node sk = mkTypedSkolem(tn, name);
-    d_skolemCache[a][b][c][id] = sk;
+    NodeManager* nm = NodeManager::currentNM();
+    Node sk;
+    if (id == SK_PREFIX)
+    {
+      Node da = depurify(a);
+      Node db = depurify(b);
+      sk = mkSkolemCached(
+          Rewriter::rewrite(nm->mkNode(STRING_SUBSTR, da, d_zero, db)),
+          SK_PURIFY,
+          "pur");
+    }
+    else if (id == SK_SUFFIX_REM)
+    {
+      Node da = depurify(a);
+      Node db = depurify(b);
+      sk = mkSkolemCached(
+          Rewriter::rewrite(
+              nm->mkNode(STRING_SUBSTR,
+                         da,
+                         db,
+                         nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, da), db))),
+          SK_PURIFY,
+          "pur");
+    }
+    else
+    {
+      sk = mkTypedSkolem(tn, name);
+    }
+
+    d_skolemCache[args] = sk;
+    d_skolemToArgs[sk] = args;
     return sk;
   }
   return it->second;
@@ -92,6 +122,57 @@ Node SkolemCache::mkTypedSkolem(TypeNode tn, const char* name)
 bool SkolemCache::isSkolem(Node n) const
 {
   return d_allSkolems.find(n) != d_allSkolems.end();
+}
+
+Node SkolemCache::depurify(Node n)
+{
+  std::vector<Node> toVisit;
+  std::unordered_map<Node, Node, NodeHashFunction> result;
+
+  toVisit.push_back(n);
+  while (!toVisit.empty())
+  {
+    Node curr = toVisit.back();
+    toVisit.pop_back();
+
+    if (result.find(curr) == result.end())
+    {
+      if (curr.getNumChildren() == 0)
+      {
+        const auto& it = d_skolemToArgs.find(curr);
+        if (it != d_skolemToArgs.end()
+            && std::get<3>(it->second) == SkolemCache::SK_PURIFY)
+        {
+          result[curr] = std::get<0>(it->second);
+        } else {
+          result[curr] = curr;
+        }
+      }
+      else
+      {
+        toVisit.push_back(curr);
+        if (curr.getMetaKind() == metakind::PARAMETERIZED) {
+          toVisit.push_back(curr.getOperator());
+        }
+        toVisit.insert(toVisit.end(), curr.begin(), curr.end());
+        result[curr] = Node::null();
+      }
+    }
+    else if (result[curr].isNull())
+    {
+      NodeBuilder<> nb(curr.getKind());
+      if (curr.getMetaKind() == metakind::PARAMETERIZED) {
+        nb << result[curr.getOperator()];
+      }
+      for (const Node& ncurr : curr)
+      {
+        nb << result[ncurr];
+      }
+      result[curr] = nb;
+    }
+  }
+
+  return result[n];
 }
 
 std::tuple<SkolemCache::SkolemId, Node, Node, Node>
@@ -279,12 +360,12 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b, Node c)
     if (!len.isNull())
     {
       id = SK_PURIFY;
-      a = nm->mkNode(
-          STRING_SUBSTR,
-          a,
-          len,
-          nm->mkNode(
-              MINUS, nm->mkNode(STRING_LENGTH, a), nm->mkNode(PLUS, len, len)));
+      a = Rewriter::rewrite(nm->mkNode(STRING_SUBSTR,
+                                       a,
+                                       len,
+                                       nm->mkNode(MINUS,
+                                                  nm->mkNode(STRING_LENGTH, a),
+                                                  nm->mkNode(PLUS, len, len))));
       b = Node::null();
     }
   }
@@ -296,30 +377,6 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b, Node c)
       id = SK_SUFFIX_REM;
       b = Rewriter::rewrite(
           nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, a), len));
-    }
-  }
-
-  if (id == SK_PURIFY && a.getKind() == kind::STRING_SUBSTR)
-  {
-    Node s = a[0];
-    Node n = a[1];
-    Node m = a[2];
-
-    if (n == d_zero)
-    {
-      // SK_PURIFY((str.substr x 0 m)) ---> SK_PREFIX(x, m)
-      id = SK_PREFIX;
-      a = s;
-      b = m;
-    }
-    else if (TheoryStringsRewriter::checkEntailArith(
-                 nm->mkNode(PLUS, n, m), nm->mkNode(STRING_LENGTH, s)))
-    {
-      // SK_PURIFY((str.substr x n m)) ---> SK_SUFFIX_REM(x, n)
-      // if n + m >= (str.len x)
-      id = SK_SUFFIX_REM;
-      a = s;
-      b = n;
     }
   }
 

@@ -158,6 +158,8 @@ class SkolemCache
   bool isSkolem(Node n) const;
 
  private:
+  Node depurify(Node n);
+
   /**
    * Simplifies the arguments for a string skolem used for indexing into the
    * cache. In certain cases, we can share skolems with similar arguments e.g.
@@ -182,8 +184,9 @@ class SkolemCache
   /** Constant node zero */
   Node d_zero;
   /** map from node pairs and identifiers to skolems */
-  std::map<Node, std::map<Node, std::map<Node, std::map<SkolemId, Node>>>>
-      d_skolemCache;
+  std::map<std::tuple<Node, Node, Node, SkolemId>, Node> d_skolemCache;
+
+  std::map<Node, std::tuple<Node, Node, Node, SkolemId>> d_skolemToArgs;
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
 };
