@@ -3302,10 +3302,10 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                             "c_spt");
                         Trace("strings-csp") << "Const Split: " << prea << " is removed from " << stra << " due to " << strb << ", p=" << p << std::endl;        
                         //set info
-                        info.d_conc = other_str.eqNode(
+                        info.d_conc = nm->mkNode(OR, other_str.eqNode(prea), other_str.eqNode(
                             isRev ? utils::mkNConcat(sk, prea)
-                                  : utils::mkNConcat(prea, sk));
-                        info.d_new_skolem[LENGTH_SPLIT].push_back(sk);
+                                  : utils::mkNConcat(prea, sk)));
+                        info.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk);
                         info.d_id = INFER_SSPLIT_CST_PROP;
                         info_valid = true;
                       }
@@ -3348,12 +3348,12 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                           other_str,
                           isRev ? SkolemCache::SK_ID_VC_SPT_REV
                                 : SkolemCache::SK_ID_VC_SPT,
-                          "c_spt");
+                          "vc_spt");
                       Trace("strings-csp") << "Const Split: " << firstChar << " is removed from " << const_str << " (serial) " << std::endl;
-                      info.d_conc = other_str.eqNode(
+                      info.d_conc = nm->mkNode(OR, other_str.eqNode(firstChar), other_str.eqNode(
                           isRev ? utils::mkNConcat(sk, firstChar)
-                                : utils::mkNConcat(firstChar, sk));
-                      info.d_new_skolem[LENGTH_SPLIT].push_back(sk);
+                                : utils::mkNConcat(firstChar, sk)));
+                      info.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk);
                       info.d_id = INFER_SSPLIT_CST;
                       info_valid = true;
                     }
