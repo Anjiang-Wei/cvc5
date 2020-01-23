@@ -3770,6 +3770,7 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                       d_sk_cache.mkSkolemCached(nconst_k,
                                                 SkolemCache::SK_ID_DC_SPT_REM,
                                                 "dc_spt_rem");
+                  d_im.registerLength(skr, LENGTH_GEQ_ONE);
                   Node eq1 = nconst_k.eqNode( NodeManager::currentNM()->mkNode( kind::STRING_CONCAT, sk, skr ) );
                   eq1 = Rewriter::rewrite( eq1 );
                   Node eq2 = nconst_k.eqNode( NodeManager::currentNM()->mkNode( kind::STRING_CONCAT, firstChar, skr ) );
@@ -3779,14 +3780,10 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                   antec.insert(
                       antec.end(), nfnj.d_exp.begin(), nfnj.d_exp.end());
                   antec.push_back( nconst_k.eqNode( d_emptyString ).negate() );
-                  d_im.sendInference(
-                      antec,
-                      nm->mkNode(
-                          OR,
-                          nm->mkNode(AND, eq1, sk.eqNode(firstChar).negate()),
-                          eq2),
-                      "D-DISL-CSplit");
-                  d_im.sendPhaseRequirement(eq1, true);
+                  d_im.sendInference(antec,
+                                     nm->mkNode(OR, nconst_k.eqNode(sk), eq1),
+                                     "D-DISL-CSplit");
+                  d_im.sendSplit(firstChar, sk, "S-Split(DEQL-Const)", false);
                   return;
                 }
               }
