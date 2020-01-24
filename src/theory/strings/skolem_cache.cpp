@@ -33,23 +33,23 @@ SkolemCache::SkolemCache()
   d_zero = nm->mkConst(Rational(0));
 }
 
-Node SkolemCache::mkSkolemCached(Node a, Node b, Node c, SkolemId id, const char* name)
+Node SkolemCache::mkSkolemCached(Node a, Node b, Node c, SkolemId id, const char* name, LengthStatus ls)
 {
-  return mkTypedSkolemCached(d_strType, a, b, c, id, name);
+  return mkTypedSkolemCached(d_strType, a, b, c, id, name, ls);
 }
 
-Node SkolemCache::mkSkolemCached(Node a, Node b, SkolemId id, const char* name)
+Node SkolemCache::mkSkolemCached(Node a, Node b, SkolemId id, const char* name, LengthStatus ls)
 {
-  return mkTypedSkolemCached(d_strType, a, b, Node::null(), id, name);
+  return mkTypedSkolemCached(d_strType, a, b, Node::null(), id, name, ls);
 }
 
-Node SkolemCache::mkSkolemCached(Node a, SkolemId id, const char* name)
+Node SkolemCache::mkSkolemCached(Node a, SkolemId id, const char* name, LengthStatus ls)
 {
-  return mkSkolemCached(a, Node::null(), Node::null(), id, name);
+  return mkSkolemCached(a, Node::null(), Node::null(), id, name, ls);
 }
 
 Node SkolemCache::mkTypedSkolemCached(
-    TypeNode tn, Node a, Node b, Node c, SkolemId id, const char* name)
+    TypeNode tn, Node a, Node b, Node c, SkolemId id, const char* name, LengthStatus ls)
 {
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
@@ -60,7 +60,7 @@ Node SkolemCache::mkTypedSkolemCached(
     std::tie(id, a, b, c) = normalizeStringSkolem(id, a, b, c);
   }
 
-  std::tuple<Node, Node, Node, SkolemId> args = std::make_tuple(a, b, c, id);
+  std::tuple<Node, Node, Node, SkolemId, LengthStatus> args = std::make_tuple(a, b, c, id, ls);
   const auto& it = d_skolemCache.find(args);
   if (it == d_skolemCache.end())
   {
@@ -70,41 +70,42 @@ Node SkolemCache::mkTypedSkolemCached(
     {
       Node da = depurify(a);
       Node db = depurify(b);
+      Node na = Rewriter::rewrite(nm->mkNode(STRING_SUBSTR, da, d_zero, db));
       sk = mkSkolemCached(
-          Rewriter::rewrite(nm->mkNode(STRING_SUBSTR, da, d_zero, db)),
+          na,
           SK_PURIFY,
-          "pur");
+          name, ls);
     }
     else if (id == SK_SUFFIX_REM)
     {
       Node da = depurify(a);
       Node db = depurify(b);
-      sk = mkSkolemCached(
-          Rewriter::rewrite(
-              nm->mkNode(STRING_SUBSTR,
+      Node na = Rewriter::rewrite(nm->mkNode(STRING_SUBSTR,
                          da,
                          db,
-                         nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, da), db))),
+                         nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, da), db)));
+      sk = mkSkolemCached(na,
           SK_PURIFY,
-          "pur");
+          name, ls);
     }
     else
     {
       sk = mkTypedSkolem(tn, name);
+      d_skolemToArgs[sk] = args;
     }
 
     d_skolemCache[args] = sk;
-    d_skolemToArgs[sk] = args;
     return sk;
   }
   return it->second;
 }
+
 Node SkolemCache::mkTypedSkolemCached(TypeNode tn,
                                       Node a,
                                       SkolemId id,
-                                      const char* name)
+                                      const char* name, LengthStatus ls)
 {
-  return mkTypedSkolemCached(tn, a, Node::null(), Node::null(), id, name);
+  return mkTypedSkolemCached(tn, a, Node::null(), Node::null(), id, name, ls);
 }
 
 Node SkolemCache::mkSkolem(const char* name)
