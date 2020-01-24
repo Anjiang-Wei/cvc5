@@ -1836,14 +1836,6 @@ Node TheoryStringsRewriter::rewriteSubstr(Node node)
     return returnRewrite(node, ret, "ss-len-non-pos");
   }
 
-  if (node[1].getKind() == STRING_LENGTH
-      && node[1][0].getKind() == STRING_SUBSTR && node[1][0][0] == node[0]
-      && node[1][0][1] == zero && checkEntailArith(node[1][0][2]))
-  {
-    Node ret = nm->mkNode(STRING_SUBSTR, node[0], node[1][0][2], node[2]);
-    return returnRewrite(node, ret, "ss-len-substr");
-  }
-
   if (node[0].getKind() == STRING_SUBSTR)
   {
     // (str.substr (str.substr x a b) c d) ---> "" if c >= b

@@ -3299,7 +3299,8 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                             prea,
                             isRev ? SkolemCache::SK_ID_C_SPT_REV
                                   : SkolemCache::SK_ID_C_SPT,
-                            "c_spt", LENGTH_GEQ_ONE);
+                            "c_spt");
+                        Trace("strings-csp") << "Const Split: " << prea << " is removed from " << stra << " due to " << strb << ", p=" << p << std::endl;        
                         //set info
                         info.d_conc = nm->mkNode(OR, other_str.eqNode(prea), other_str.eqNode(
                             isRev ? utils::mkNConcat(sk, prea)
@@ -3347,7 +3348,7 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                           other_str,
                           isRev ? SkolemCache::SK_ID_VC_SPT_REV
                                 : SkolemCache::SK_ID_VC_SPT,
-                          "vc_spt", LENGTH_GEQ_ONE);
+                          "vc_spt");
                       Trace("strings-csp") << "Const Split: " << firstChar << " is removed from " << const_str << " (serial) " << std::endl;
                       info.d_conc = nm->mkNode(OR, other_str.eqNode(firstChar), other_str.eqNode(
                           isRev ? utils::mkNConcat(sk, firstChar)
@@ -3401,13 +3402,13 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                     nfjv[index],
                     isRev ? SkolemCache::SK_ID_V_SPT_REV_X
                           : SkolemCache::SK_ID_V_SPT_X,
-                    "v_spt_x", LENGTH_GEQ_ONE);
+                    "v_spt_x");
                 Node sk2 = d_sk_cache.mkSkolemCached(
                     nfiv[index],
                     nfjv[index],
                     isRev ? SkolemCache::SK_ID_V_SPT_REV_Y
                           : SkolemCache::SK_ID_V_SPT_Y,
-                    "v_spt_y", LENGTH_GEQ_ONE);
+                    "v_spt_y");
                 // must add length requirement
                 info.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk1);
                 info.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk2);
@@ -3763,12 +3764,12 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                 else
                 {
                   Node sk = d_sk_cache.mkSkolemCached(
-                      nconst_k, SkolemCache::SK_ID_DC_SPT, "dc_spt", LENGTH_ONE);
+                      nconst_k, SkolemCache::SK_ID_DC_SPT, "dc_spt");
                   d_im.registerLength(sk, LENGTH_ONE);
                   Node skr =
                       d_sk_cache.mkSkolemCached(nconst_k,
                                                 SkolemCache::SK_ID_DC_SPT_REM,
-                                                "dc_spt_rem", LENGTH_GEQ_ONE);
+                                                "dc_spt_rem");
                   d_im.registerLength(skr, LENGTH_GEQ_ONE);
                   Node eq1 = nconst_k.eqNode( NodeManager::currentNM()->mkNode( kind::STRING_CONCAT, sk, skr ) );
                   eq1 = Rewriter::rewrite( eq1 );
@@ -3809,9 +3810,9 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
               Node sk2 = d_sk_cache.mkSkolemCached(
                   i, j, SkolemCache::SK_ID_DEQ_Y, "y_dsplit");
               Node sk3 = d_sk_cache.mkSkolemCached(
-                  i, j, SkolemCache::SK_ID_DEQ_Z, "z_dsplit", LENGTH_GEQ_ONE);
+                  i, j, SkolemCache::SK_ID_DEQ_Z, "z_dsplit");
               Node sk4 = d_sk_cache.mkSkolemCached(
-                  i, j, SkolemCache::SK_ID_DEQ_W, "w_dsplit", LENGTH_GEQ_ONE);
+                  i, j, SkolemCache::SK_ID_DEQ_W, "w_dsplit");
               d_im.registerLength(sk3, LENGTH_GEQ_ONE);
               d_im.registerLength(sk4, LENGTH_GEQ_ONE);
               //Node nemp = sk3.eqNode(d_emptyString).negate();

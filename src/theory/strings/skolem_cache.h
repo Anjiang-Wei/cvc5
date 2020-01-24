@@ -22,7 +22,6 @@
 #include <unordered_set>
 
 #include "expr/node.h"
-#include "theory/strings/infer_info.h"
 
 namespace CVC4 {
 namespace theory {
@@ -135,22 +134,22 @@ class SkolemCache
    * Returns a skolem of type string that is cached for (a,b,id) and has
    * name `name`.
    */
-  Node mkSkolemCached(Node a, Node b, Node c, SkolemId id, const char* name, LengthStatus ls = LENGTH_SPLIT);
+  Node mkSkolemCached(Node a, Node b, Node c, SkolemId id, const char* name);
   /**
    * Returns a skolem of type string that is cached for (a,b,id) and has
    * name `name`.
    */
-  Node mkSkolemCached(Node a, Node b, SkolemId id, const char* name, LengthStatus ls = LENGTH_SPLIT);
+  Node mkSkolemCached(Node a, Node b, SkolemId id, const char* name);
   /**
    * Returns a skolem of type string that is cached for (a,[null],id) and has
    * name `name`.
    */
-  Node mkSkolemCached(Node a, SkolemId id, const char* name, LengthStatus ls = LENGTH_SPLIT);
+  Node mkSkolemCached(Node a, SkolemId id, const char* name);
   /** Same as above, but the skolem to construct has a custom type tn */
   Node mkTypedSkolemCached(
-      TypeNode tn, Node a, Node b, Node c, SkolemId id, const char* name, LengthStatus ls = LENGTH_SPLIT);
+      TypeNode tn, Node a, Node b, Node c, SkolemId id, const char* name);
   /** Same as mkTypedSkolemCached above for (a,[null],id) */
-  Node mkTypedSkolemCached(TypeNode tn, Node a, SkolemId id, const char* name, LengthStatus ls = LENGTH_SPLIT);
+  Node mkTypedSkolemCached(TypeNode tn, Node a, SkolemId id, const char* name);
   /** Returns a (uncached) skolem of type string with name `name` */
   Node mkSkolem(const char* name);
   /** Same as above, but for custom type tn */
@@ -185,9 +184,9 @@ class SkolemCache
   /** Constant node zero */
   Node d_zero;
   /** map from node pairs and identifiers to skolems */
-  std::map<std::tuple<Node, Node, Node, SkolemId, LengthStatus>, Node> d_skolemCache;
+  std::map<std::tuple<Node, Node, Node, SkolemId>, Node> d_skolemCache;
 
-  std::map<Node, std::tuple<Node, Node, Node, SkolemId, LengthStatus>> d_skolemToArgs;
+  std::map<Node, std::tuple<Node, Node, Node, SkolemId>> d_skolemToArgs;
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
 };
