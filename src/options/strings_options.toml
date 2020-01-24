@@ -242,6 +242,15 @@ header = "options/strings_options.h"
   help       = "use skolem sharing"
 
 [[option]]
+  name       = "skolemDepurification"
+  category   = "expert"
+  long       = "skolem-depurification"
+  type       = "bool"
+  default    = "false"
+  read_only  = true
+  help       = "perform skolem depurification in skolem normalization"
+
+[[option]]
   name       = "stringRegExpInterMode"
   category   = "expert"
   long       = "re-inter-mode=MODE"

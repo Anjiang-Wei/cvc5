@@ -66,7 +66,7 @@ Node SkolemCache::mkTypedSkolemCached(
   {
     NodeManager* nm = NodeManager::currentNM();
     Node sk;
-    if (id == SK_PREFIX)
+    if (options::skolemDepurification() && id == SK_PREFIX)
     {
       Node da = depurify(a);
       Node db = depurify(b);
@@ -76,7 +76,7 @@ Node SkolemCache::mkTypedSkolemCached(
           SK_PURIFY,
           name, ls);
     }
-    else if (id == SK_SUFFIX_REM)
+    else if (options::skolemDepurification() && id == SK_SUFFIX_REM)
     {
       Node da = depurify(a);
       Node db = depurify(b);
