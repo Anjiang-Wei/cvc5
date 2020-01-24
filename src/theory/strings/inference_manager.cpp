@@ -283,6 +283,15 @@ void InferenceManager::sendPhaseRequirement(Node lit, bool pol)
   d_pendingReqPhase[lit] = pol;
 }
 
+Node InferenceManager::reqLengthGeqOne(Node n)
+{
+  NodeManager* nm = NodeManager::currentNM();
+  Node n_len = nm->mkNode(kind::STRING_LENGTH, n);
+  Node neq_empty = n.eqNode(d_emptyString).negate();
+  Node len_n_gt_z = nm->mkNode(GT, n_len, d_zero);
+  return nm->mkNode(AND, neq_empty, len_n_gt_z);
+}
+
 void InferenceManager::registerLength(Node n, LengthStatus s)
 {
   if (d_lengthLemmaTermsCache.find(n) != d_lengthLemmaTermsCache.end())
