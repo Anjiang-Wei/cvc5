@@ -2703,7 +2703,7 @@ void TheoryStrings::getNormalForms(Node eqc,
                                    std::map<Node, unsigned>& term_to_nf_index)
 {
   //constant for equivalence class
-  Node eqc_non_c = eqc;
+  Node eqc_non_c;
   Trace("strings-process-debug") << "Get normal forms " << eqc << std::endl;
   eq::EqClassIterator eqc_i = eq::EqClassIterator( eqc, &d_equalityEngine );
   while( !eqc_i.isFinished() ){
@@ -2820,11 +2820,18 @@ void TheoryStrings::getNormalForms(Node eqc,
           Node nn = currv.size() == 0 ? d_emptyString : currv[0];
           Assert(d_state.areEqual(nn, eqc));
         }
-      }else{
+      }
+      else if (eqc_non_c.isNull() || n < eqc_non_c)
+      {
         eqc_non_c = n;
       }
     }
     ++eqc_i;
+  }
+
+  if (eqc_non_c.isNull())
+  {
+    eqc_non_c = eqc;
   }
 
   if( normal_forms.empty() ) {
