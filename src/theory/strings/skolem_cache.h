@@ -174,7 +174,8 @@ class SkolemCache
   struct Statistics
   {
     IntStat d_numSkolems;
-    IntStat d_numCachedSkolems;
+    IntStat d_numCachedSkolemsPre;
+    IntStat d_numCachedSkolemsPost;
 
     Statistics();
     ~Statistics();

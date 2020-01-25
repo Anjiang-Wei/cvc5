@@ -49,6 +49,11 @@ Node SkolemCache::mkTypedSkolemCached(
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
 
+  if (d_skolemCache[a][b].find(id) != d_skolemCache[a][b].end())
+  {
+    d_statistics.d_numCachedSkolemsPre += 1;
+  }
+
   if (options::skolemSharing() && tn == d_strType)
   {
     std::tie(id, a, b) = normalizeStringSkolem(id, a, b);
@@ -63,7 +68,7 @@ Node SkolemCache::mkTypedSkolemCached(
   }
   else
   {
-    d_statistics.d_numCachedSkolems += 1;
+    d_statistics.d_numCachedSkolemsPost += 1;
     d_statistics.d_numSkolems += 1;
   }
   return it->second;
@@ -215,15 +220,18 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
 
 SkolemCache::Statistics::Statistics()
     : d_numSkolems("theory::strings::NumSkolems", 0),
-      d_numCachedSkolems("theory::strings::NumCachedSkolems", 0)
+      d_numCachedSkolemsPre("theory::strings::NumCachedSkolemsPre", 0),
+      d_numCachedSkolemsPost("theory::strings::NumCachedSkolemsPost", 0)
 {
   smtStatisticsRegistry()->registerStat(&d_numSkolems);
-  smtStatisticsRegistry()->registerStat(&d_numCachedSkolems);
+  smtStatisticsRegistry()->registerStat(&d_numCachedSkolemsPre);
+  smtStatisticsRegistry()->registerStat(&d_numCachedSkolemsPost);
 }
 
 SkolemCache::Statistics::~Statistics() {
   smtStatisticsRegistry()->unregisterStat(&d_numSkolems);
-  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolems);
+  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolemsPre);
+  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolemsPost);
 }
 
 }  // namespace strings
