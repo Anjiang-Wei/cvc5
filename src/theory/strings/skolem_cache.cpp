@@ -14,6 +14,8 @@
 
 #include "theory/strings/skolem_cache.h"
 
+#include "options/strings_options.h"
+#include "smt/smt_statistics_registry.h"
 #include "theory/rewriter.h"
 #include "theory/strings/theory_strings_rewriter.h"
 #include "util/rational.h"
@@ -47,7 +49,7 @@ Node SkolemCache::mkTypedSkolemCached(
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
 
-  if (tn == d_strType)
+  if (options::skolemSharing() && tn == d_strType)
   {
     std::tie(id, a, b) = normalizeStringSkolem(id, a, b);
   }
@@ -58,6 +60,11 @@ Node SkolemCache::mkTypedSkolemCached(
     Node sk = mkTypedSkolem(tn, c);
     d_skolemCache[a][b][id] = sk;
     return sk;
+  }
+  else
+  {
+    d_statistics.d_numCachedSkolems += 1;
+    d_statistics.d_numSkolems += 1;
   }
   return it->second;
 }
@@ -78,6 +85,7 @@ Node SkolemCache::mkTypedSkolem(TypeNode tn, const char* c)
 {
   Node n = NodeManager::currentNM()->mkSkolem(c, tn, "string skolem");
   d_allSkolems.insert(n);
+  d_statistics.d_numSkolems += 1;
   return n;
 }
 
@@ -93,6 +101,15 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
                         << ", " << b << ")" << std::endl;
 
   NodeManager* nm = NodeManager::currentNM();
+
+  if (id == SK_FIRST_CTN_IOPRE || id == SK_FIRST_CTN_RFCPRE)
+  {
+    id = SK_FIRST_CTN_PRE;
+  }
+  else if (id == SK_FIRST_CTN_IOPOST || id == SK_FIRST_CTN_RFCPOST)
+  {
+    id = SK_FIRST_CTN_POST;
+  }
 
   if (id == SK_FIRST_CTN_POST)
   {
@@ -194,6 +211,19 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
   Trace("skolem-cache") << "normalizeStringSkolem end: (" << id << ", " << a
                         << ", " << b << ")" << std::endl;
   return std::make_tuple(id, a, b);
+}
+
+SkolemCache::Statistics::Statistics()
+    : d_numSkolems("theory::strings::NumSkolems", 0),
+      d_numCachedSkolems("theory::strings::NumCachedSkolems", 0)
+{
+  smtStatisticsRegistry()->registerStat(&d_numSkolems);
+  smtStatisticsRegistry()->registerStat(&d_numCachedSkolems);
+}
+
+SkolemCache::Statistics::~Statistics() {
+  smtStatisticsRegistry()->unregisterStat(&d_numSkolems);
+  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolems);
 }
 
 }  // namespace strings

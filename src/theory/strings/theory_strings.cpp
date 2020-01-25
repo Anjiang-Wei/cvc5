@@ -4418,10 +4418,12 @@ Node TheoryStrings::ppRewrite(TNode atom) {
   Node atomElim;
   if (options::regExpElim() && atom.getKind() == STRING_IN_REGEXP)
   {
+    d_statistics.d_numStrInRe += 1;
     // aggressive elimination of regular expression membership
     atomElim = d_regexp_elim.eliminate(atom);
     if (!atomElim.isNull())
     {
+      d_statistics.d_numStrInReElim += 1;
       Trace("strings-ppr") << "  rewrote " << atom << " -> " << atomElim
                            << " via regular expression elimination."
                            << std::endl;
@@ -4451,12 +4453,16 @@ TheoryStrings::Statistics::Statistics()
     : d_splits("theory::strings::NumOfSplitOnDemands", 0),
       d_eq_splits("theory::strings::NumOfEqSplits", 0),
       d_deq_splits("theory::strings::NumOfDiseqSplits", 0),
-      d_loop_lemmas("theory::strings::NumOfLoops", 0)
+      d_loop_lemmas("theory::strings::NumOfLoops", 0),
+      d_numStrInRe("theory::strings::NumStrInRe", 0),
+      d_numStrInReElim("theory::strings::NumStrInReElim", 0)
 {
   smtStatisticsRegistry()->registerStat(&d_splits);
   smtStatisticsRegistry()->registerStat(&d_eq_splits);
   smtStatisticsRegistry()->registerStat(&d_deq_splits);
   smtStatisticsRegistry()->registerStat(&d_loop_lemmas);
+  smtStatisticsRegistry()->registerStat(&d_numStrInRe);
+  smtStatisticsRegistry()->registerStat(&d_numStrInReElim);
 }
 
 TheoryStrings::Statistics::~Statistics(){
@@ -4464,6 +4470,8 @@ TheoryStrings::Statistics::~Statistics(){
   smtStatisticsRegistry()->unregisterStat(&d_eq_splits);
   smtStatisticsRegistry()->unregisterStat(&d_deq_splits);
   smtStatisticsRegistry()->unregisterStat(&d_loop_lemmas);
+  smtStatisticsRegistry()->unregisterStat(&d_numStrInRe);
+  smtStatisticsRegistry()->unregisterStat(&d_numStrInReElim);
 }
 
 /** run the given inference step */

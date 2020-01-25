@@ -683,6 +683,8 @@ private:
     IntStat d_eq_splits;
     IntStat d_deq_splits;
     IntStat d_loop_lemmas;
+    IntStat d_numStrInRe;
+    IntStat d_numStrInReElim;
     Statistics();
     ~Statistics();
   };/* class TheoryStrings::Statistics */

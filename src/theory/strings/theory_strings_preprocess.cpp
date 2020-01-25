@@ -134,9 +134,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
                          n,
                          nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, x), n));
     Node io2 =
-        d_sc->mkSkolemCached(st, y, SkolemCache::SK_FIRST_CTN_PRE, "iopre");
+        d_sc->mkSkolemCached(st, y, SkolemCache::SK_FIRST_CTN_IOPRE, "iopre");
     Node io4 =
-        d_sc->mkSkolemCached(st, y, SkolemCache::SK_FIRST_CTN_POST, "iopost");
+        d_sc->mkSkolemCached(st, y, SkolemCache::SK_FIRST_CTN_IOPOST, "iopost");
 
     // ~contains( substr( x, n, len( x ) - n ), y )
     Node c11 = nm->mkNode(STRING_STRCTN, st, y).negate();
@@ -355,9 +355,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node z = t[2];
     TypeNode tn = t[0].getType();
     Node rp1 =
-        d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_CTN_PRE, "rfcpre");
+        d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_CTN_RFCPRE, "rfcpre");
     Node rp2 =
-        d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_CTN_POST, "rfcpost");
+        d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_CTN_RFCPOST, "rfcpost");
     Node rpw = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "rpw");
 
     // y = ""

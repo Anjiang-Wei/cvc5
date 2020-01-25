@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "expr/node.h"
+#include "util/statistics_registry.h"
 
 namespace CVC4 {
 namespace theory {
@@ -94,6 +95,13 @@ class SkolemCache
     // of b in a as the witness for contains( a, b ).
     SK_FIRST_CTN_PRE,
     SK_FIRST_CTN_POST,
+
+    SK_FIRST_CTN_IOPRE,
+    SK_FIRST_CTN_IOPOST,
+
+    SK_FIRST_CTN_RFCPRE,
+    SK_FIRST_CTN_RFCPOST,
+
     // For integer b,
     // len( a ) > b =>
     //    exists k. a = k ++ a' ^ len( k ) = b
@@ -162,6 +170,17 @@ class SkolemCache
   std::map<Node, std::map<Node, std::map<SkolemId, Node> > > d_skolemCache;
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
+
+  struct Statistics
+  {
+    IntStat d_numSkolems;
+    IntStat d_numCachedSkolems;
+
+    Statistics();
+    ~Statistics();
+  };
+
+  Statistics d_statistics;
 };
 
 }  // namespace strings
