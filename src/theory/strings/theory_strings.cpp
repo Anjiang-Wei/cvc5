@@ -3758,7 +3758,8 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                 {
                   Node sk = d_sk_cache.mkSkolemCached(
                       nconst_k, SkolemCache::SK_ID_DC_SPT, "dc_spt");
-                  d_im.registerLength(sk, LENGTH_ONE);
+                  d_im.registerLength(sk, LENGTH_SPLIT);
+                  Node lenreq = nm->mkNode(STRING_LENGTH, sk).eqNode(d_one);
                   Node skr =
                       d_sk_cache.mkSkolemCached(nconst_k,
                                                 SkolemCache::SK_ID_DC_SPT_REM,
@@ -3776,7 +3777,7 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                       antec,
                       nm->mkNode(
                           OR,
-                          nm->mkNode(AND, eq1, sk.eqNode(firstChar).negate()),
+                          nm->mkNode(AND, lenreq, eq1, sk.eqNode(firstChar).negate()),
                           eq2),
                       "D-DISL-CSplit");
                   d_im.sendPhaseRequirement(eq1, true);
