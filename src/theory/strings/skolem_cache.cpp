@@ -46,13 +46,14 @@ Node SkolemCache::mkSkolemCached(Node a, SkolemId id, const char* c)
 Node SkolemCache::mkTypedSkolemCached(
     TypeNode tn, Node a, Node b, SkolemId id, const char* c)
 {
+  SkolemId reqId = id;
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
 
   if (d_skolemCachePreOnly[a][b].find(id) == d_skolemCachePreOnly[a][b].end())
   {
     d_skolemCachePreOnly[a][b][id] = Node::null();
-    d_statistics.d_numCachedSkolemsPre += 1;
+    d_statistics.d_numCachedSkolemsPre[reqId] += 1;
   }
 
   if (options::skolemSharing() && tn == d_strType)
@@ -65,7 +66,7 @@ Node SkolemCache::mkTypedSkolemCached(
   {
     Node sk = mkTypedSkolem(tn, c);
     d_skolemCache[a][b][id] = sk;
-    d_statistics.d_numCachedSkolemsPost += 1;
+    d_statistics.d_numCachedSkolemsPost[reqId] += 1;
     return sk;
   }
   else
@@ -219,20 +220,57 @@ SkolemCache::normalizeStringSkolem(SkolemId id, Node a, Node b)
   return std::make_tuple(id, a, b);
 }
 
-SkolemCache::Statistics::Statistics()
-    : d_numSkolems("theory::strings::NumSkolems", 0),
-      d_numCachedSkolemsPre("theory::strings::NumCachedSkolemsPre", 0),
-      d_numCachedSkolemsPost("theory::strings::NumCachedSkolemsPost", 0)
+SkolemCache::SkolemId& operator++(SkolemCache::SkolemId& c)
 {
-  smtStatisticsRegistry()->registerStat(&d_numSkolems);
-  smtStatisticsRegistry()->registerStat(&d_numCachedSkolemsPre);
-  smtStatisticsRegistry()->registerStat(&d_numCachedSkolemsPost);
+  using IntType = typename std::underlying_type<SkolemCache::SkolemId>::type;
+  if (c == SkolemCache::SkolemId::SK_LAST)
+  {
+    c = static_cast<SkolemCache::SkolemId>(0);
+  }
+  else
+  {
+    c = static_cast<SkolemCache::SkolemId>(static_cast<IntType>(c) + 1);
+  }
+  return c;
 }
 
-SkolemCache::Statistics::~Statistics() {
+SkolemCache::Statistics::Statistics()
+    : d_numSkolems("theory::strings::NumSkolems", 0)
+{
+  smtStatisticsRegistry()->registerStat(&d_numSkolems);
+  for (SkolemId id = SK_PURIFY; id < SK_LAST; ++id)
+  {
+    std::stringstream sspre;
+    sspre << "theory::strings::NumCachedSkolemsPre[";
+    sspre << id;
+    sspre << "]";
+    d_numCachedSkolemsPre.emplace_back(sspre.str(), 0);
+    std::stringstream sspost;
+    sspost << "theory::strings::NumCachedSkolemsPost[";
+    sspost << id;
+    sspost << "]";
+    d_numCachedSkolemsPost.emplace_back(sspost.str(), 0);
+  }
+
+  for (SkolemId id = SK_PURIFY; id < SK_LAST; ++id)
+  {
+    smtStatisticsRegistry()->registerStat(
+        &d_numCachedSkolemsPre[static_cast<size_t>(id)]);
+    smtStatisticsRegistry()->registerStat(
+        &d_numCachedSkolemsPost[static_cast<size_t>(id)]);
+  }
+}
+
+SkolemCache::Statistics::~Statistics()
+{
   smtStatisticsRegistry()->unregisterStat(&d_numSkolems);
-  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolemsPre);
-  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolemsPost);
+  for (SkolemId id = SK_PURIFY; id < SK_LAST; ++id)
+  {
+    smtStatisticsRegistry()->unregisterStat(
+        &d_numCachedSkolemsPre[static_cast<size_t>(id)]);
+    smtStatisticsRegistry()->unregisterStat(
+        &d_numCachedSkolemsPost[static_cast<size_t>(id)]);
+  }
 }
 
 }  // namespace strings

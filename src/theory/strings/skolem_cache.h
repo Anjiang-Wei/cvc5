@@ -51,7 +51,7 @@ class SkolemCache
   enum SkolemId
   {
     // exists k. k = a
-    SK_PURIFY,
+    SK_PURIFY = 0,
     // a != "" ^ b = "ccccd" ^ a ++ "d" ++ a' = b ++ b' =>
     //    exists k. a = "cccc" + k
     SK_ID_C_SPT,
@@ -120,6 +120,8 @@ class SkolemCache
     //       k(x) is the end index of the x^th occurrence of b in a
     //   where n is the number of occurrences of b in a, and k(0)=0.
     SK_OCCUR_INDEX,
+
+    SK_LAST
   };
   /**
    * Returns a skolem of type string that is cached for (a,b,id) and has
@@ -177,8 +179,8 @@ class SkolemCache
   struct Statistics
   {
     IntStat d_numSkolems;
-    IntStat d_numCachedSkolemsPre;
-    IntStat d_numCachedSkolemsPost;
+    std::vector<IntStat> d_numCachedSkolemsPre;
+    std::vector<IntStat> d_numCachedSkolemsPost;
 
     Statistics();
     ~Statistics();
