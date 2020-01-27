@@ -168,6 +168,9 @@ class SkolemCache
   Node d_zero;
   /** map from node pairs and identifiers to skolems */
   std::map<Node, std::map<Node, std::map<SkolemId, Node> > > d_skolemCache;
+
+  std::map<Node, std::map<Node, std::map<SkolemId, Node> > > d_skolemCachePreOnly;
+
   /** the set of all skolems we have generated */
   std::unordered_set<Node, NodeHashFunction> d_allSkolems;
 

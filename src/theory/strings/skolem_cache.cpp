@@ -49,9 +49,13 @@ Node SkolemCache::mkTypedSkolemCached(
   a = a.isNull() ? a : Rewriter::rewrite(a);
   b = b.isNull() ? b : Rewriter::rewrite(b);
 
-  if (d_skolemCache[a][b].find(id) != d_skolemCache[a][b].end())
+  if (d_skolemCachePreOnly[a][b].find(id) != d_skolemCachePreOnly[a][b].end())
   {
     d_statistics.d_numCachedSkolemsPre += 1;
+  }
+  else
+  {
+    d_skolemCachePreOnly[a][b][id] = Node::null();
   }
 
   if (options::skolemSharing() && tn == d_strType)
