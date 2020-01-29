@@ -1405,7 +1405,15 @@ void TheoryStrings::checkInit() {
               var = n;
             }else{
               Trace("strings-process-debug") << "  congruent variable : " << n << std::endl;
-              d_congruent.insert( n );
+              if (var > n)
+              {
+                d_congruent.insert(var);
+                var = n;
+              }
+              else
+              {
+                d_congruent.insert(n);
+              }
             }
           }
         }
