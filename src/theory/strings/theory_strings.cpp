@@ -3065,7 +3065,7 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                           : SkolemCache::SK_ID_V_SPT,
                     "v_spt");
                 // must add length requirement
-                info.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk);
+                Node lenreq = d_im.reqLengthGeqOne(sk);
                 Node eq1 = nfiv[index].eqNode(
                     isRev ? utils::mkNConcat(sk, nfjv[index])
                           : utils::mkNConcat(nfjv[index], sk));
@@ -3090,6 +3090,8 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
                   info.d_id = INFER_SSPLIT_VAR;
                   info_valid = true;
                 }
+
+                info.d_conc = nm->mkNode(AND, lenreq, info.d_conc);
               }
             }
           }
@@ -3311,7 +3313,7 @@ TheoryStrings::ProcessLoopResult TheoryStrings::processLoop(NormalForm& nfi,
     // right
     Node sk_w = d_sk_cache.mkSkolem("w_loop");
     Node sk_y = d_sk_cache.mkSkolem("y_loop");
-    d_im.registerLength(sk_y, LENGTH_GEQ_ONE);
+    Node lenreq = d_im.reqLengthGeqOne(sk_y);
     Node sk_z = d_sk_cache.mkSkolem("z_loop");
     // t1 * ... * tn = y * z
     Node conc1 = t_yz.eqNode(utils::mkNConcat(sk_y, sk_z));
@@ -3328,6 +3330,7 @@ TheoryStrings::ProcessLoopResult TheoryStrings::processLoop(NormalForm& nfi,
                               nm->mkNode(kind::STRING_TO_REGEXP, restr)));
 
     std::vector<Node> vec_conc;
+    vec_conc.push_back(lenreq);
     vec_conc.push_back(conc1);
     vec_conc.push_back(conc2);
     vec_conc.push_back(conc3);
@@ -3419,7 +3422,7 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                 {
                   Node sk = d_sk_cache.mkSkolemCached(
                       nconst_k, SkolemCache::SK_ID_DC_SPT, "dc_spt");
-                  d_im.registerLength(sk, LENGTH_ONE);
+                  Node lenreq = nm->mkNode(STRING_LENGTH, sk).eqNode(d_one);
                   Node skr =
                       d_sk_cache.mkSkolemCached(nconst_k,
                                                 SkolemCache::SK_ID_DC_SPT_REM,
@@ -3437,7 +3440,7 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                       antec,
                       nm->mkNode(
                           OR,
-                          nm->mkNode(AND, eq1, sk.eqNode(firstChar).negate()),
+                          nm->mkNode(AND, lenreq, eq1, sk.eqNode(firstChar).negate()),
                           eq2),
                       "D-DISL-CSplit");
                   d_im.sendPhaseRequirement(eq1, true);
@@ -3468,7 +3471,8 @@ void TheoryStrings::processDeq( Node ni, Node nj ) {
                   i, j, SkolemCache::SK_ID_DEQ_Y, "y_dsplit");
               Node sk3 = d_sk_cache.mkSkolemCached(
                   i, j, SkolemCache::SK_ID_DEQ_Z, "z_dsplit");
-              d_im.registerLength(sk3, LENGTH_GEQ_ONE);
+              Node lenreq = d_im.reqLengthGeqOne(sk3);
+              conc.push_back(lenreq);
               //Node nemp = sk3.eqNode(d_emptyString).negate();
               //conc.push_back(nemp);
               Node lsk1 = utils::mkNLength(sk1);

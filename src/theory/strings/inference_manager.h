@@ -164,6 +164,9 @@ class InferenceManager
    * decided with polarity pol.
    */
   void sendPhaseRequirement(Node lit, bool pol);
+
+   Node reqLengthGeqOne(Node n);
+
   /** register length
    *
    * This method is called on non-constant string terms n. It sends a lemma
