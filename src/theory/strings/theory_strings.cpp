@@ -2736,14 +2736,23 @@ void TheoryStrings::processSimpleNEq(NormalForm& nfi,
         if (d_state.areEqual(length_term_i, length_term_j))
         {
           Trace("strings-solve-debug") << "Simple Case 2 : string lengths are equal" << std::endl;
-          Node eq = nfiv[index].eqNode(nfjv[index]);
           //eq = Rewriter::rewrite( eq );
           Node length_eq = length_term_i.eqNode( length_term_j );
           //temp_exp.insert(temp_exp.end(), curr_exp.begin(), curr_exp.end() );
           NormalForm::getExplanationForPrefixEq(
               nfi, nfj, index, index, temp_exp);
           temp_exp.push_back(length_eq);
-          d_im.sendInference(temp_exp, eq, "N_Unify");
+
+          if (d_state.areDisequal(nfiv[index], nfjv[index]))
+          {
+            temp_exp.push_back(nfiv[index].eqNode(nfjv[index]).negate());
+            d_im.sendInference(temp_exp, d_false, "N_Unify");
+          }
+          else
+          {
+            Node eq = nfiv[index].eqNode(nfjv[index]);
+            d_im.sendInference(temp_exp, eq, "N_Unify");
+          }
           return;
         }
         else if ((nfiv[index].getKind() != CONST_STRING
