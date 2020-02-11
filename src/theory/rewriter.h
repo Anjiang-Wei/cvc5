@@ -33,6 +33,8 @@ class RewriterInitializer;
  */
 class RewriteEnvironment
 {
+ public:
+  NodeManager* getNodeManager();
 };
 
 /**

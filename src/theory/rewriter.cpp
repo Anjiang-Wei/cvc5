@@ -81,6 +81,11 @@ struct RewriteStackElement {
   NodeBuilder<> builder;
 };
 
+NodeManager* RewriteEnvironment::getNodeManager()
+{
+  return NodeManager::currentNM();
+}
+
 RewriteResponse identityRewrite(RewriteEnvironment* re, TNode n)
 {
   return RewriteResponse(REWRITE_DONE, n);

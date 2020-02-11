@@ -20,6 +20,7 @@
 #ifndef CVC4__THEORY__BOOLEANS__THEORY_BOOL_REWRITER_H
 #define CVC4__THEORY__BOOLEANS__THEORY_BOOL_REWRITER_H
 
+#include "theory/rewriter.h"
 #include "theory/theory_rewriter.h"
 
 namespace CVC4 {
@@ -29,9 +30,73 @@ namespace booleans {
 class TheoryBoolRewriter : public TheoryRewriter
 {
  public:
-  RewriteResponse preRewrite(TNode node) override;
-  RewriteResponse postRewrite(TNode node) override;
+  void registerRewrites(Rewriter* rewriter) override;
+  RewriteResponse preRewrite(TNode n) override;
+  RewriteResponse postRewrite(TNode n) override;
 
+ private:
+  /**
+   * Rewrites nodes of kind `NOT`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteNot(RewriteEnvironment* re, TNode n);
+
+  /**
+   * Rewrites nodes of kind `OR`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteOr(RewriteEnvironment* re, TNode n);
+
+  /**
+   * Rewrites nodes of kind `AND`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteAnd(RewriteEnvironment* re, TNode n);
+
+  /**
+   * Rewrites nodes of kind `IMPLIES`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteImplies(RewriteEnvironment* re, TNode n);
+
+  /**
+   * Rewrites nodes of kind `EQUAL`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteEqual(RewriteEnvironment* re, TNode n);
+
+  /**
+   * Rewrites nodes of kind `XOR`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteXor(RewriteEnvironment* re, TNode n);
+
+  /**
+   * Rewrites nodes of kind `ITE`.
+   *
+   * @param re The rewrite environment
+   * @param n The node to rewrite
+   * @return The result of rewriting `n`
+   */
+  static RewriteResponse rewriteIte(RewriteEnvironment* re, TNode n);
 }; /* class TheoryBoolRewriter */
 
 }/* CVC4::theory::booleans namespace */
