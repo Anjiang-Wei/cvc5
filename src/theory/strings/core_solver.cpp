@@ -1189,7 +1189,7 @@ void CoreSolver::processSimpleNEq(NormalForm& nfi,
 
     // The candidate inference "info"
     InferInfo info;
-    info.d_index = index;
+    info.d_index = std::max(x.getId(), y.getId());
     // for debugging
     info.d_i = nfi.d_base;
     info.d_j = nfj.d_base;
