@@ -371,7 +371,7 @@ void CoreSolver::checkFlatForm(std::vector<Node>& eqc,
               // if lengths are the same, apply LengthEq
               std::vector<Node> lexp2;
               Node lcc = d_state.getLength(bc, lexp2);
-              if (d_state.areEqual(lcurr, lcc))
+              if (d_state.areEqual(lcurr, lcc) && true)
               {
                 if (Trace.isOn("strings-ff-debug"))
                 {
@@ -1716,46 +1716,70 @@ CoreSolver::ProcessLoopResult CoreSolver::processLoop(NormalForm& nfi,
   return ProcessLoopResult::INFERENCE;
 }
 
-//return true for lemma, false if we succeed
 void CoreSolver::processDeq( Node ni, Node nj ) {
   NodeManager* nm = NodeManager::currentNM();
   NormalForm& nfni = getNormalForm(ni);
   NormalForm& nfnj = getNormalForm(nj);
   eq::EqualityEngine* ee = d_state.getEqualityEngine();
-  if (nfni.d_nf.size() > 1 || nfnj.d_nf.size() > 1)
+
+  if (nfni.d_nf.size() <= 1 && nfnj.d_nf.size() <= 1)
   {
-    std::vector< Node > nfi;
-    nfi.insert(nfi.end(), nfni.d_nf.begin(), nfni.d_nf.end());
-    std::vector< Node > nfj;
-    nfj.insert(nfj.end(), nfnj.d_nf.begin(), nfnj.d_nf.end());
+    return;
+  }
+
+    std::vector< Node > nfi = nfni.d_nf;
+    std::vector< Node > nfj = nfnj.d_nf;
+
+    // See if one side is constant, if so, the disequality ni != nj is satisfied
+    // since ni does not contain nj or vice versa.
+    // This is only valid when isRev is false, since when isRev=true, the contents
+    // of normal form vectors nfi and nfj are reversed.
+    for (uint32_t i = 0; i < 2; i++)
+    {
+      Node c = d_bsolver.getConstantEqc(i == 0 ? ni : nj);
+      if (!c.isNull())
+      {
+        int findex, lindex;
+        if (!TheoryStringsRewriter::canConstantContainList(
+                c, i == 0 ? nfj : nfi, findex, lindex))
+        {
+          Trace("strings-solve-debug")
+              << "Disequality: constant cannot contain list" << std::endl;
+          return;
+        }
+      }
+    }
 
     int revRet = processReverseDeq( nfi, nfj, ni, nj );
     if( revRet!=0 ){
       return;
     }
 
-    nfi.clear();
-    nfi.insert(nfi.end(), nfni.d_nf.begin(), nfni.d_nf.end());
-    nfj.clear();
-    nfj.insert(nfj.end(), nfnj.d_nf.begin(), nfnj.d_nf.end());
+    nfi = nfni.d_nf;
+    nfj = nfnj.d_nf;
 
     unsigned index = 0;
     while( index<nfi.size() || index<nfj.size() ){
       int ret = processSimpleDeq( nfi, nfj, ni, nj, index, false );
       if( ret!=0 ) {
         return;
-      }else{
+      }
+
         Assert(index < nfi.size() && index < nfj.size());
         Node i = nfi[index];
         Node j = nfj[index];
         Trace("strings-solve-debug")  << "...Processing(DEQ) " << i << " " << j << std::endl;
-        if (!d_state.areEqual(i, j))
+        if (d_state.areEqual(i, j))
         {
+          index++;
+          continue;
+        }
+
           Assert(i.getKind() != kind::CONST_STRING
                  || j.getKind() != kind::CONST_STRING);
-          std::vector< Node > lexp;
-          Node li = d_state.getLength(i, lexp);
-          Node lj = d_state.getLength(j, lexp);
+          std::vector< Node > lenExp;
+          Node li = d_state.getLength(i, lenExp);
+          Node lj = d_state.getLength(j, lenExp);
           if (d_state.areDisequal(li, lj))
           {
             if( i.getKind()==kind::CONST_STRING || j.getKind()==kind::CONST_STRING ){
@@ -1765,13 +1789,14 @@ void CoreSolver::processDeq( Node ni, Node nj ) {
               Node lnck = i.getKind() == kind::CONST_STRING ? lj : li;
               if( !ee->areDisequal( nconst_k, d_emptyString, true ) ){
                 Node eq = nconst_k.eqNode( d_emptyString );
-                Node conc = NodeManager::currentNM()->mkNode( kind::OR, eq, eq.negate() );
+                Node conc = nm->mkNode( kind::OR, eq, eq.negate() );
                 d_im.sendInference(d_emptyVec, conc, "D-DISL-Emp-Split");
                 return;
-              }else{
+              }
+
                 //split on first character
                 CVC4::String str = const_k.getConst<String>();
-                Node firstChar = str.size() == 1 ? const_k : NodeManager::currentNM()->mkConst( str.prefix( 1 ) );
+                Node firstChar = str.size() == 1 ? const_k : nm->mkConst( str.prefix( 1 ) );
                 if (d_state.areEqual(lnck, d_one))
                 {
                   if (d_state.areDisequal(firstChar, nconst_k))
@@ -1797,9 +1822,9 @@ void CoreSolver::processDeq( Node ni, Node nj ) {
                       d_skCache.mkSkolemCached(nconst_k,
                                                 SkolemCache::SK_ID_DC_SPT_REM,
                                                 "dc_spt_rem");
-                  Node eq1 = nconst_k.eqNode( NodeManager::currentNM()->mkNode( kind::STRING_CONCAT, sk, skr ) );
+                  Node eq1 = nconst_k.eqNode(nm->mkNode( kind::STRING_CONCAT, sk, skr ) );
                   eq1 = Rewriter::rewrite( eq1 );
-                  Node eq2 = nconst_k.eqNode( NodeManager::currentNM()->mkNode( kind::STRING_CONCAT, firstChar, skr ) );
+                  Node eq2 = nconst_k.eqNode(nm->mkNode( kind::STRING_CONCAT, firstChar, skr ) );
                   std::vector< Node > antec;
                   antec.insert(
                       antec.end(), nfni.d_exp.begin(), nfni.d_exp.end());
@@ -1816,7 +1841,6 @@ void CoreSolver::processDeq( Node ni, Node nj ) {
                   d_im.sendPhaseRequirement(eq1, true);
                   return;
                 }
-              }
             }else{
               Trace("strings-solve") << "Non-Simple Case 1 : add lemma " << std::endl;
               //must add lemma
@@ -1873,12 +1897,8 @@ void CoreSolver::processDeq( Node ni, Node nj ) {
               return;
             }
           }
-        }
-        index++;
-      }
     }
-    Assert(false);
-  }
+    Unreachable();
 }
 
 int CoreSolver::processReverseDeq( std::vector< Node >& nfi, std::vector< Node >& nfj, Node ni, Node nj ) {
@@ -1897,28 +1917,6 @@ int CoreSolver::processReverseDeq( std::vector< Node >& nfi, std::vector< Node >
 }
 
 int CoreSolver::processSimpleDeq( std::vector< Node >& nfi, std::vector< Node >& nfj, Node ni, Node nj, unsigned& index, bool isRev ){
-  // See if one side is constant, if so, the disequality ni != nj is satisfied
-  // since ni does not contain nj or vice versa.
-  // This is only valid when isRev is false, since when isRev=true, the contents
-  // of normal form vectors nfi and nfj are reversed.
-  if (!isRev)
-  {
-    for (unsigned i = 0; i < 2; i++)
-    {
-      Node c = d_bsolver.getConstantEqc(i == 0 ? ni : nj);
-      if (!c.isNull())
-      {
-        int findex, lindex;
-        if (!TheoryStringsRewriter::canConstantContainList(
-                c, i == 0 ? nfj : nfi, findex, lindex))
-        {
-          Trace("strings-solve-debug")
-              << "Disequality: constant cannot contain list" << std::endl;
-          return 1;
-        }
-      }
-    }
-  }
   NormalForm& nfni = getNormalForm(ni);
   NormalForm& nfnj = getNormalForm(nj);
   while( index<nfi.size() || index<nfj.size() ) {
