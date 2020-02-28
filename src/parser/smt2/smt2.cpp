@@ -162,7 +162,9 @@ void Smt2::addStringOperators() {
   addOperator(kind::STRING_STRCTN, "str.contains" );
   addOperator(kind::STRING_CHARAT, "str.at" );
   addOperator(kind::STRING_STRIDOF, "str.indexof" );
-  addOperator(kind::STRING_STRREPL, "str.replace" );
+  addOperator(kind::STRING_REPLACE, "str.replace");
+  addOperator(kind::STRING_REPLACE_RE, "str.replace_re");
+  addOperator(kind::STRING_REPLACE_RE_ALL, "str.replace_re_all");
   if (!strictModeEnabled())
   {
     addOperator(kind::STRING_TOLOWER, "str.tolower");
@@ -180,7 +182,7 @@ void Smt2::addStringOperators() {
     addOperator(kind::STRING_IN_REGEXP, "str.in_re");
     addOperator(kind::STRING_TO_REGEXP, "str.to_re");
     addOperator(kind::STRING_CODE, "str.to_code");
-    addOperator(kind::STRING_STRREPLALL, "str.replace_all");
+    addOperator(kind::STRING_REPLACE_ALL, "str.replace_all");
   }
   else
   {
@@ -189,7 +191,7 @@ void Smt2::addStringOperators() {
     addOperator(kind::STRING_IN_REGEXP, "str.in.re");
     addOperator(kind::STRING_TO_REGEXP, "str.to.re");
     addOperator(kind::STRING_CODE, "str.code");
-    addOperator(kind::STRING_STRREPLALL, "str.replaceall");
+    addOperator(kind::STRING_REPLACE_ALL, "str.replaceall");
   }
 
   addOperator(kind::REGEXP_CONCAT, "re.++");

@@ -211,12 +211,24 @@ class TheoryStringsRewriter : public TheoryRewriter
   * Returns the rewritten form of node.
   */
   static Node rewriteReplace(Node node);
-  /** rewrite replace all
+  /** rewrite replace_all
    * This is the entry point for post-rewriting terms n of the form
-   *   str.replaceall( s, t, r )
+   *   str.replace_all( s, t, r )
    * Returns the rewritten form of node.
    */
   static Node rewriteReplaceAll(Node node);
+  /** rewrite replace_re
+   * This is the entry point for post-rewriting terms n of the form
+   *   str.replace_re( s, t, r )
+   * Returns the rewritten form of node.
+   */
+  static Node rewriteReplaceRe(Node node);
+  /** rewrite replace_re_all
+   * This is the entry point for post-rewriting terms n of the form
+   *   str.replace_re_all( s, t, r )
+   * Returns the rewritten form of node.
+   */
+  static Node rewriteReplaceReAll(Node node);
   /** rewrite replace internal
    *
    * This method implements rewrite rules that apply to both str.replace and

@@ -222,6 +222,8 @@ tokens {
   STRING_INDEXOF_TOK = 'INDEXOF';
   STRING_REPLACE_TOK = 'REPLACE';
   STRING_REPLACE_ALL_TOK = 'REPLACE_ALL';
+  STRING_REPLACE_RE_TOK = 'REPLACE_RE';
+  STRING_REPLACE_RE_ALL_TOK = 'REPLACE_RE_ALL';
   STRING_PREFIXOF_TOK = 'PREFIXOF';
   STRING_SUFFIXOF_TOK = 'SUFFIXOF';
   STRING_STOI_TOK = 'STRING_TO_INTEGER';
@@ -2008,9 +2010,13 @@ stringTerm[CVC4::Expr& f]
   | STRING_INDEXOF_TOK LPAREN formula[f] COMMA formula[f2] COMMA formula[f3] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_STRIDOF, f, f2, f3); }
   | STRING_REPLACE_TOK LPAREN formula[f] COMMA formula[f2] COMMA formula[f3] RPAREN
-    { f = MK_EXPR(CVC4::kind::STRING_STRREPL, f, f2, f3); }
+    { f = MK_EXPR(CVC4::kind::STRING_REPLACE, f, f2, f3); }
   | STRING_REPLACE_ALL_TOK LPAREN formula[f] COMMA formula[f2] COMMA formula[f3] RPAREN
-    { f = MK_EXPR(CVC4::kind::STRING_STRREPLALL, f, f2, f3); }
+    { f = MK_EXPR(CVC4::kind::STRING_REPLACE_ALL, f, f2, f3); }
+  | STRING_REPLACE_RE_TOK LPAREN formula[f] COMMA formula[f2] COMMA formula[f3] RPAREN
+    { f = MK_EXPR(CVC4::kind::STRING_REPLACE_RE, f, f2, f3); }
+  | STRING_REPLACE_RE_ALL_TOK LPAREN formula[f] COMMA formula[f2] COMMA formula[f3] RPAREN
+    { f = MK_EXPR(CVC4::kind::STRING_REPLACE_RE_ALL, f, f2, f3); }
   | STRING_PREFIXOF_TOK LPAREN formula[f] COMMA formula[f2] RPAREN
     { f = MK_EXPR(CVC4::kind::STRING_PREFIX, f, f2); }
   | STRING_SUFFIXOF_TOK LPAREN formula[f] COMMA formula[f2] RPAREN

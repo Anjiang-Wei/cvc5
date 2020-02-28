@@ -108,6 +108,10 @@ class SkolemCache
     //       k(x) is the end index of the x^th occurrence of b in a
     //   where n is the number of occurrences of b in a, and k(0)=0.
     SK_OCCUR_INDEX,
+
+    SK_FIRST_MATCH_PRE,
+    SK_FIRST_MATCH,
+    SK_FIRST_MATCH_POST,
   };
   /**
    * Returns a skolem of type string that is cached for (a,b,id) and has

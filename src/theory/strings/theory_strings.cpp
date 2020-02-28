@@ -102,8 +102,8 @@ TheoryStrings::TheoryStrings(context::Context* c,
   d_equalityEngine.addFunctionKind(kind::STRING_ITOS);
   d_equalityEngine.addFunctionKind(kind::STRING_STOI);
   d_equalityEngine.addFunctionKind(kind::STRING_STRIDOF);
-  d_equalityEngine.addFunctionKind(kind::STRING_STRREPL);
-  d_equalityEngine.addFunctionKind(kind::STRING_STRREPLALL);
+  d_equalityEngine.addFunctionKind(kind::STRING_REPLACE);
+  d_equalityEngine.addFunctionKind(kind::STRING_REPLACE_ALL);
   d_equalityEngine.addFunctionKind(kind::STRING_TOLOWER);
   d_equalityEngine.addFunctionKind(kind::STRING_TOUPPER);
   d_equalityEngine.addFunctionKind(kind::STRING_REV);
@@ -511,12 +511,12 @@ void TheoryStrings::preRegisterTerm(TNode n) {
         << "TheoryString::preregister : " << n << std::endl;
     //check for logic exceptions
     Kind k = n.getKind();
+    Assert(k != STRING_REPLACE_RE && k != STRING_REPLACE_RE_ALL);
     if( !options::stringExp() ){
-      if (k == kind::STRING_STRIDOF || k == kind::STRING_ITOS
-          || k == kind::STRING_STOI || k == kind::STRING_STRREPL
-          || k == kind::STRING_STRREPLALL || k == kind::STRING_STRCTN
-          || k == STRING_LEQ || k == STRING_TOLOWER || k == STRING_TOUPPER
-          || k == STRING_REV)
+      if (k == STRING_STRIDOF || k == STRING_ITOS || k == STRING_STOI
+          || k == STRING_REPLACE || k == STRING_REPLACE_ALL
+          || k == kind::STRING_STRCTN || k == STRING_LEQ || k == STRING_TOLOWER
+          || k == STRING_TOUPPER || k == STRING_REV)
       {
         std::stringstream ss;
         ss << "Term of kind " << k
@@ -595,6 +595,16 @@ void TheoryStrings::preRegisterTerm(TNode n) {
 
 Node TheoryStrings::expandDefinition(LogicRequest &logicRequest, Node node) {
   Trace("strings-exp-def") << "TheoryStrings::expandDefinition : " << node << std::endl;
+
+  NodeManager* nm = NodeManager::currentNM();
+  if (node.getKind() == STRING_REPLACE_RE)
+  {
+    Node k = nm->mkBoundVar(nm->stringType());
+    Node bvl = nm->mkNode(BOUND_VAR_LIST, k);
+    Node body = d_esolver->getPreprocess()->simplifyReplaceRe(k, node);
+    node = nm->mkNode(CHOICE, bvl, body);
+  }
+
   return node;
 }
 

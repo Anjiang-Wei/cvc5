@@ -347,7 +347,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     retNode = stoit;
   }
-  else if (t.getKind() == kind::STRING_STRREPL)
+  else if (t.getKind() == kind::STRING_REPLACE)
   {
     // processing term: replace( x, y, z )
     Node x = t[0];
@@ -407,7 +407,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     // Thus, replace( x, y, z ) = rpw.
     retNode = rpw;
   }
-  else if (t.getKind() == kind::STRING_STRREPLALL)
+  else if (t.getKind() == kind::STRING_REPLACE_ALL)
   {
     // processing term: replaceall( x, y, z )
     Node x = t[0];
@@ -715,6 +715,71 @@ void StringsPreprocess::processAssertions( std::vector< Node > &vec_node ){
     }
   }
 }
+
+Node StringsPreprocess::simplifyReplaceRe(Node k, Node t)
+{
+  Assert(t.getKind() == STRING_REPLACE_RE);
+  NodeManager* nm = NodeManager::currentNM();
+  Node x = t[0];
+  Node y = t[1];
+  Node z = t[2];
+
+  std::vector<Node> emptyVec;
+  Node sigmaStar = nm->mkNode(REGEXP_STAR, nm->mkNode(REGEXP_SIGMA, emptyVec));
+  Node re = nm->mkNode(REGEXP_CONCAT, sigmaStar, y, sigmaStar);
+  // str.in.re(x, _* ++ y ++ _*)
+  Node hasMatch = nm->mkNode(STRING_IN_REGEXP, x, re);
+
+  // str.in.re("", y)
+  Node matchesEmpty = nm->mkNode(STRING_IN_REGEXP, nm->mkConst(String("")), y);
+  // k = z ++ x
+  Node res1 = k.eqNode(nm->mkNode(STRING_CONCAT, z, x));
+
+  Node k1 =
+      d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_MATCH_PRE, "rre_pre");
+  Node k2 =
+      d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_MATCH, "rre_match");
+  Node k3 =
+      d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_MATCH_POST, "rre_post");
+  // x = k1 ++ k2 ++ k3
+  Node splitX = x.eqNode(nm->mkNode(STRING_CONCAT, k1, k2, k3));
+  // not(str.in.re(k1 ++ str.substr(k2, 0, str.len(k2) - 1), _* ++ y ++ _*))
+  Node k2len = nm->mkNode(STRING_LENGTH, k2);
+  Node firstMatch =
+      nm->mkNode(STRING_IN_REGEXP,
+                 nm->mkNode(STRING_CONCAT,
+                            k1,
+                            nm->mkNode(STRING_SUBSTR,
+                                       k2,
+                                       d_zero,
+                                       nm->mkNode(MINUS, k2len, d_one))),
+                 re)
+          .negate();
+  // str.in.re(k2, y)
+  Node k2Match = nm->mkNode(STRING_IN_REGEXP, k2, y);
+  // k = k1 ++ z ++ k3
+  Node res2 = k.eqNode(nm->mkNode(STRING_CONCAT, k1, z, k3));
+
+  // IF str.in.re(x, _* ++ y ++ _*)
+  // THEN:
+  //   IF str.in.re("", y)
+  //   THEN: k = z ++ x
+  //   ELSE:
+  //     x = k1 ++ k2 ++ k3 AND
+  //     not(str.in.re(k1 ++ str.substr(k2, 0, str.len(k2) - 1), _* ++ y ++ _*))
+  //     AND str.in.re(k2, y) AND k = k1 ++ z ++ k3
+  // ELSE: k = ""
+  return nm->mkNode(
+      ITE,
+      hasMatch,
+      nm->mkNode(ITE,
+                 matchesEmpty,
+                 res1,
+                 nm->mkNode(AND, splitX, firstMatch, k2Match, res2)),
+      k.eqNode(x));
+}
+
+Node StringsPreprocess::simplifyReplaceReAll(Node k, Node t) { return Node(); }
 
 }/* CVC4::theory::strings namespace */
 }/* CVC4::theory namespace */

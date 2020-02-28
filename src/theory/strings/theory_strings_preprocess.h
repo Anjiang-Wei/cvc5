@@ -64,6 +64,14 @@ public:
   */
  void processAssertions(std::vector<Node> &vec_node);
 
+ /**
+  * Reduces a term `str.replace_re(t, s, u)`.
+  *
+  * @param k
+  */
+ Node simplifyReplaceRe(Node k, Node t);
+ Node simplifyReplaceReAll(Node k, Node t);
+
 private:
  /** commonly used constants */
  Node d_zero;

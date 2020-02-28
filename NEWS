@@ -3,6 +3,12 @@ This file contains a summary of important user-visible changes.
 Changes since 1.7
 =================
 
+New Features:
+* Strings:
+  * Support for `str.replace_re`, `str.replace_re_all`, `str.is_digit`,
+    `str.from_code`, `re.diff`, and `re.comp`
+  * Support for new operator names (e.g. `str.in_re` instead of `str.in.re`)
+
 Changes:
 * Java API change: The name of CVC4's package is now `edu.stanford.CVC4`
   instead of `edu.nyu.acsys.CVC4`.
