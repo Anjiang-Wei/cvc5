@@ -43,3 +43,5 @@ add_custom_target(gen-theory
     theory_traits.h
     rewriter_tables.h
 )
+
+add_subdirectory(rewriter)

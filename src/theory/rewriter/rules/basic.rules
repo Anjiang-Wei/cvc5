@@ -1,0 +1,47 @@
+(define-rule SgtEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsgt x y)
+    (bvslt y x))
+
+(define-rule LtSelfUlt ((x (_ BitVec n)))
+    (bvult x x)
+    false)
+
+(define-rule LtSelfSlt ((x (_ BitVec n)))
+    (bvslt x x)
+    false)
+
+(define-rule ZeroUlt ((x (_ BitVec n)))
+    (bvult (_ bv0 n) x)
+    (not (= (_ bv0 n) x)))
+
+(define-rule UltZero ((x (_ BitVec n)))
+    (bvult x (_ bv0 n))
+    false)
+
+(define-rule UltOne ((x (_ BitVec n)))
+    (bvult x (_ bv1 n))
+    (= x (_ bv0 n)))
+
+(define-rule UleZero ((x (_ BitVec n)))
+    (bvule x (_ bv0 n))
+    (= x (_ bv0 n)))
+
+(define-rule UleSelf ((x (_ BitVec n)))
+    (bvule x x)
+    true)
+
+(define-rule ZeroUle ((x (_ BitVec n)))
+    (bvule (_ bv0 n) x)
+    true)
+
+(define-rule NotUlt ((x (_ BitVec n)) (y (_ BitVec n)))
+    (not (bvult x y))
+    (bvule y x))
+
+(define-rule NotUle ((x (_ BitVec n)) (y (_ BitVec n)))
+    (not (bvule x y))
+    (bvult y x))
+
+(define-rule NegIdemp ((x (_ BitVec n)))
+    (bvneg (bvneg x))
+    x)

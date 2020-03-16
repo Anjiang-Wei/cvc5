@@ -24,6 +24,7 @@
 #include "theory/bv/theory_bv_rewrite_rules_simplification.h"
 #include "theory/bv/theory_bv_rewriter.h"
 #include "theory/theory.h"
+#include "theory/rewriter/rules.h"
 
 using namespace CVC4;
 using namespace CVC4::theory;
