@@ -3,11 +3,18 @@ libcvc4_add_sources(GENERATED
 )
 
 add_custom_command(
-  OUTPUT rules.h
+  OUTPUT
+    rules.h
+    rules_implementation.h
+    rules_printer.h
+    rules.plf
   COMMAND
     ${CMAKE_CURRENT_LIST_DIR}/compiler.py
     ${CMAKE_CURRENT_LIST_DIR}/rules/basic.rules
-    > ${CMAKE_CURRENT_BINARY_DIR}/rules.h
+    ${CMAKE_CURRENT_BINARY_DIR}/rules.h
+    ${CMAKE_CURRENT_BINARY_DIR}/rules_implementation.h
+    ${CMAKE_CURRENT_BINARY_DIR}/rules_printer.h
+    ${CMAKE_CURRENT_BINARY_DIR}/rules.plf
   DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/compiler.py
 )

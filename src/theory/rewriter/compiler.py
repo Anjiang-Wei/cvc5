@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import re
 import sys
 
 from subprocess import Popen, PIPE, STDOUT
@@ -48,10 +49,7 @@ def rule_to_in_ir(rvars, lhs):
                     if isinstance(width, Var) and not width.name in vars_seen:
                         bv_size_expr = Fn(Op.BV_SIZE, [GetChild(path)])
                         bv_size_expr.sort = Sort(BaseSort.Int, [])
-                        out_ir.append(
-                            Assign(
-                                width.name,
-                                bv_size_expr))
+                        out_ir.append(Assign(width.name, bv_size_expr))
                         vars_seen.add(width.name)
 
                 vars_seen.add(expr.name)
@@ -59,10 +57,7 @@ def rule_to_in_ir(rvars, lhs):
             if isinstance(expr.bw, Var) and not expr.bw.name in vars_seen:
                 bv_size_expr = Fn(Op.BV_SIZE, [GetChild(path)])
                 bv_size_expr.sort = Sort(BaseSort.Int, [])
-                out_ir.append(
-                    Assign(
-                        expr.bw.name,
-                        bv_size_expr))
+                out_ir.append(Assign(expr.bw.name, bv_size_expr))
                 vars_seen.add(expr.bw.name)
 
             out_ir.append(
@@ -101,7 +96,7 @@ def expr_to_code(expr):
         elif expr.op == Op.GET_KIND:
             return '{}.getKind()'.format(args[0])
         elif expr.op == Op.BV_SIZE:
-            return 'utils::getSize({})'.format(args[0])
+            return 'bv::utils::getSize({})'.format(args[0])
         elif expr.op == Op.MK_CONST:
             return 'nm->mkConst({})'.format(', '.join(args))
         elif expr.op == Op.MK_NODE:
@@ -128,22 +123,29 @@ def ir_to_code(match_instrs):
     code = []
     for instr in match_instrs:
         if isinstance(instr, Assign):
-            code.append('{} {} = {};'.format(sort_to_code(instr.expr.sort), instr.name,
-                                               expr_to_code(instr.expr)))
+            code.append('{} {} = {};'.format(sort_to_code(instr.expr.sort),
+                                             instr.name,
+                                             expr_to_code(instr.expr)))
         elif isinstance(instr, Assert):
-            code.append('if (!({})) return __node;'.format(
-                expr_to_code(instr.expr)))
+            code.append(
+                'if (!({})) return RewriteResponse(REWRITE_DONE, __node, RewriteRule::NONE);'
+                .format(expr_to_code(instr.expr)))
 
     return '\n'.join(code)
+
+
+def name_to_enum(name):
+    name = re.sub(r'(?<!^)(?=[A-Z])', '_', name).upper()
+    return name
 
 
 def gen_rule(rule):
     out_var = '__ret'
     rule_pattern = """
-    Node {}(TNode __node) {{
+    RewriteResponse {}(TNode __node) {{
       NodeManager* nm = NodeManager::currentNM();
       {}
-      return {};
+      return RewriteResponse(REWRITE_AGAIN, {}, RewriteRule::{});
     }}"""
 
     infer_types(rule.rvars, rule.lhs)
@@ -152,7 +154,169 @@ def gen_rule(rule):
     ir = in_ir + [rule.cond] + out_ir
     opt_ir = optimize_ir(out_var, ir)
     body = ir_to_code(opt_ir)
-    return format_cpp(rule_pattern.format(rule.name, body, out_var))
+    return rule_pattern.format(rule.name, body, out_var,
+                               name_to_enum(rule.name))
+
+
+def gen_rule_printer(rule):
+    rule_printer_pattern = """
+    if (step->d_tag == RewriteRule::{})
+    {{
+      os << "({} ";
+      printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+      os << ")";
+      return;
+    }}
+    """
+    return rule_printer_pattern.format(name_to_enum(rule.name), rule.name)
+
+
+def gen_proof_printer(rules):
+    printer_pattern = """
+    #ifndef CVC4__THEORY__RULES_PRINTER_H
+    #define CVC4__THEORY__RULES_PRINTER_H
+
+    #include "proof/rewrite_proof.h"
+
+    namespace CVC4 {{
+    namespace theory {{
+    namespace rules {{
+
+    class RewriteProofPrinter {{
+    public:
+    static void printRewriteProof(bool useCache,
+                           TheoryProofEngine* tp,
+                           const RewriteStep* step,
+                           std::ostream& os,
+                           ProofLetMap& globalLetMap)
+    {{
+      if (step->d_tag == RewriteRule::NONE && step->d_children.size() == 0)
+      {{
+        switch (step->d_original.getKind())
+        {{
+          case kind::EQUAL:
+          {{
+            os << "(iff_symm ";
+            tp->printTheoryTerm(step->d_original.toExpr(), os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
+          default:
+          {{
+            os << "(refl _ ";
+            tp->printTheoryTerm(step->d_original.toExpr(), os, globalLetMap);
+            os << ")";
+            return;
+          }}
+        }}
+      }}
+      else if (step->d_tag == RewriteRule::NONE)
+      {{
+        switch (step->d_original.getKind()) 
+        {{
+          case kind::NOT:
+          {{
+            os << "(symm_formula_op1 not _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
+          case kind::IMPLIES:
+          {{
+            os << "(symm_formula_op2 impl _ _ _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << " ";
+            printRewriteProof(useCache, tp, step->d_children[1], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
+          case kind::AND:
+          {{
+            os << "(symm_formula_op2 and _ _ _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << " ";
+            printRewriteProof(useCache, tp, step->d_children[1], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
+          default: Unimplemented();
+        }}
+      }}
+      {}
+    }}
+
+    static void printProof(TheoryProofEngine *tp, const RewriteProof &rp, std::ostream &os,
+                ProofLetMap &globalLetMap) {{
+      std::ostringstream paren;
+      rp.printCachedProofs(tp, os, paren, globalLetMap);
+      os << std::endl;
+      printRewriteProof(true, tp, rp.getRewrite(), os, globalLetMap);
+      os << paren.str();
+    }}
+
+    }};
+
+    }}
+    }}
+    }}
+
+    #endif
+    """
+    return format_cpp(printer_pattern.format('\n'.join(gen_rule_printer(rule) for rule in rules)))
+
+
+def gen_enum(rules):
+    enum_pattern = """
+    #ifndef CVC4__THEORY__REWRITER_RULES_H
+    #define CVC4__THEORY__REWRITER_RULES_H
+
+    namespace CVC4 {{
+    namespace theory {{
+    namespace rules {{
+
+    enum class RewriteRule {{
+      {},
+      UNKNOWN,
+      NONE
+    }};
+
+    }}
+    }}
+    }}
+
+    #endif"""
+
+    return format_cpp(
+        enum_pattern.format(','.join(
+            name_to_enum(rule.name) for rule in rules)))
+
+
+def gen_rules_implementation(rules):
+    file_pattern = """
+    #include "expr/node.h"
+    #include "theory/bv/theory_bv_utils.h"
+    #include "theory/rewrite_response.h"
+    #include "util/bitvector.h"
+
+    namespace CVC4 {{
+    namespace theory {{
+    namespace rules {{
+
+    {}
+
+    }}
+    }}
+    }}"""
+
+    rules_code = []
+    for rule in rules:
+        rules_code.append(gen_rule(rule))
+
+    return format_cpp(file_pattern.format('\n'.join(rules_code)))
 
 
 def format_cpp(s):
@@ -170,39 +334,31 @@ def main():
     #                      BoolConst(True),
     #                      Fn(Op.BVSGT, [Var('x'), Var('y')]),
     #                      Fn(Op.BVSLT, [Var('y'), Var('x')]))
-    
-    file_pattern = """
-    #include "expr/node.h"
-    #include "theory/bv/theory_bv_utils.h"
-    #include "util/bitvector.h"
-
-    namespace CVC4 {{
-    namespace theory {{
-    namespace bv {{
-    namespace rules {{
-
-    {}
-
-    }}
-    }}
-    }}
-    }}"""
 
     parser = argparse.ArgumentParser(description='Compile rewrite rules.')
     parser.add_argument('infile',
-                        nargs='?',
                         type=argparse.FileType('r'),
-                        default=sys.stdin,
                         help='Rule file')
+    parser.add_argument('rulesfile',
+                        type=argparse.FileType('w'),
+                        help='File that lists the rules')
+    parser.add_argument('implementationfile',
+                        type=argparse.FileType('w'),
+                        help='File that implements the rules')
+    parser.add_argument('printerfile',
+                        type=argparse.FileType('w'),
+                        help='File that prints the rule applications')
+    parser.add_argument('proofrulesfile',
+                        type=argparse.FileType('w'),
+                        help='File with the proof rules')
+
     args = parser.parse_args()
-    
+
     rules = parse_rules(args.infile.read())
-    rules_code = []
-    for rule in rules:
-        rules_code.append(gen_rule(rule))
 
-
-    print(format_cpp(file_pattern.format('\n'.join(rules_code))))
+    args.rulesfile.write(gen_enum(rules))
+    args.implementationfile.write(gen_rules_implementation(rules))
+    args.printerfile.write(gen_proof_printer(rules))
 
     # zero_extend_eliminate = Rule('ZeroExtendEliminate',
     #                      [Var('x', Sort(BaseSort.BitVec, [Var('n', int_sort)]))],

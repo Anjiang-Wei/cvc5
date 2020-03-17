@@ -19,12 +19,17 @@
 #pragma once
 
 #include "expr/node.h"
+#include "theory/rewrite_response.h"
 #include "theory/theory_rewriter.h"
 #include "util/unsafe_interrupt_exception.h"
 
 namespace CVC4 {
+
+class RewriteProof;
+
 namespace theory {
 
+class TheoryRewriter;
 class RewriterInitializer;
 
 /**
@@ -56,6 +61,8 @@ class Rewriter {
    * use on the node.
    */
   static Node rewrite(TNode node);
+
+  static Node rewriteWithProof(TNode node, RewriteProof* rp);
 
   /**
    * Garbage collects the rewrite caches.
@@ -123,7 +130,7 @@ class Rewriter {
   /**
    * Rewrites the node using the given theory rewriter.
    */
-  Node rewriteTo(theory::TheoryId theoryId, Node node);
+  Node rewriteTo(theory::TheoryId theoryId, Node node, RewriteProof* rp);
 
   /** Calls the pre-rewriter for the given theory */
   RewriteResponse preRewrite(theory::TheoryId theoryId, TNode n);

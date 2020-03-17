@@ -34,6 +34,7 @@
 #include "smt_util/node_visitor.h"
 #include "theory/arrays/theory_arrays.h"
 #include "theory/output_channel.h"
+#include "theory/rewriter/rules_printer.h"
 #include "theory/term_registration_visitor.h"
 #include "theory/uf/equality_engine.h"
 #include "theory/uf/theory_uf.h"
@@ -833,8 +834,6 @@ void LFSCProof::printPreprocessedAssertions(const NodeSet& assertions,
     for (; it != end; ++it) {
       // Rewrite preprocessing step if it cannot be eliminated
       if (!ProofManager::currentPM()->have_input_assertion((*it).toExpr())) {
-        os << "(th_let_pf _ (trust_f (iff ";
-
         Expr inputAssertion;
 
         if (((*it).isConst() && *it == NodeManager::currentNM()->mkConst<bool>(true)) ||
@@ -878,10 +877,32 @@ void LFSCProof::printPreprocessedAssertions(const NodeSet& assertions,
                         << ProofManager::currentPM()->getInputFormulaName(inputAssertion)
                         << std::endl;
 
-        ProofManager::currentPM()->getTheoryProofEngine()->printTheoryTerm(inputAssertion, os, globalLetMap);
-        os << " ";
-        ProofManager::currentPM()->printTrustedTerm(*it, os, globalLetMap);
-        os << "))";
+        os << "(th_let_pf _ ";
+        RewriteProof rp;
+        if ((*it).getKind() == kind::NOT
+            && (*it)[0] == NodeManager::currentNM()->mkConst<bool>(false))
+        {
+          os << "t_eq_n_f ";
+        }
+        else if (theory::Rewriter::rewriteWithProof(inputAssertion, &rp) == *it)
+        {
+          theory::rules::RewriteProofPrinter::printProof(
+              ProofManager::currentPM()->getTheoryProofEngine(),
+              rp,
+              os,
+              globalLetMap);
+        }
+        else
+        {
+          os << "(trust_f (iff ";
+          ProofManager::currentPM()->getTheoryProofEngine()->printTheoryTerm(
+              inputAssertion, os, globalLetMap);
+          os << " ";
+          ProofManager::currentPM()->printTrustedTerm(
+              (*it).toExpr(), os, globalLetMap);
+          os << ")) ";
+        }
+
         os << "(\\ "<< ProofManager::getPreprocessedAssertionName(*it, "") << "\n";
         paren << "))";
 

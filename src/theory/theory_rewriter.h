@@ -20,38 +20,13 @@
 #define CVC4__THEORY__THEORY_REWRITER_H
 
 #include "expr/node.h"
+#include "theory/rewrite_response.h"
+#include "theory/rewriter/rules.h"
 
 namespace CVC4 {
 namespace theory {
 
 class Rewriter;
-
-/**
- * Theory rewriters signal whether more rewriting is needed (or not)
- * by using a member of this enumeration.  See RewriteResponse, below.
- */
-enum RewriteStatus
-{
-  /** The node is fully rewritten (no more rewrites apply) */
-  REWRITE_DONE,
-  /** The node may be rewritten further */
-  REWRITE_AGAIN,
-  /** Subnodes of the node may be rewritten further */
-  REWRITE_AGAIN_FULL
-}; /* enum RewriteStatus */
-
-/**
- * Instances of this class serve as response codes from
- * TheoryRewriter::preRewrite() and TheoryRewriter::postRewrite(). The response
- * consists of the rewritten node as well as a status that indicates whether
- * more rewriting is needed or not.
- */
-struct RewriteResponse
-{
-  const RewriteStatus d_status;
-  const Node d_node;
-  RewriteResponse(RewriteStatus status, Node n) : d_status(status), d_node(n) {}
-}; /* struct RewriteResponse */
 
 /**
  * The interface that a theory rewriter has to implement.

@@ -15,6 +15,8 @@
  ** \todo document this file
  **/
 
+#include "theory/bv/theory_bv_rewriter.h"
+
 #include "options/bv_options.h"
 #include "theory/bv/theory_bv_rewrite_rules.h"
 #include "theory/bv/theory_bv_rewrite_rules_constant_evaluation.h"
@@ -22,9 +24,8 @@
 #include "theory/bv/theory_bv_rewrite_rules_normalization.h"
 #include "theory/bv/theory_bv_rewrite_rules_operator_elimination.h"
 #include "theory/bv/theory_bv_rewrite_rules_simplification.h"
-#include "theory/bv/theory_bv_rewriter.h"
+#include "theory/rewriter/rules_implementation.h"
 #include "theory/theory.h"
-#include "theory/rewriter/rules.h"
 
 using namespace CVC4;
 using namespace CVC4::theory;
