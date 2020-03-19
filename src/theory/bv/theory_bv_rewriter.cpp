@@ -410,8 +410,14 @@ RewriteResponse TheoryBVRewriter::RewriteSub(TNode node, bool prerewrite){
 }
 
 RewriteResponse TheoryBVRewriter::RewriteNeg(TNode node, bool prerewrite) {
-  Node resultNode = node; 
-  
+  Node resultNode = node;
+
+  RewriteResponse response = rules::NegIdemp(node);
+  if (response.d_node != node)
+  {
+    return response;
+  }
+
   resultNode = LinearRewriteStrategy
     < RewriteRule<EvalNeg>,
       RewriteRule<NegIdemp>,
@@ -655,6 +661,10 @@ RewriteResponse TheoryBVRewriter::RewriteEqual(TNode node, bool prerewrite) {
         RewriteRule<SimplifyEq>,
         RewriteRule<ReflexivityEq>
         >::apply(node);
+    if (resultNode != node)
+    {
+      return RewriteResponse(REWRITE_DONE, resultNode);
+    }
 
     if(RewriteRule<SolveEq>::applies(resultNode)) {
       resultNode = RewriteRule<SolveEq>::run<false>(resultNode);

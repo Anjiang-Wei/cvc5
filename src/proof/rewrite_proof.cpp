@@ -135,12 +135,14 @@ RewriteStep* RewriteProof::getRewrite() const
   return d_rewrites[0];
 }
 
-void RewriteProof::registerRewrite(theory::rules::RewriteRule tag)
+void RewriteProof::registerRewrite(theory::rules::RewriteRule tag,
+                                   Node rewritten)
 {
   RewriteStep* topRewrite = d_rewrites.back();
   d_rewrites.pop_back();
   RewriteStep* newRewrite = new RewriteStep(tag, topRewrite->d_original);
   newRewrite->d_children.push_back(topRewrite);
+  newRewrite->d_rewritten = rewritten;
   d_rewrites.push_back(newRewrite);
 }
 

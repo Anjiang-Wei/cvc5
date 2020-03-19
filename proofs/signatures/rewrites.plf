@@ -1,0 +1,44 @@
+(declare trusted_rewrite_f
+  (! x formula
+  (! y formula
+  (! u (th_holds (iff x y))
+  (! z formula
+    (th_holds (iff x z)))))))
+
+(declare symm_equal
+  (! s sort
+  (! x (term s)
+  (! y (term s)
+  (! z (term s)
+  (! w (term s)
+  (! u1 (th_holds (= s x y))
+  (! u2 (th_holds (= s z w))
+    (th_holds (iff (= s x z) (= s y w)))))))))))
+
+; Apply a unary operator to the original and the rewritten formula
+(declare symm_formula_op1
+  (! op formula_op1
+  (! x formula
+  (! y formula
+  (! u (th_holds (iff x y))
+    (th_holds (iff (op x) (op y))))))))
+
+; Apply a binary operator to the original and the rewritten formulas
+(declare symm_formula_op2
+  (! op formula_op2
+  (! x formula
+  (! y formula
+  (! z formula
+  (! w formula
+  (! u1 (th_holds (iff x z))
+  (! u2 (th_holds (iff y w))
+    (th_holds (iff (op x y) (op z w)))))))))))
+
+(declare neg_idemp
+  (! n mpz
+  (! x (term (BitVec n))
+  (! y (term (BitVec n))
+  (! u (th_holds (= (BitVec n) x (bvneg _ (bvneg _ y))))
+    (th_holds (= (BitVec n) x y)))))))
+
+(declare t_eq_n_f (th_holds (iff true (not false))))

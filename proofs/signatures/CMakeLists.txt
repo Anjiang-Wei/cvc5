@@ -17,6 +17,7 @@ set(core_signature_files
     th_real.plf
     th_int.plf
     th_lira.plf
+    rewrites.plf
 )
 
 set(CORE_SIGNATURES "")
@@ -33,6 +34,9 @@ string(REPLACE "\n" "\\n\\\n" CORE_SIGNATURES "${CORE_SIGNATURES}")
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/signatures.cpp.in
   ${CMAKE_CURRENT_BINARY_DIR}/signatures.cpp)
+
+set_property(DIRECTORY APPEND PROPERTY
+  CMAKE_CONFIGURE_DEPENDS ${core_signature_files})
 
 libcvc4_add_sources(GENERATED signatures.cpp)
 install(FILES ${core_signature_files} DESTINATION share/cvc4)

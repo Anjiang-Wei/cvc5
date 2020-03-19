@@ -205,6 +205,12 @@ Node Rewriter::rewriteTo(theory::TheoryId theoryId, Node node, RewriteProof* rp)
           // Perform the pre-rewrite
           RewriteResponse response =
               preRewrite(rewriteStackTop.getTheoryId(), rewriteStackTop.d_node);
+
+          if (rp != nullptr && response.d_node != rewriteStackTop.d_node)
+          {
+            rp->registerRewrite(response.d_rule, response.d_node);
+          }
+
           // Put the rewritten node to the top of the stack
           rewriteStackTop.d_node = response.d_node;
           TheoryId newTheory = theoryOf(rewriteStackTop.d_node);
@@ -294,6 +300,12 @@ Node Rewriter::rewriteTo(theory::TheoryId theoryId, Node node, RewriteProof* rp)
         // Do the post-rewrite
         RewriteResponse response =
             postRewrite(rewriteStackTop.getTheoryId(), rewriteStackTop.d_node);
+
+        if (rp != nullptr && response.d_node != rewriteStackTop.d_node)
+        {
+          rp->registerRewrite(response.d_rule, response.d_node);
+        }
+
         // We continue with the response we got
         TheoryId newTheoryId = theoryOf(response.d_node);
         if (newTheoryId != rewriteStackTop.getTheoryId()
@@ -307,8 +319,16 @@ Node Rewriter::rewriteTo(theory::TheoryId theoryId, Node node, RewriteProof* rp)
                  == d_rewriteStack->end());
           d_rewriteStack->insert(response.d_node);
 #endif
-          Node rewritten = rewriteTo(newTheoryId, response.d_node, rp);
-          rewriteStackTop.d_node = rewritten;
+          if (rp == nullptr)
+          {
+            rewriteStackTop.d_node = rewrite(response.d_node);
+          }
+          else
+          {
+            RewriteProof subRp;
+            Node rewritten = rewriteTo(theoryOf(node), response.d_node, &subRp);
+            rewriteStackTop.d_node = rewritten;
+          }
 #ifdef CVC4_ASSERTIONS
           d_rewriteStack->erase(response.d_node);
 #endif

@@ -32,6 +32,7 @@ struct RewriteStep {
   theory::rules::RewriteRule d_tag = theory::rules::RewriteRule::UNKNOWN;
   // Node before the rewrite
   Node d_original;
+  Node d_rewritten;
   // Rewrite proofs for children
   std::vector<RewriteStep *> d_children;
   // Subproofs
@@ -79,7 +80,7 @@ public:
   RewriteStep *getRewrite() const;
   RewriteStep *getTopRewrite() const { return d_rewrites.back(); };
 
-  void registerRewrite(theory::rules::RewriteRule tag);
+  void registerRewrite(theory::rules::RewriteRule tag, Node rewritten);
   void registerSwap(const unsigned swap_id1, const unsigned swap_id2);
   void replaceRewrite(RewriteStep *rewrite);
 

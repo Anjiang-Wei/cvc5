@@ -162,13 +162,13 @@ def gen_rule_printer(rule):
     rule_printer_pattern = """
     if (step->d_tag == RewriteRule::{})
     {{
-      os << "({} ";
+      os << "({} _ _ _ ";
       printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
       os << ")";
       return;
     }}
     """
-    return rule_printer_pattern.format(name_to_enum(rule.name), rule.name)
+    return rule_printer_pattern.format(name_to_enum(rule.name), name_to_enum(rule.name).lower())
 
 
 def gen_proof_printer(rules):
@@ -223,6 +223,14 @@ def gen_proof_printer(rules):
             return;
           }}
 
+          case kind::BITVECTOR_NEG:
+          {{
+            os << "(symm_formula_op1 bvneg _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
           case kind::IMPLIES:
           {{
             os << "(symm_formula_op2 impl _ _ _ _ ";
@@ -243,8 +251,27 @@ def gen_proof_printer(rules):
             return;
           }}
 
+          case kind::EQUAL:
+          {{
+            os << "(symm_equal _ _ _ _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << " ";
+            printRewriteProof(useCache, tp, step->d_children[1], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
           default: Unimplemented();
         }}
+      }}
+      else if (step->d_tag == RewriteRule::UNKNOWN)
+      {{
+        os << "(trusted_rewrite_f _ _ ";
+        printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+        os << " ";
+        tp->printTheoryTerm(step->d_rewritten.toExpr(), os, globalLetMap);
+        os << ")";
+        return;
       }}
       {}
     }}
