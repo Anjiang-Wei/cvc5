@@ -302,6 +302,9 @@ typerule FLOATINGPOINT_COMPONENT_EXPONENT   ::CVC4::theory::fp::FloatingPointCom
 operator FLOATINGPOINT_COMPONENT_SIGNIFICAND 1 "Significand component of a word-blasted floating-point number"
 typerule FLOATINGPOINT_COMPONENT_SIGNIFICAND   ::CVC4::theory::fp::FloatingPointComponentSignificand
 
+operator FLOATINGPOINT_TO_IEEE_BV 1 "IEEE representation of a floating-point number"
+typerule FLOATINGPOINT_TO_IEEE_BV   ::CVC4::theory::fp::FloatingPointToIeeeBv
+
 
 operator ROUNDINGMODE_BITBLAST 1 "The bit-vector for a non-deterministic rounding mode"
 typerule ROUNDINGMODE_BITBLAST    ::CVC4::theory::fp::RoundingModeBitBlast

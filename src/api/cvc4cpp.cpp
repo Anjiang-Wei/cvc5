@@ -209,6 +209,7 @@ const static std::unordered_map<Kind, CVC4::Kind, KindHashFunction> s_kinds{
     {FLOATINGPOINT_TO_UBV, CVC4::Kind::FLOATINGPOINT_TO_UBV},
     {FLOATINGPOINT_TO_SBV, CVC4::Kind::FLOATINGPOINT_TO_SBV},
     {FLOATINGPOINT_TO_REAL, CVC4::Kind::FLOATINGPOINT_TO_REAL},
+    {FLOATINGPOINT_TO_IEEE_BV, CVC4::Kind::FLOATINGPOINT_TO_IEEE_BV},
     /* Arrays -------------------------------------------------------------- */
     {SELECT, CVC4::Kind::SELECT},
     {STORE, CVC4::Kind::STORE},
@@ -474,6 +475,7 @@ const static std::unordered_map<CVC4::Kind, Kind, CVC4::kind::KindHashFunction>
         {CVC4::Kind::FLOATINGPOINT_TO_SBV_TOTAL, INTERNAL_KIND},
         {CVC4::Kind::FLOATINGPOINT_TO_REAL, FLOATINGPOINT_TO_REAL},
         {CVC4::Kind::FLOATINGPOINT_TO_REAL_TOTAL, INTERNAL_KIND},
+        {CVC4::Kind::FLOATINGPOINT_TO_IEEE_BV, FLOATINGPOINT_TO_IEEE_BV},
         /* Arrays ---------------------------------------------------------- */
         {CVC4::Kind::SELECT, SELECT},
         {CVC4::Kind::STORE, STORE},

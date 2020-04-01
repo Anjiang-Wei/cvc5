@@ -255,6 +255,7 @@ void Smt2::addFloatingPointOperators() {
     addIndexedOperator(api::FLOATINGPOINT_TO_FP_SIGNED_BITVECTOR,
                        api::FLOATINGPOINT_TO_FP_SIGNED_BITVECTOR,
                        "to_fp_signed");
+    addOperator(api::FLOATINGPOINT_TO_IEEE_BV, "fp.to_ieee_bv");
   }
 }
 

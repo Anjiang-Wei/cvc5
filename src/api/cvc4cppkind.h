@@ -1441,6 +1441,8 @@ enum CVC4_PUBLIC Kind : int32_t
    */
   FLOATINGPOINT_TO_REAL,
 
+  FLOATINGPOINT_TO_IEEE_BV,
+
   /* Arrays ---------------------------------------------------------------- */
 
   /**

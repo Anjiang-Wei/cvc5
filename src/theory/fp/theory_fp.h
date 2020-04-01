@@ -142,6 +142,9 @@ class TheoryFp : public Theory {
 
   bool refineAbstraction(TheoryModel* m, TNode abstract, TNode concrete);
 
+  std::unordered_map<TypeNode, Node, TypeNodeHashFunction>
+      d_ufFpToIeeeBvSkolems;
+
 }; /* class TheoryFp */
 
 }  // namespace fp

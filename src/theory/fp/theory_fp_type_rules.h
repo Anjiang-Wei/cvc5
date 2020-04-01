@@ -739,6 +739,37 @@ class FloatingPointComponentSignificand
   }
 };
 
+class FloatingPointToIeeeBv
+{
+ public:
+  inline static TypeNode computeType(NodeManager* nodeManager,
+                                     TNode n,
+                                     bool check)
+  {
+    TypeNode operandType = n[0].getType(check);
+
+    if (check)
+    {
+      if (!operandType.isFloatingPoint())
+      {
+        throw TypeCheckingExceptionPrivate(n,
+                                           "fp.to_ieee_bv applied to a non "
+                                           "floating-point sort");
+      }
+    }
+
+#ifdef CVC4_USE_SYMFPU
+    /* As before we need to use some of sympfu. */
+    FloatingPointSize fps = operandType.getConst<FloatingPointSize>();
+    unsigned bw = fps.packedWidth();
+#else
+    unsigned bw = 1;
+#endif
+
+    return nodeManager->mkBitVectorType(bw);
+  }
+};
+
 class RoundingModeBitBlast
 {
  public:

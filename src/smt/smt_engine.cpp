@@ -3038,8 +3038,8 @@ Expr SmtEngine::getValue(const Expr& ex) const
 
   // Ensure it's a constant, or a lambda (for uninterpreted functions). This
   // assertion only holds for models that do not have approximate values.
-  Assert(m->hasApproximations() || resultNode.getKind() == kind::LAMBDA
-         || resultNode.isConst());
+  // Assert(m->hasApproximations() || resultNode.getKind() == kind::LAMBDA
+  //       || resultNode.isConst());
 
   if(options::abstractValues() && resultNode.getType().isArray()) {
     resultNode = d_private->mkAbstractValue(resultNode);

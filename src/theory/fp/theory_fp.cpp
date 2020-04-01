@@ -399,6 +399,7 @@ Node TheoryFp::expandDefinition(LogicRequest &lr, Node node)
   Trace("fp-expandDefinition") << "TheoryFp::expandDefinition(): " << node
                                << std::endl;
 
+  NodeManager* nm = NodeManager::currentNM();
   Node res = node;
 
   if (node.getKind() == kind::FLOATINGPOINT_TO_FP_GENERIC) {
@@ -438,8 +439,40 @@ Node TheoryFp::expandDefinition(LogicRequest &lr, Node node)
     enableUF(lr);
     res = NodeManager::currentNM()->mkNode(kind::FLOATINGPOINT_TO_REAL_TOTAL,
                                            node[0], toRealUF(node));
+  }
+  else if (node.getKind() == kind::FLOATINGPOINT_TO_IEEE_BV)
+  {
+    // enableUF(lr);
+    TypeNode fpt = node[0].getType();
+    uint32_t bw = fpt.getFloatingPointExponentSize()
+                  + fpt.getFloatingPointSignificandSize();
+    TypeNode bvt = nm->mkBitVectorType(bw);
+    Node v = nm->mkBoundVar(bvt);
+    Node bvl = nm->mkNode(kind::BOUND_VAR_LIST, v);
+    Node cond = nm->mkNode(kind::FLOATINGPOINT_ISNAN, node[0]).negate();
 
-  } else {
+    FloatingPointToFPIEEEBitVector conv(fpt.getFloatingPointExponentSize(),
+                                        fpt.getFloatingPointSignificandSize());
+
+    if (d_ufFpToIeeeBvSkolems.find(fpt) == d_ufFpToIeeeBvSkolems.end())
+    {
+      std::vector<TypeNode> args = {fpt};
+      d_ufFpToIeeeBvSkolems[fpt] = nm->mkSkolem(
+          "fp.to_ieee_bv NaN case", bvt);  // nm->mkFunctionType(args, bvt));
+    }
+
+    Node body =
+        nm->mkNode(kind::ITE,
+                   cond,
+                   node[0].eqNode(nm->mkNode(nm->mkConst(conv), v)),
+                   nm->mkNode(kind::AND,
+                              nm->mkNode(kind::FLOATINGPOINT_ISNAN,
+                                         nm->mkNode(nm->mkConst(conv), v)),
+                              v.eqNode(d_ufFpToIeeeBvSkolems[fpt])));
+    res = nm->mkNode(kind::CHOICE, bvl, body);
+  }
+  else
+  {
     // Do nothing
   }
 
