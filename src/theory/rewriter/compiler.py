@@ -10,20 +10,66 @@ from node import *
 from rule import Rule
 from parser import parse_rules
 
+from backend_lfsc import collect_params
+
 op_to_kind = {
+    Op.BVUGT: 'BITVECTOR_UGT',
+    Op.BVUGE: 'BITVECTOR_UGE',
     Op.BVSGT: 'BITVECTOR_SGT',
+    Op.BVSGE: 'BITVECTOR_SGE',
     Op.BVSLT: 'BITVECTOR_SLT',
+    Op.BVSLE: 'BITVECTOR_SLE',
     Op.BVULT: 'BITVECTOR_ULT',
     Op.BVULE: 'BITVECTOR_ULE',
     Op.BVNEG: 'BITVECTOR_NEG',
+    Op.BVADD: 'BITVECTOR_PLUS',
+    Op.BVSUB: 'BITVECTOR_SUB',
+    Op.CONCAT: 'BITVECTOR_CONCAT',
     Op.ZERO_EXTEND: 'BITVECTOR_ZERO_EXTEND',
     Op.NOT: 'NOT',
     Op.EQ: 'EQUAL',
 }
 
+op_to_lfsc = {
+    Op.BVUGT: 'bvugt',
+    Op.BVUGE: 'bvuge',
+    Op.BVSGT: 'bvsgt',
+    Op.BVSGE: 'bvsge',
+    Op.BVSLT: 'bvslt',
+    Op.BVSLE: 'bvsle',
+    Op.BVULT: 'bvult',
+    Op.BVULE: 'bvule',
+    Op.BVNEG: 'bvneg',
+    Op.BVADD: 'bvadd',
+    Op.BVSUB: 'bvsub',
+    Op.CONCAT: 'concat',
+    Op.ZERO_EXTEND: 'zero_extend',
+    Op.NOT: 'not',
+    Op.EQ: '=',
+}
+
+
+op_to_nindex = {
+    Op.BVUGT: 0,
+    Op.BVUGE: 0,
+    Op.BVSGT: 0,
+    Op.BVSGE: 0,
+    Op.BVSLT: 0,
+    Op.BVSLE: 0,
+    Op.BVULT: 0,
+    Op.BVULE: 0,
+    Op.BVNEG: 0,
+    Op.BVADD: 0,
+    Op.BVSUB: 0,
+    Op.CONCAT: 0,
+    Op.ZERO_EXTEND: 1,
+    Op.NOT: 0,
+    Op.EQ: 0,
+}
+
 
 def rule_to_in_ir(rvars, lhs):
-    def expr_to_ir(expr, path, vars_seen, out_ir):
+    def expr_to_ir(expr, path, vars_seen, out_ir, in_index = False):
         if isinstance(expr, Fn):
             out_ir.append(
                 Assert(
@@ -31,7 +77,8 @@ def rule_to_in_ir(rvars, lhs):
                        [Fn(Op.GET_KIND, [GetChild(path)]),
                         KindConst(expr.op)])))
             for i, child in enumerate(expr.children):
-                expr_to_ir(child, path + [i], vars_seen, out_ir)
+                index = i if i < op_to_nindex[expr.op] else i - op_to_nindex[expr.op]
+                expr_to_ir(child, path + [index], vars_seen, out_ir, i < op_to_nindex[expr.op])
 
             if isinstance(expr.op, Fn):
                 pass
@@ -42,10 +89,15 @@ def rule_to_in_ir(rvars, lhs):
                     Assert(Fn(Op.EQ,
                               [Var(expr.name), GetChild(path)])))
             else:
-                out_ir.append(Assign(expr.name, GetChild(path)))
+                if in_index:
+                    index_expr = GetIndex(path)
+                    index_expr.sort = Sort(BaseSort.Int, [])
+                    out_ir.append(Assign(expr.name, index_expr))
+                else:
+                    out_ir.append(Assign(expr.name, GetChild(path)))
 
                 if expr.sort is not None and expr.sort.base == BaseSort.BitVec:
-                    width = expr.sort.args[0]
+                    width = expr.sort.children[0]
                     if isinstance(width, Var) and not width.name in vars_seen:
                         bv_size_expr = Fn(Op.BV_SIZE, [GetChild(path)])
                         bv_size_expr.sort = Sort(BaseSort.Int, [])
@@ -104,6 +156,9 @@ def expr_to_code(expr):
     elif isinstance(expr, GetChild):
         path_str = ''.join(['[{}]'.format(i) for i in expr.path])
         return '__node{}'.format(path_str)
+    elif isinstance(expr, GetIndex):
+        path_str = ''.join(['[{}]'.format(i) for i in expr.path[:-1]])
+        return 'bv::utils::getIndex(__node{}, {})'.format(path_str, expr.path[-1])
     elif isinstance(expr, BoolConst):
         return ('true' if expr.val else 'false')
     elif isinstance(expr, BVConst):
@@ -148,7 +203,6 @@ def gen_rule(rule):
       return RewriteResponse(REWRITE_AGAIN, {}, RewriteRule::{});
     }}"""
 
-    infer_types(rule.rvars, rule.lhs)
     in_ir = rule_to_in_ir(rule.rvars, rule.lhs)
     out_ir = [Assign(out_var, rule_to_out_expr(rule.rhs))]
     ir = in_ir + [rule.cond] + out_ir
@@ -162,13 +216,18 @@ def gen_rule_printer(rule):
     rule_printer_pattern = """
     if (step->d_tag == RewriteRule::{})
     {{
-      os << "({} _ _ _ ";
+      os << "({} {} _ _ ";
       printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
       os << ")";
       return;
     }}
     """
-    return rule_printer_pattern.format(name_to_enum(rule.name), name_to_enum(rule.name).lower())
+
+    # TODO: put in ProofRule instead of recomputing
+    params = collect_params(rule)
+    params_str = ' '.join(['_'] * len(params))
+
+    return rule_printer_pattern.format(name_to_enum(rule.name), name_to_enum(rule.name).lower(), params_str)
 
 
 def gen_proof_printer(rules):
@@ -192,23 +251,20 @@ def gen_proof_printer(rules):
     {{
       if (step->d_tag == RewriteRule::NONE && step->d_children.size() == 0)
       {{
-        switch (step->d_original.getKind())
+        TypeNode tn = step->d_original.getType();
+        if (tn.isBoolean())
         {{
-          case kind::EQUAL:
-          {{
-            os << "(iff_symm ";
-            tp->printTheoryTerm(step->d_original.toExpr(), os, globalLetMap);
-            os << ")";
-            return;
-          }}
-
-          default:
-          {{
-            os << "(refl _ ";
-            tp->printTheoryTerm(step->d_original.toExpr(), os, globalLetMap);
-            os << ")";
-            return;
-          }}
+          os << "(iff_symm ";
+          tp->printTheoryTerm(step->d_original.toExpr(), os, globalLetMap);
+          os << ")";
+          return;
+        }}
+        else
+        {{
+          os << "(refl _ ";
+          tp->printTheoryTerm(step->d_original.toExpr(), os, globalLetMap);
+          os << ")";
+          return;
         }}
       }}
       else if (step->d_tag == RewriteRule::NONE)
@@ -227,6 +283,16 @@ def gen_proof_printer(rules):
           {{
             os << "(symm_formula_op1 bvneg _ _ ";
             printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
+          case kind::BITVECTOR_ULT:
+          {{
+            os << "(symm_bvpred bvult _ _ _ _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << " ";
+            printRewriteProof(useCache, tp, step->d_children[1], os, globalLetMap);
             os << ")";
             return;
           }}
@@ -251,6 +317,16 @@ def gen_proof_printer(rules):
             return;
           }}
 
+          case kind::OR:
+          {{
+            os << "(symm_formula_op2 or _ _ _ _ ";
+            printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+            os << " ";
+            printRewriteProof(useCache, tp, step->d_children[1], os, globalLetMap);
+            os << ")";
+            return;
+          }}
+
           case kind::EQUAL:
           {{
             os << "(symm_equal _ _ _ _ _ ";
@@ -261,17 +337,43 @@ def gen_proof_printer(rules):
             return;
           }}
 
-          default: Unimplemented();
+          default: Unimplemented() << "Not supported: " << step->d_original.getKind();
         }}
       }}
       else if (step->d_tag == RewriteRule::UNKNOWN)
       {{
-        os << "(trusted_rewrite_f _ _ ";
-        printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
-        os << " ";
-        tp->printTheoryTerm(step->d_rewritten.toExpr(), os, globalLetMap);
-        os << ")";
-        return;
+        TypeNode tn = step->d_original.getType();
+        if (tn.isBoolean())
+        {{
+          os << "(trusted_formula_rewrite _ _ ";
+          printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+          os << " ";
+          tp->printTheoryTerm(step->d_rewritten.toExpr(), os, globalLetMap);
+          os << ")";
+          return;
+        }}
+        else
+        {{
+          os << "(trusted_term_rewrite _ _ _ ";
+          printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+          os << " ";
+          tp->printTheoryTerm(step->d_rewritten.toExpr(), os, globalLetMap);
+          os << ")";
+          return;
+        }}
+      }}
+      else if (step->d_tag == RewriteRule::CONST_EVAL)
+      {{
+        if (step->d_rewritten.getType().isBoolean())
+        {{
+          os << "(const_eval_f _ _ ";
+          printRewriteProof(useCache, tp, step->d_children[0], os, globalLetMap);
+          os << " ";
+          tp->printTheoryTerm(step->d_rewritten.toExpr(), os, globalLetMap);
+          os << ")";
+          return;
+        }}
+        Unreachable();
       }}
       {}
     }}
@@ -308,6 +410,7 @@ def gen_enum(rules):
     enum class RewriteRule {{
       {},
       UNKNOWN,
+      CONST_EVAL,
       NONE
     }};
 
@@ -352,6 +455,79 @@ def format_cpp(s):
     return out.decode()
 
 
+def sort_to_lfsc(sort):
+    if sort and sort.base == BaseSort.Bool:
+        return 'formula'
+    else: # if sort.base == BaseSort.BitVec:
+        return '(term (BitVec n))'
+
+def expr_to_lfsc(expr):
+    if isinstance(expr, Fn):
+        if expr.op in [Op.ZERO_EXTEND]:
+            args = [expr_to_lfsc(arg) for arg in expr.children]
+            return '({} zebv {} _ {})'.format(op_to_lfsc[expr.op], ' '.join(args[:op_to_nindex[expr.op]]), ' '.join(args[op_to_nindex[expr.op]:]))
+        else:
+            args = [expr_to_lfsc(arg) for arg in expr.children]
+            return '({} _ {})'.format(op_to_lfsc[expr.op], ' '.join(args))
+
+    elif isinstance(expr, Var):
+        return expr.name
+    elif isinstance(expr, BVConst):
+        return '(a_bv _ {})'.format('bv{}_{}'.format(expr.val, expr.bw))
+    elif isinstance(expr, BoolConst):
+        return ('true' if expr.val else 'false')
+
+def rule_to_lfsc(rule):
+    rule_pattern = """
+    (declare {}
+    {}
+      (! u (th_holds {})
+        (th_holds {}))){}"""
+    closing_parens = ''
+
+    rule_name = name_to_enum(rule.name).lower()
+
+    params = collect_params(rule)
+
+    varargs = []
+
+    for param in params:
+        sort_str = ''
+        if param.sort.base == BaseSort.Int:
+            sort_str = 'mpz'
+        elif param.sort.base == BaseSort.BitVec:
+            sort_str = 'bv'
+        else:
+            print('Unsupported sort: {}'.format(param.sort_base))
+            assert False
+        varargs.append('(! {} {}'.format(param.name, sort_str))
+        closing_parens += ')'
+
+    varargs.append('(! original {}'.format(sort_to_lfsc(rule.lhs.sort)))
+    closing_parens += ')'
+
+    for name, sort in rule.rvars.items():
+        varargs.append('(! {} {}'.format(name, sort_to_lfsc(sort)))
+        closing_parens += ')'
+
+    if rule.lhs.sort.base == BaseSort.Bool:
+        lhs = '(iff original {})'.format(expr_to_lfsc(rule.lhs))
+        rhs = '(iff original {})'.format(expr_to_lfsc(rule.rhs))
+    else:
+        lhs = '(= _ original {})'.format(expr_to_lfsc(rule.lhs))
+        rhs = '(= _ original {})'.format(expr_to_lfsc(rule.rhs))
+
+    print(rule_pattern.format(rule_name, '\n'.join(varargs), lhs, rhs, closing_parens))
+
+
+def type_check(rules):
+    for rule in rules:
+        infer_types(rule.rvars, rule.lhs)
+
+        # Ensure that we were able to compute the types for the whole left-hand side
+        assert rule.lhs.sort is not None
+
+
 def main():
     # (define-rule SgtEliminate ((x (_ BitVec n)) (y (_ BitVec n))) (bvsgt x y) (bvsgt y x))
 
@@ -383,16 +559,14 @@ def main():
 
     rules = parse_rules(args.infile.read())
 
+    type_check(rules)
+
     args.rulesfile.write(gen_enum(rules))
     args.implementationfile.write(gen_rules_implementation(rules))
     args.printerfile.write(gen_proof_printer(rules))
 
-    # zero_extend_eliminate = Rule('ZeroExtendEliminate',
-    #                      [Var('x', Sort(BaseSort.BitVec, [Var('n', int_sort)]))],
-    #                      BoolConst(True),
-    #                      Fn(Fn(Op.ZERO_EXTEND, [IntConst(0)]), [Var('x')]),
-    #                      Var('x'))
-    # print(format_cpp(gen_rule(zero_extend_eliminate)))
+    for rule in rules:
+        rule_to_lfsc(rule)
 
 
 if __name__ == "__main__":

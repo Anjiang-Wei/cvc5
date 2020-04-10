@@ -52,6 +52,8 @@ unsigned getExtractLow(TNode node);
 /* Get the number of bits by which a given node is extended. */
 unsigned getSignExtendAmount(TNode node);
 
+uint32_t getIndex(TNode node, size_t index);
+
 /* Returns true if given node represents a bit-vector comprised of ones.  */
 bool isOnes(TNode node);
 

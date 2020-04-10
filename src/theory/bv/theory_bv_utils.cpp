@@ -56,6 +56,33 @@ unsigned getSignExtendAmount(TNode node)
   return node.getOperator().getConst<BitVectorSignExtend>().d_signExtendAmount;
 }
 
+uint32_t getIndex(TNode node, size_t index)
+{
+  if (node.getKind() == kind::BITVECTOR_ZERO_EXTEND)
+  {
+    if (index == 0)
+    {
+      return node.getOperator()
+          .getConst<BitVectorZeroExtend>()
+          .d_zeroExtendAmount;
+    }
+    Unreachable();
+  }
+  if (node.getKind() == kind::BITVECTOR_EXTRACT)
+  {
+    if (index == 0)
+    {
+      return node.getOperator().getConst<BitVectorExtract>().d_high;
+    }
+    else if (index == 1)
+    {
+      return node.getOperator().getConst<BitVectorExtract>().d_low;
+    }
+    Unreachable();
+  }
+  Unreachable();
+}
+
 /* ------------------------------------------------------------------------- */
 
 bool isOnes(TNode node)

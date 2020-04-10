@@ -15,11 +15,13 @@
  ** \todo document this file
  **/
 
+#include "theory/booleans/theory_bool_rewriter.h"
+
 #include <algorithm>
 #include <unordered_set>
 
 #include "expr/node_value.h"
-#include "theory/booleans/theory_bool_rewriter.h"
+#include "theory/rewriter/rules.h"
 
 namespace CVC4 {
 namespace theory {
@@ -141,8 +143,10 @@ RewriteResponse TheoryBoolRewriter::preRewrite(TNode n) {
 
   switch(n.getKind()) {
   case kind::NOT: {
-    if (n[0] == tt) return RewriteResponse(REWRITE_DONE, ff);
-    if (n[0] == ff) return RewriteResponse(REWRITE_DONE, tt);
+    if (n[0] == tt)
+      return RewriteResponse(REWRITE_DONE, ff, rules::RewriteRule::CONST_EVAL);
+    if (n[0] == ff)
+      return RewriteResponse(REWRITE_DONE, tt, rules::RewriteRule::CONST_EVAL);
     if (n[0].getKind() == kind::NOT) return RewriteResponse(REWRITE_AGAIN, n[0][0]);
     break;
   }

@@ -1,4 +1,20 @@
-(declare trusted_rewrite_f
+(declare trusted_formula_rewrite
+  (! x formula
+  (! y formula
+  (! u (th_holds (iff x y))
+  (! z formula
+    (th_holds (iff x z)))))))
+
+(declare trusted_term_rewrite
+  (! s sort
+  (! x (term s)
+  (! y (term s)
+  (! u (th_holds (= s x y))
+  (! z (term s)
+    (th_holds (= s x z))))))))
+
+; TODO: Side condition that checks the evaluation
+(declare const_eval_f
   (! x formula
   (! y formula
   (! u (th_holds (iff x y))
@@ -34,11 +50,48 @@
   (! u2 (th_holds (iff y w))
     (th_holds (iff (op x y) (op z w)))))))))))
 
-(declare neg_idemp
+(declare symm_bvpred
+  (! op bvpred
   (! n mpz
   (! x (term (BitVec n))
   (! y (term (BitVec n))
-  (! u (th_holds (= (BitVec n) x (bvneg _ (bvneg _ y))))
-    (th_holds (= (BitVec n) x y)))))))
+  (! z (term (BitVec n))
+  (! w (term (BitVec n))
+  (! u1 (th_holds (= (BitVec n) x z))
+  (! u2 (th_holds (= (BitVec n) y w))
+    (th_holds (iff (op n x y) (op n z w))))))))))))
+
+(declare neg_idemp
+  (! n mpz
+  (! lhs (term (BitVec n))
+  (! y (term (BitVec n))
+  (! u (th_holds (= (BitVec n) lhs (bvneg _ (bvneg _ y))))
+    (th_holds (= _ lhs y)))))))
+
+(declare reflexivity_eq
+  (! n mpz
+  (! x formula
+  (! y (term (BitVec n))
+  (! u (th_holds (iff x (= (BitVec n) y y)))
+    (th_holds (iff x true)))))))
+
+    (declare ult_zero                                             
+    (! n mpz                                                      
+(! bv0_n bv                                                       
+(! original formula                                               
+(! x (term (BitVec n))                                            
+      (! u (th_holds (iff original (bvult _ x (a_bv _ bv0_n))))   
+        (th_holds (iff original false))))))))                     
+
+    (declare zero_extend_n_z                                           
+    (! zeamount mpz                                                    
+(! zebv mpz                                                            
+(! n mpz                                                               
+(! m mpz                                                               
+(! original (term (BitVec n))                                          
+(! m (term (BitVec n))                                                 
+(! x (term (BitVec n))                                                 
+      (! u (th_holds (= _ original (zero_extend zebv m _ x)))          
+        (th_holds (= _ original (concat _ (a_bv _ bv0_m) x)))))))))))) 
 
 (declare t_eq_n_f (th_holds (iff true (not false))))
