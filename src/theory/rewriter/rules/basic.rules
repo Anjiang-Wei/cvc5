@@ -1,10 +1,18 @@
-(define-rule ZeroExtendEliminate ((i Int) (x (_ BitVec n)))
+(define-rule NegIdemp ((n Num) (x (_ BitVec n)))
+    (bvneg (bvneg x))
+    x)
+
+(define-rule ZeroExtendEliminate ((i Num) (x (_ BitVec n)))
   ((_ zero_extend i) x)
   (cond
     ((= i 0) x)
     (concat (_ bv 0 i) x)))
 
-(define-rule SltEliminate ((n Int) (x (_ BitVec n)) (y (_ BitVec n)))
+(define-rule SltEliminate ((n Num) (x (_ BitVec n)) (y (_ BitVec n)))
     (bvslt x y)
     (let ((pow_two (bvshl (_ bv 1 n) (_ bv (- n 1) n))))
       (bvult (bvadd x pow_two) (bvadd y pow_two))))
+
+(define-rule UleMax ((n Num) (x (_ BitVec n)))
+    (bvult x (bvnot (_ bv 0 n)))
+    true)

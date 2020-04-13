@@ -157,6 +157,12 @@ class GetChild(Node):
     def __repr__(self):
         return '__node' + ''.join('[{}]'.format(p) for p in self.path)
 
+    def __eq__(self, other):
+        return isinstance(other, GetChild) and self.path == other.path
+
+    def __hash__(self):
+        return hash(tuple(self.path))
+
 class GetIndex(Node):
     def __init__(self, path):
         super().__init__([])
@@ -164,6 +170,12 @@ class GetIndex(Node):
 
     def __repr__(self):
         return 'index(__node{}, {})'.format(''.join('[{}]'.format(p) for p in self.path[:-1]), self.path[-1])
+
+    def __eq__(self, other):
+        return isinstance(other, GetIndex) and self.path == other.path
+
+    def __hash__(self):
+        return hash(tuple(self.path))
 
 class Fn(Node):
     def __init__(self, op, args):
@@ -208,6 +220,24 @@ def collect_vars(node):
 
     return result
 
+def count_vars(counts, node):
+    if isinstance(node, Var):
+        counts[node] += 1
+    else:
+        for child in node.children:
+            count_vars(counts, child)
+
+
+def subst(node, substs):
+    # TODO: non-destructive substitution?
+    if node in substs:
+        return substs[node]
+    else:
+        new_children = []
+        for child in node.children:
+            new_children.append(subst(child, substs))
+        node.children = new_children
+        return node
 
 def unify_types(t1, t2):
     assert t1.base == t2.base

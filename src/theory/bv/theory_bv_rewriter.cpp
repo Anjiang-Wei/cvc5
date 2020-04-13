@@ -56,11 +56,13 @@ RewriteResponse TheoryBVRewriter::postRewrite(TNode node) {
 }
 
 RewriteResponse TheoryBVRewriter::RewriteUlt(TNode node, bool prerewrite) {
+  /*
   RewriteResponse response = rules::UltZero(node);
   if (response.d_node != node)
   {
     return response;
   }
+  */
 
   // reduce common subexpressions on both sides
   Node resultNode = LinearRewriteStrategy
@@ -418,11 +420,13 @@ RewriteResponse TheoryBVRewriter::RewriteSub(TNode node, bool prerewrite){
 RewriteResponse TheoryBVRewriter::RewriteNeg(TNode node, bool prerewrite) {
   Node resultNode = node;
 
+  /*
   RewriteResponse response = rules::NegIdemp(node);
   if (response.d_node != node)
   {
     return response;
   }
+  */
 
   resultNode = LinearRewriteStrategy
     < RewriteRule<EvalNeg>,
@@ -574,11 +578,13 @@ RewriteResponse TheoryBVRewriter::RewriteRepeat(TNode node, bool prerewrite) {
 }
 
 RewriteResponse TheoryBVRewriter::RewriteZeroExtend(TNode node, bool prerewrite){
+  /*
   RewriteResponse response = rules::ZeroExtendNZ(node);
   if (response.d_node != node)
   {
     return response;
   }
+  */
 
   Node resultNode = LinearRewriteStrategy
     < RewriteRule<ZeroExtendEliminate >
@@ -659,11 +665,13 @@ RewriteResponse TheoryBVRewriter::RewriteIntToBV(TNode node, bool prerewrite) {
 }
 
 RewriteResponse TheoryBVRewriter::RewriteEqual(TNode node, bool prerewrite) {
+  /*
   RewriteResponse response = rules::ReflexivityEq(node);
   if (response.d_node != node)
   {
     return response;
   }
+  */
 
   if (prerewrite) {
     Node resultNode = LinearRewriteStrategy

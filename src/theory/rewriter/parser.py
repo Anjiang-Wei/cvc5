@@ -93,7 +93,7 @@ def sort():
     bv_sort = (pp.Suppress('(') + (pp.Suppress('_') + pp.Keyword('BitVec')) +
                expr() + pp.Suppress(')')
                ).setParseAction(lambda s, l, t: Sort(BaseSort.BitVec, [t[1]]))
-    int_sort = pp.Keyword('Int').setParseAction(
+    int_sort = pp.Keyword('Num').setParseAction(
         lambda s, l, t: Sort(BaseSort.Int, [], True))
     return bv_sort | int_sort
 

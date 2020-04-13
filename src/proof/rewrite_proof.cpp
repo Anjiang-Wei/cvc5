@@ -204,8 +204,8 @@ void RewriteProof::printCachedProofs(TheoryProofEngine* tp,
     {
       os << std::endl;
       os << "(@ let" << iter->second->d_id << " ";
-      theory::rules::RewriteProofPrinter::printRewriteProof(
-          false, tp, iter->second, os, globalLetMap);
+      //theory::rules::RewriteProofPrinter::printRewriteProof(
+      //    false, tp, iter->second, os, globalLetMap);
       paren << ")";
     }
   }

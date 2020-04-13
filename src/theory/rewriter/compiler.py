@@ -33,7 +33,8 @@ op_to_kind = {
 }
 
 op_to_const_eval = {
-        Op.BVSHL: '{}.leftShift({})',
+        Op.BVSHL: '({}.leftShift({}))',
+        Op.BVNOT: '(~{})',
         Op.PLUS: '({} + {})',
         Op.MINUS: '({} - {})',
         Op.EQ: '({} == {})',
@@ -82,17 +83,21 @@ op_to_nindex = {
 def rule_to_in_ir(rvars, lhs):
     def expr_to_ir(expr, path, vars_seen, out_ir, in_index = False):
         if isinstance(expr, Fn):
-            out_ir.append(
-                Assert(
-                    Fn(Op.EQ,
-                       [Fn(Op.GET_KIND, [GetChild(path)]),
-                        KindConst(expr.op)])))
-            for i, child in enumerate(expr.children):
-                index = i if i < op_to_nindex[expr.op] else i - op_to_nindex[expr.op]
-                expr_to_ir(child, path + [index], vars_seen, out_ir, i < op_to_nindex[expr.op])
+            if expr.sort.const:
+                out_ir.append(
+                    Assert(Fn(
+                        Op.EQ,
+                        [GetChild(path), Fn(Op.MK_CONST, [expr])])))
+            else:
+                out_ir.append(
+                    Assert(
+                        Fn(Op.EQ,
+                           [Fn(Op.GET_KIND, [GetChild(path)]),
+                            KindConst(expr.op)])))
+                for i, child in enumerate(expr.children):
+                    index = i if i < op_to_nindex[expr.op] else i - op_to_nindex[expr.op]
+                    expr_to_ir(child, path + [index], vars_seen, out_ir, i < op_to_nindex[expr.op])
 
-            if isinstance(expr.op, Fn):
-                pass
 
         elif isinstance(expr, Var):
             if expr.name in vars_seen:
@@ -103,16 +108,18 @@ def rule_to_in_ir(rvars, lhs):
                 if in_index:
                     index_expr = GetIndex(path)
                     index_expr.sort = Sort(BaseSort.Int, [])
-                    out_ir.append(Assign(expr.name, index_expr))
+                    out_ir.append(Assign(expr, index_expr))
                 else:
-                    out_ir.append(Assign(expr.name, GetChild(path)))
+                    out_ir.append(Assign(expr, GetChild(path)))
 
                 if expr.sort is not None and expr.sort.base == BaseSort.BitVec:
                     width = expr.sort.children[0]
                     if isinstance(width, Var) and not width.name in vars_seen:
                         bv_size_expr = Fn(Op.BV_SIZE, [GetChild(path)])
-                        bv_size_expr.sort = Sort(BaseSort.Int, [])
-                        out_ir.append(Assign(width.name, bv_size_expr))
+                        bv_size_expr.sort = Sort(BaseSort.Int, [], True)
+                        # TODO: should resolve earlier?
+                        width.sort = Sort(BaseSort.Int, [], True)
+                        out_ir.append(Assign(width, bv_size_expr))
                         vars_seen.add(width.name)
 
                 vars_seen.add(expr.name)
@@ -206,12 +213,19 @@ def rule_to_out_expr(cfg, next_block, res, expr):
             for var, child in zip(new_vars, expr.children):
                 next_block = rule_to_out_expr(cfg, next_block, var, child)
             return next_block
-    elif isinstance(expr, BoolConst) or isinstance(expr, BVConst):
-        return Fn(Op.MK_CONST, [expr])
+    elif isinstance(expr, BoolConst):
+        assign_block = fresh_name('block')
+        res.sort = Sort(BaseSort.Bool, [])
+        assign = Assign(res, expr)
+        if next_block:
+            cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
+        else:
+            assign.expr = Fn(Op.MK_CONST, [assign.expr])
+            cfg[assign_block] = CFGNode([assign], [])
+        return assign_block
     elif isinstance(expr, IntConst):
         assign_block = fresh_name('block')
         res.sort = Sort(BaseSort.Int, [])
-        print('{} should be int {}'.format(res, expr.val))
         assign = Assign(res, expr)
         if next_block:
             cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
@@ -272,20 +286,20 @@ def expr_to_code(expr):
 
 
 def sort_to_code(sort):
-    if not sort:
+    if not sort or not sort.const:
         # TODO: should not happen
         return 'Node'
     elif sort.base == BaseSort.Int:
         return 'uint32_t'
     elif sort.base == BaseSort.BitVec:
-        return 'BitVector' if sort.const else 'Node'
+        return 'BitVector'
 
 
 def ir_to_code(match_instrs):
     code = []
     for instr in match_instrs:
         if isinstance(instr, Assign):
-            code.append('{} {} = {};'.format(sort_to_code(instr.expr.sort),
+            code.append('{} = {};'.format(
                                              instr.name,
                                              expr_to_code(instr.expr)))
         elif isinstance(instr, Assert):
@@ -327,6 +341,7 @@ def gen_rule(rule):
     RewriteResponse {}(TNode __node) {{
       NodeManager* nm = NodeManager::currentNM();
       {}
+      {}
       return RewriteResponse(REWRITE_AGAIN, {}, RewriteRule::{});
     }}"""
 
@@ -335,14 +350,20 @@ def gen_rule(rule):
     entry = rule_to_out_expr(cfg, None, out_var, rule.rhs)
     match_block_name = fresh_name('block')
     cfg[match_block_name] = CFGNode(match_block, [CFGEdge(BoolConst(True), entry)])
-
-    optimize_cfg(match_block_name, cfg)
-    print(cfg_to_str(cfg))
     out_ir = rule_to_out_expr(cfg, None, out_var, rule.rhs)
+
+    optimize_cfg(out_var, match_block_name, cfg)
     # ir = in_ir + [rule.cond] + out_ir
     # opt_ir = optimize_ir(out_var, ir)
+
+    cfg_vars = cfg_collect_vars(cfg)
+    var_decls = ''
+    for var in cfg_vars:
+        var_decls += '{} {};\n'.format(sort_to_code(var.sort), var.name)
+
     body = cfg_to_code(match_block_name, cfg)
-    result = rule_pattern.format(rule.name, body, out_var,
+
+    result = rule_pattern.format(rule.name, var_decls, body, out_var,
                                name_to_enum(rule.name))
     print(result)
     return result
@@ -662,7 +683,7 @@ def type_check(rules):
         infer_types(rule.rvars, rule.rhs)
 
         # Ensure that we were able to compute the types for both sides
-        assert rule.lhs.sort is not None and rule.rhs.sort is not None
+        assert isinstance(rule.lhs.sort, Sort) and isinstance(rule.rhs.sort, Sort)
 
 
 def main():
@@ -700,10 +721,10 @@ def main():
 
     args.rulesfile.write(gen_enum(rules))
     args.implementationfile.write(gen_rules_implementation(rules))
-    args.printerfile.write(gen_proof_printer(rules))
+    #args.printerfile.write(gen_proof_printer(rules))
 
-    for rule in rules:
-        rule_to_lfsc(rule)
+    #for rule in rules:
+    #    rule_to_lfsc(rule)
 
 
 if __name__ == "__main__":

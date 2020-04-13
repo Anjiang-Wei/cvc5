@@ -878,20 +878,20 @@ void LFSCProof::printPreprocessedAssertions(const NodeSet& assertions,
                         << std::endl;
 
         os << "(th_let_pf _ ";
-        RewriteProof rp;
+        // RewriteProof rp;
         if ((*it).getKind() == kind::NOT
             && (*it)[0] == NodeManager::currentNM()->mkConst<bool>(false))
         {
           os << "t_eq_n_f ";
         }
-        else if (theory::Rewriter::rewriteWithProof(inputAssertion, &rp) == *it)
+        /*else if (theory::Rewriter::rewriteWithProof(inputAssertion, &rp) == *it)
         {
           theory::rules::RewriteProofPrinter::printProof(
               ProofManager::currentPM()->getTheoryProofEngine(),
               rp,
               os,
               globalLetMap);
-        }
+        }*/
         else
         {
           os << "(trust_f (iff ";
