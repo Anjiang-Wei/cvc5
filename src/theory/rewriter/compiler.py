@@ -33,12 +33,12 @@ op_to_kind = {
 }
 
 op_to_const_eval = {
-        Op.BVSHL: '({}.leftShift({}))',
-        Op.BVNOT: '(~{})',
-        Op.PLUS: '({} + {})',
-        Op.MINUS: '({} - {})',
-        Op.EQ: '({} == {})',
-        }
+    Op.BVSHL: '({}.leftShift({}))',
+    Op.BVNOT: '(~{})',
+    Op.PLUS: '({} + {})',
+    Op.MINUS: '({} - {})',
+    Op.EQ: '({} == {})',
+}
 
 op_to_lfsc = {
     Op.BVUGT: 'bvugt',
@@ -57,7 +57,6 @@ op_to_lfsc = {
     Op.NOT: 'not',
     Op.EQ: '=',
 }
-
 
 op_to_nindex = {
     Op.BVUGT: 0,
@@ -80,24 +79,29 @@ op_to_nindex = {
 }
 
 
-def rule_to_in_ir(rvars, lhs):
-    def expr_to_ir(expr, path, vars_seen, out_ir, in_index = False):
+def rule_to_in_ir(node_var, rvars, lhs):
+    def expr_to_ir(expr, node, vars_seen, out_ir, in_index=False):
+        print(node)
         if isinstance(expr, Fn):
             if expr.sort.const:
                 out_ir.append(
-                    Assert(Fn(
-                        Op.EQ,
-                        [GetChild(path), Fn(Op.MK_CONST, [expr])])))
+                    Assert(Fn(Op.EQ, [node, Fn(Op.MK_CONST, [expr])])))
             else:
                 out_ir.append(
                     Assert(
                         Fn(Op.EQ,
-                           [Fn(Op.GET_KIND, [GetChild(path)]),
+                           [Fn(Op.GET_KIND, [node]),
                             KindConst(expr.op)])))
                 for i, child in enumerate(expr.children):
-                    index = i if i < op_to_nindex[expr.op] else i - op_to_nindex[expr.op]
-                    expr_to_ir(child, path + [index], vars_seen, out_ir, i < op_to_nindex[expr.op])
-
+                    child_node = None
+                    if i < op_to_nindex[expr.op]:
+                        child_node = Fn(Op.GET_INDEX, [node, IntConst(i)])
+                    else:
+                        child_node = Fn(
+                            Op.GET_CHILD,
+                            [node, IntConst(i - op_to_nindex[expr.op])])
+                    expr_to_ir(child, child_node, vars_seen, out_ir,
+                               i < op_to_nindex[expr.op])
 
         elif isinstance(expr, Var):
             if expr.name in vars_seen:
@@ -105,17 +109,12 @@ def rule_to_in_ir(rvars, lhs):
                     Assert(Fn(Op.EQ,
                               [Var(expr.name), GetChild(path)])))
             else:
-                if in_index:
-                    index_expr = GetIndex(path)
-                    index_expr.sort = Sort(BaseSort.Int, [])
-                    out_ir.append(Assign(expr, index_expr))
-                else:
-                    out_ir.append(Assign(expr, GetChild(path)))
+                out_ir.append(Assign(expr, node))
 
                 if expr.sort is not None and expr.sort.base == BaseSort.BitVec:
                     width = expr.sort.children[0]
                     if isinstance(width, Var) and not width.name in vars_seen:
-                        bv_size_expr = Fn(Op.BV_SIZE, [GetChild(path)])
+                        bv_size_expr = Fn(Op.BV_SIZE, [node])
                         bv_size_expr.sort = Sort(BaseSort.Int, [], True)
                         # TODO: should resolve earlier?
                         width.sort = Sort(BaseSort.Int, [], True)
@@ -144,14 +143,18 @@ def rule_to_in_ir(rvars, lhs):
     out_ir = []
     vars_seen = set()
 
-    expr_to_ir(lhs, [], vars_seen, out_ir)
+    expr_to_ir(lhs, node_var, vars_seen, out_ir)
     return out_ir
 
+
 name_id = 0
+
+
 def fresh_name(prefix):
     global name_id
     name_id += 1
     return prefix + str(name_id)
+
 
 def rule_to_out_expr(cfg, next_block, res, expr):
     if isinstance(expr, Fn):
@@ -159,24 +162,30 @@ def rule_to_out_expr(cfg, next_block, res, expr):
             edges = []
             for case in expr.children:
                 cond = case.children[0]
-                result = rule_to_out_expr(cfg, next_block, res, case.children[1]) 
+                result = rule_to_out_expr(cfg, next_block, res,
+                                          case.children[1])
                 edges.append(CFGEdge(cond, result))
             cond_block = fresh_name('block')
             cfg[cond_block] = CFGNode([], edges)
             return cond_block
         elif expr.op == Op.LET:
-            next_block = rule_to_out_expr(cfg, next_block, res, expr.children[2])
-            next_block = rule_to_out_expr(cfg, next_block, expr.children[0], expr.children[1])
+            next_block = rule_to_out_expr(cfg, next_block, res,
+                                          expr.children[2])
+            next_block = rule_to_out_expr(cfg, next_block, expr.children[0],
+                                          expr.children[1])
             return next_block
         elif expr.op == Op.BVCONST:
-            new_vars = [Var(fresh_name('__v'), child.sort) for child in expr.children]
+            new_vars = [
+                Var(fresh_name('__v'), child.sort) for child in expr.children
+            ]
             bvc = Fn(Op.BVCONST, new_vars)
             bvc.sort = expr.sort
             assign = Assign(res, bvc)
 
             assign_block = fresh_name('block')
             if next_block:
-                cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
+                cfg[assign_block] = CFGNode(
+                    [assign], [CFGEdge(BoolConst(True), next_block)])
             else:
                 cfg[assign_block] = CFGNode([assign], [])
 
@@ -185,7 +194,9 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                 next_block = rule_to_out_expr(cfg, next_block, var, child)
             return next_block
         else:
-            new_vars = [Var(fresh_name('__v'), child.sort) for child in expr.children]
+            new_vars = [
+                Var(fresh_name('__v'), child.sort) for child in expr.children
+            ]
 
             assign = None
             if expr.sort.const:
@@ -201,11 +212,13 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                         new_args.append(Fn(Op.MK_CONST, [new_var]))
                     else:
                         new_args.append(new_var)
-                assign = Assign(res, Fn(Op.MK_NODE, [KindConst(expr.op)] + new_args))
+                assign = Assign(
+                    res, Fn(Op.MK_NODE, [KindConst(expr.op)] + new_args))
 
             assign_block = fresh_name('block')
             if next_block:
-                cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
+                cfg[assign_block] = CFGNode(
+                    [assign], [CFGEdge(BoolConst(True), next_block)])
             else:
                 cfg[assign_block] = CFGNode([assign], [])
 
@@ -218,7 +231,8 @@ def rule_to_out_expr(cfg, next_block, res, expr):
         res.sort = Sort(BaseSort.Bool, [])
         assign = Assign(res, expr)
         if next_block:
-            cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
+            cfg[assign_block] = CFGNode([assign],
+                                        [CFGEdge(BoolConst(True), next_block)])
         else:
             assign.expr = Fn(Op.MK_CONST, [assign.expr])
             cfg[assign_block] = CFGNode([assign], [])
@@ -228,7 +242,8 @@ def rule_to_out_expr(cfg, next_block, res, expr):
         res.sort = Sort(BaseSort.Int, [])
         assign = Assign(res, expr)
         if next_block:
-            cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
+            cfg[assign_block] = CFGNode([assign],
+                                        [CFGEdge(BoolConst(True), next_block)])
         else:
             cfg[assign_block] = CFGNode([assign], [])
         return assign_block
@@ -237,7 +252,8 @@ def rule_to_out_expr(cfg, next_block, res, expr):
         assign = Assign(res, expr)
         res.sort = expr.sort
         if next_block:
-            cfg[assign_block] = CFGNode([assign], [CFGEdge(BoolConst(True), next_block)])
+            cfg[assign_block] = CFGNode([assign],
+                                        [CFGEdge(BoolConst(True), next_block)])
         else:
             cfg[assign_block] = CFGNode([assign], [])
         return assign_block
@@ -261,17 +277,15 @@ def expr_to_code(expr):
             return 'nm->mkConst({})'.format(', '.join(args))
         elif expr.op == Op.MK_NODE:
             return 'nm->mkNode({})'.format(', '.join(args))
+        elif expr.op == Op.GET_CHILD:
+            return '{}[{}]'.format(args[0], args[1])
+        elif expr.op == Op.GET_INDEX:
+            return 'bv::utils::getIndex({}, {})'.format(args[0], args[1])
         elif expr.sort and expr.sort.const:
             return op_to_const_eval[expr.op].format(*args)
         else:
             print('No code generation for op {}'.format(expr.op))
             assert False
-    elif isinstance(expr, GetChild):
-        path_str = ''.join(['[{}]'.format(i) for i in expr.path])
-        return '__node{}'.format(path_str)
-    elif isinstance(expr, GetIndex):
-        path_str = ''.join(['[{}]'.format(i) for i in expr.path[:-1]])
-        return 'bv::utils::getIndex(__node{}, {})'.format(path_str, expr.path[-1])
     elif isinstance(expr, BoolConst):
         return ('true' if expr.val else 'false')
     elif isinstance(expr, BVConst):
@@ -299,9 +313,8 @@ def ir_to_code(match_instrs):
     code = []
     for instr in match_instrs:
         if isinstance(instr, Assign):
-            code.append('{} = {};'.format(
-                                             instr.name,
-                                             expr_to_code(instr.expr)))
+            code.append('{} = {};'.format(instr.name,
+                                          expr_to_code(instr.expr)))
         elif isinstance(instr, Assert):
             code.append(
                 'if (!({})) return RewriteResponse(REWRITE_DONE, __node, RewriteRule::NONE);'
@@ -315,7 +328,7 @@ def cfg_to_code(block, cfg):
     first_edge = True
     for edge in cfg[block].edges:
         branch_code = cfg_to_code(edge.target, cfg)
-        
+
         if edge.cond == BoolConst(True):
             result += """
             else {{
@@ -330,12 +343,14 @@ def cfg_to_code(block, cfg):
             }}""".format(cond_type, expr_to_code(edge.cond), branch_code)
     return result
 
+
 def name_to_enum(name):
     name = re.sub(r'(?<!^)(?=[A-Z])', '_', name).upper()
     return name
 
 
 def gen_rule(rule):
+    node_var = Var('__node', rule.lhs.sort)
     out_var = Var('__ret', rule.rhs.sort)
     rule_pattern = """
     RewriteResponse {}(TNode __node) {{
@@ -346,10 +361,11 @@ def gen_rule(rule):
     }}"""
 
     cfg = {}
-    match_block = rule_to_in_ir(rule.rvars, rule.lhs)
+    match_block = rule_to_in_ir(node_var, rule.rvars, rule.lhs)
     entry = rule_to_out_expr(cfg, None, out_var, rule.rhs)
     match_block_name = fresh_name('block')
-    cfg[match_block_name] = CFGNode(match_block, [CFGEdge(BoolConst(True), entry)])
+    cfg[match_block_name] = CFGNode(match_block,
+                                    [CFGEdge(BoolConst(True), entry)])
     out_ir = rule_to_out_expr(cfg, None, out_var, rule.rhs)
 
     optimize_cfg(out_var, match_block_name, cfg)
@@ -364,7 +380,7 @@ def gen_rule(rule):
     body = cfg_to_code(match_block_name, cfg)
 
     result = rule_pattern.format(rule.name, var_decls, body, out_var,
-                               name_to_enum(rule.name))
+                                 name_to_enum(rule.name))
     print(result)
     return result
 
@@ -384,7 +400,9 @@ def gen_rule_printer(rule):
     params = collect_params(rule)
     params_str = ' '.join(['_'] * len(params))
 
-    return rule_printer_pattern.format(name_to_enum(rule.name), name_to_enum(rule.name).lower(), params_str)
+    return rule_printer_pattern.format(name_to_enum(rule.name),
+                                       name_to_enum(rule.name).lower(),
+                                       params_str)
 
 
 def gen_proof_printer(rules):
@@ -552,7 +570,9 @@ def gen_proof_printer(rules):
 
     #endif
     """
-    return format_cpp(printer_pattern.format('\n'.join(gen_rule_printer(rule) for rule in rules)))
+    return format_cpp(
+        printer_pattern.format('\n'.join(
+            gen_rule_printer(rule) for rule in rules)))
 
 
 def gen_enum(rules):
@@ -615,14 +635,17 @@ def format_cpp(s):
 def sort_to_lfsc(sort):
     if sort and sort.base == BaseSort.Bool:
         return 'formula'
-    else: # if sort.base == BaseSort.BitVec:
+    else:  # if sort.base == BaseSort.BitVec:
         return '(term (BitVec n))'
+
 
 def expr_to_lfsc(expr):
     if isinstance(expr, Fn):
         if expr.op in [Op.ZERO_EXTEND]:
             args = [expr_to_lfsc(arg) for arg in expr.children]
-            return '({} zebv {} _ {})'.format(op_to_lfsc[expr.op], ' '.join(args[:op_to_nindex[expr.op]]), ' '.join(args[op_to_nindex[expr.op]:]))
+            return '({} zebv {} _ {})'.format(
+                op_to_lfsc[expr.op], ' '.join(args[:op_to_nindex[expr.op]]),
+                ' '.join(args[op_to_nindex[expr.op]:]))
         else:
             args = [expr_to_lfsc(arg) for arg in expr.children]
             return '({} _ {})'.format(op_to_lfsc[expr.op], ' '.join(args))
@@ -633,6 +656,7 @@ def expr_to_lfsc(expr):
         return '(a_bv _ {})'.format('bv{}_{}'.format(expr.val, expr.bw))
     elif isinstance(expr, BoolConst):
         return ('true' if expr.val else 'false')
+
 
 def rule_to_lfsc(rule):
     rule_pattern = """
@@ -674,7 +698,9 @@ def rule_to_lfsc(rule):
         lhs = '(= _ original {})'.format(expr_to_lfsc(rule.lhs))
         rhs = '(= _ original {})'.format(expr_to_lfsc(rule.rhs))
 
-    print(rule_pattern.format(rule_name, '\n'.join(varargs), lhs, rhs, closing_parens))
+    print(
+        rule_pattern.format(rule_name, '\n'.join(varargs), lhs, rhs,
+                            closing_parens))
 
 
 def type_check(rules):
@@ -683,7 +709,8 @@ def type_check(rules):
         infer_types(rule.rvars, rule.rhs)
 
         # Ensure that we were able to compute the types for both sides
-        assert isinstance(rule.lhs.sort, Sort) and isinstance(rule.rhs.sort, Sort)
+        assert isinstance(rule.lhs.sort, Sort) and isinstance(
+            rule.rhs.sort, Sort)
 
 
 def main():

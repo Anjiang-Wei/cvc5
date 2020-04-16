@@ -14,5 +14,5 @@
       (bvult (bvadd x pow_two) (bvadd y pow_two))))
 
 (define-rule UleMax ((n Num) (x (_ BitVec n)))
-    (bvult x (bvnot (_ bv 0 n)))
+    (bvule x (bvnot (_ bv 0 n)))
     true)

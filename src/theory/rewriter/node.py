@@ -46,6 +46,7 @@ class Op(Enum):
     CASE = auto()
     LET = auto()
 
+
 class BaseSort(Enum):
     Bool = auto()
     BitVec = auto()
@@ -68,11 +69,11 @@ class Node:
 
         return True
 
+
 class Var(Node):
     def __init__(self, name, sort=None):
         super().__init__([], sort)
         self.name = name
-
 
     def __eq__(self, other):
         return self.name == other.name
@@ -95,6 +96,7 @@ class IntConst(Node):
     def __hash__(self):
         return hash(self.val)
 
+
 class BoolConst(Node):
     def __init__(self, val):
         super().__init__([])
@@ -109,6 +111,7 @@ class BoolConst(Node):
     def __repr__(self):
         return str(self.val)
 
+
 class BVConst(Node):
     def __init__(self, val, bw):
         super().__init__([], Sort(BaseSort.BitVec, [bw]))
@@ -120,6 +123,7 @@ class BVConst(Node):
 
     def __hash__(self):
         return hash((self.bw, self.val))
+
 
 class KindConst(Node):
     def __init__(self, val):
@@ -135,6 +139,7 @@ class KindConst(Node):
     def __repr__(self):
         return str(self.val)
 
+
 class IntConst(Node):
     def __init__(self, val):
         super().__init__([])
@@ -149,33 +154,6 @@ class IntConst(Node):
     def __repr__(self):
         return str(self.val)
 
-class GetChild(Node):
-    def __init__(self, path):
-        super().__init__([])
-        self.path = path
-
-    def __repr__(self):
-        return '__node' + ''.join('[{}]'.format(p) for p in self.path)
-
-    def __eq__(self, other):
-        return isinstance(other, GetChild) and self.path == other.path
-
-    def __hash__(self):
-        return hash(tuple(self.path))
-
-class GetIndex(Node):
-    def __init__(self, path):
-        super().__init__([])
-        self.path = path
-
-    def __repr__(self):
-        return 'index(__node{}, {})'.format(''.join('[{}]'.format(p) for p in self.path[:-1]), self.path[-1])
-
-    def __eq__(self, other):
-        return isinstance(other, GetIndex) and self.path == other.path
-
-    def __hash__(self):
-        return hash(tuple(self.path))
 
 class Fn(Node):
     def __init__(self, op, args):
@@ -183,13 +161,16 @@ class Fn(Node):
         self.op = op
 
     def __eq__(self, other):
-        return isinstance(other, Fn) and self.op == other.op and super().__eq__(other)
+        return isinstance(other,
+                          Fn) and self.op == other.op and super().__eq__(other)
 
     def __hash__(self):
         return hash((self.op, tuple(self.children)))
 
     def __repr__(self):
-        return '({} {})'.format(self.op, ' '.join(str(child) for child in self.children))
+        return '({} {})'.format(
+            self.op, ' '.join(str(child) for child in self.children))
+
 
 class Sort(Node):
     def __init__(self, base, args, const=False):
@@ -205,7 +186,12 @@ class Sort(Node):
         return hash((self.base, tupe(self.children)))
 
     def __repr__(self):
-        return '({} {})'.format(self.base, ' '.join(str(child) for child in self.children)) if self.children else str(self.children)
+        return '({} {})'.format(
+            self.base, ' '.join(
+                str(child)
+                for child in self.children)) if self.children else str(
+                    self.children)
+
 
 def collect_vars(node):
     if isinstance(node, Var):
@@ -219,6 +205,7 @@ def collect_vars(node):
         result |= collect_vars(node.bw)
 
     return result
+
 
 def count_vars(counts, node):
     if isinstance(node, Var):
@@ -238,6 +225,7 @@ def subst(node, substs):
             new_children.append(subst(child, substs))
         node.children = new_children
         return node
+
 
 def unify_types(t1, t2):
     assert t1.base == t2.base
@@ -270,32 +258,33 @@ def infer_types(context, node):
     sort = None
     if isinstance(node, Fn):
         if node.op in [
-            Op.BVUGT,
-            Op.BVUGE,
-            Op.BVSGT,
-            Op.BVSGE,
-            Op.BVSLT,
-            Op.BVSLE,
-            Op.BVULT,
-            Op.BVULE]:
+                Op.BVUGT, Op.BVUGE, Op.BVSGT, Op.BVSGE, Op.BVSLT, Op.BVSLE,
+                Op.BVULT, Op.BVULE
+        ]:
             assert node.children[0].sort.base == BaseSort.BitVec
             assert node.children[0].sort == node.children[1].sort
             sort = Sort(BaseSort.Bool, [])
-        elif node.op in [
-            Op.BVADD,
-            Op.BVSUB, Op.BVSHL]:
+        elif node.op in [Op.BVADD, Op.BVSUB, Op.BVSHL]:
             assert node.children[0].sort.base == BaseSort.BitVec
             assert node.children[0].sort == node.children[1].sort
             sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
         elif node.op in [Op.CONCAT]:
             assert node.children[0].sort.base == BaseSort.BitVec
             assert node.children[1].sort.base == BaseSort.BitVec
-            sort = Sort(BaseSort.BitVec, [Fn(Op.PLUS, [node.children[0].sort.children[0], node.children[1].sort.children[0]])])
+            sort = Sort(BaseSort.BitVec, [
+                Fn(Op.PLUS, [
+                    node.children[0].sort.children[0],
+                    node.children[1].sort.children[0]
+                ])
+            ])
         elif node.op in [Op.ZERO_EXTEND]:
             assert len(node.children) == 2
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.BitVec
-            sort = Sort(BaseSort.BitVec, [Fn(Op.PLUS, [node.children[0], node.children[1].sort.children[0]])])
+            sort = Sort(BaseSort.BitVec, [
+                Fn(Op.PLUS,
+                   [node.children[0], node.children[1].sort.children[0]])
+            ])
         elif node.op in [Op.BVNEG, Op.BVNOT]:
             assert node.children[0].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
@@ -307,10 +296,12 @@ def infer_types(context, node):
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [Op.CASE]:
             assert node.children[0].sort == Sort(BaseSort.Bool, [])
-            sort = Sort(node.children[1].sort.base, node.children[1].sort.children[:])
+            sort = Sort(node.children[1].sort.base,
+                        node.children[1].sort.children[:])
         elif node.op in [Op.COND]:
             # TODO: check that types are the same across branches
-            sort = Sort(node.children[0].sort.base, node.children[0].sort.children[:])
+            sort = Sort(node.children[0].sort.base,
+                        node.children[0].sort.children[:])
         elif node.op in [Op.BVCONST]:
             sort = Sort(BaseSort.BitVec, [node.children[1]])
         elif node.op in [Op.PLUS, Op.MINUS]:
