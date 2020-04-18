@@ -805,10 +805,6 @@ public:
     d_globalDeclarations = flag;
   }
 
-  inline SymbolTable* getSymbolTable() const {
-    return d_symtab;
-  }
-  
   //------------------------ operator overloading
   /** is this function overloaded? */
   bool isOverloadedFunction(api::Term fun)

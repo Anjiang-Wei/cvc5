@@ -45,6 +45,7 @@ void BaseSolver::checkInit()
   d_eqcToConst.clear();
   d_eqcToConstBase.clear();
   d_eqcToConstExp.clear();
+  d_eqcToMostContent.clear();
   d_termIndex.clear();
   d_stringsEqc.clear();
 
@@ -185,6 +186,65 @@ void BaseSolver::checkInit()
             else
             {
               congruent[k]++;
+            }
+
+            if (k == STRING_CONCAT)
+            {
+              NodeManager* nm = NodeManager::currentNM();
+
+              const auto& it = d_eqcToMostContent.find(eqc);
+              if (it == d_eqcToMostContent.end())
+              {
+                std::vector<Node> vec;
+                size_t score = 0;
+                bool change = false;
+                for (const Node& nc : n)
+                {
+                  Node rep = ee->getRepresentative(nc);
+                  if (rep.isConst())
+                  {
+                    change = change || (rep != nc);
+                    vec.push_back(rep);
+                    score += rep.getConst<String>().size();
+                  }
+                  else
+                  {
+                    vec.push_back(nc);
+                  }
+                }
+
+                if ((change || n != eqc) && score > 0)
+                {
+                  d_eqcToMostContent.insert(std::make_pair(
+                      eqc,
+                      ContentInfo(n, nm->mkNode(STRING_CONCAT, vec), score)));
+                }
+              }
+              else
+              {
+                std::vector<Node> vec;
+                size_t score = 0;
+                for (const Node& nc : n)
+                {
+                  Node rep = ee->getRepresentative(nc);
+                  if (rep.isConst())
+                  {
+                    vec.push_back(rep);
+                    score += rep.getConst<String>().size();
+                  }
+                  else
+                  {
+                    vec.push_back(nc);
+                  }
+                }
+
+                if (score > it->second.d_score)
+                {
+                  d_eqcToMostContent.insert(std::make_pair(
+                      eqc,
+                      ContentInfo(n, nm->mkNode(STRING_CONCAT, vec), score)));
+                }
+              }
             }
           }
         }
@@ -522,6 +582,49 @@ Node BaseSolver::explainConstantEqc(Node n, Node eqc, std::vector<Node>& exp)
     }
     return it->second;
   }
+  return Node::null();
+}
+
+Node BaseSolver::getMostContentInEqc(Node eqc)
+{
+  Node c = getConstantEqc(eqc);
+  if (!c.isNull())
+  {
+    return c;
+  }
+
+  const auto& it = d_eqcToMostContent.find(eqc);
+  if (it != d_eqcToMostContent.end())
+  {
+    return it->second.d_content;
+  }
+  return Node::null();
+}
+
+Node BaseSolver::explainMostContentInEqc(Node n,
+                                         Node eqc,
+                                         std::vector<Node>& exp)
+{
+  Node c = explainConstantEqc(n, eqc, exp);
+  if (!c.isNull())
+  {
+    return c;
+  }
+
+  const auto& it = d_eqcToMostContent.find(eqc);
+  if (it != d_eqcToMostContent.end())
+  {
+    Node original = it->second.d_original;
+    Node content = it->second.d_content;
+    for (size_t i = 0, size = original.getNumChildren(); i < size; i++)
+    {
+      d_im.addToExplanation(original[i], content[i], exp);
+    }
+    d_im.addToExplanation(n, eqc, exp);
+    d_im.addToExplanation(eqc, original, exp);
+    return content;
+  }
+
   return Node::null();
 }
 

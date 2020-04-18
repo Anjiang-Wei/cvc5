@@ -624,6 +624,7 @@ void ExtfSolver::checkExtfInference(Node n,
   Node inferEq = nr.eqNode(in.d_const);
   Node inferEqr = Rewriter::rewrite(inferEq);
   Node inferEqrr = inferEqr;
+
   if (inferEqr.getKind() == EQUAL)
   {
     // try to use the extended rewriter for equalities
@@ -650,7 +651,8 @@ Node ExtfSolver::getCurrentSubstitutionFor(int effort,
     return mv;
   }
   Node nr = d_state.getRepresentative(n);
-  Node c = d_bsolver.explainConstantEqc(n, nr, exp);
+  // Node c = d_bsolver.explainConstantEqc(n, nr, exp);
+  Node c = d_bsolver.explainMostContentInEqc(n, nr, exp);
   if (!c.isNull())
   {
     return c;

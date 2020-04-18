@@ -2992,6 +2992,14 @@ Node SequencesRewriter::rewritePrefixSuffix(Node n)
   Node retNode = n[0].eqNode(
       NodeManager::currentNM()->mkNode(kind::STRING_SUBSTR, n[1], val, lens));
 
+  NodeManager* nm = NodeManager::currentNM();
+  retNode =
+      nm->mkNode(AND,
+                 retNode,
+                 nm->mkNode(STRING_LENGTH,
+                            nm->mkNode(kind::STRING_SUBSTR, n[1], val, lens))
+                     .eqNode(lens));
+
   return returnRewrite(n, retNode, Rewrite::SUF_PREFIX_ELIM);
 }
 

@@ -30,6 +30,29 @@ namespace CVC4 {
 namespace theory {
 namespace strings {
 
+/**
+ * This struct stores the content information for an equivalence class
+ * containing at least one string concatenation.
+ */
+struct ContentInfo
+{
+  Node d_original;
+  /** The content */
+  Node d_content;
+  /**
+   * The score, which is determined by how many known characters the string
+   * literals in the content have
+   */
+  size_t d_score;
+
+  std::vector<Node> d_exp;
+
+  ContentInfo(Node original, Node content, size_t score)
+      : d_original(original), d_content(content), d_score(score)
+  {
+  }
+};
+
 /** The base solver for the theory of strings
  *
  * This implements techniques for inferring when terms are congruent in the
@@ -99,6 +122,9 @@ class BaseSolver
    * equivalence class of eqc.
    */
   Node explainConstantEqc(Node n, Node eqc, std::vector<Node>& exp);
+
+  Node getMostContentInEqc(Node eqc);
+  Node explainMostContentInEqc(Node n, Node eqc, std::vector<Node>& exp);
   /**
    * Get the set of equivalence classes of type string.
    */
@@ -185,6 +211,8 @@ class BaseSolver
   std::map<Node, Node> d_eqcToConst;
   std::map<Node, Node> d_eqcToConstBase;
   std::map<Node, Node> d_eqcToConstExp;
+  /** Maps representatives of equivalence classes */
+  std::map<Node, ContentInfo> d_eqcToMostContent;
   /** The list of equivalence classes of type string */
   std::vector<Node> d_stringsEqc;
   /** A term index for each function kind */
