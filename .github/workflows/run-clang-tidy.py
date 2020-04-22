@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import collections
 import requests
 import os
 
+Finding = collections.namedtuple("Finding", ["line", "text"])
 
 def report_github_status(repo, token, sha, findings):
     url = "https://api.github.com/repos/{}/check-runs".format(repo)
@@ -42,10 +44,7 @@ def report_github_status(repo, token, sha, findings):
 
 def main():
     findings = {
-            'CMakeLists': {
-                'line': 5,
-                'text': 'foo'
-            }
+            'CMakeLists': [Finding(5, 'foobar')]
             }
 
     if 'GITHUB_TOKEN' in os.environ:
