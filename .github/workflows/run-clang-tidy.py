@@ -48,6 +48,7 @@ def main():
             }
             }
 
+    print(os.environ)
     if 'GITHUB_TOKEN' in os.environ:
         repo = os.environ['GITHUB_REPOSITORY']
         sha = os.environ['GITHUB_SHA']
