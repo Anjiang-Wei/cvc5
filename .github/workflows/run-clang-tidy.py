@@ -36,6 +36,8 @@ def report_github_status(repo, token, sha, findings):
     }
 
     r = requests.post(url, json=data, headers=headers)
+    print(r)
+    print(r.text)
 
 
 def main():
