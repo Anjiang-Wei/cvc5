@@ -44,7 +44,7 @@ def report_github_status(repo, token, sha, findings):
 
 def main():
     findings = {
-            'CMakeLists': [Finding(5, 'foobar')]
+            'CMakeLists.txt': [Finding(5, 'foobar')]
             }
 
     if 'GITHUB_TOKEN' in os.environ:
