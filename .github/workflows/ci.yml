@@ -29,6 +29,7 @@ jobs:
 
           - name: debug
             config: debug --symfpu --lfsc --no-debug-symbols
+            run-clang-tidy: true
             cache-key: debug
 
           - name: debug-cln
@@ -171,3 +172,8 @@ jobs:
         ctest -j2 --output-on-failure
       working-directory: examples
 
+    - name: Run Clang-Tidy
+      if: matrix.run-clang-tidy && runner.os == 'Linux'
+      run: |
+        ../.github/workflows/run-clang-tidy.py
+      working-directory: build
