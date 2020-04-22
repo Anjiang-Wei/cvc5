@@ -175,8 +175,6 @@ jobs:
 
     - name: Run Clang-Tidy
       if: matrix.run-clang-tidy && runner.os == 'Linux'
-      run: |
-        ../.github/workflows/run-clang-tidy.py
-      working-directory: build
+      run: .github/workflows/run-clang-tidy.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

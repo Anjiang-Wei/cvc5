@@ -1,10 +1,47 @@
 #!/usr/bin/env python3
 
 import collections
+import re
 import requests
+import subprocess
 import os
 
 Finding = collections.namedtuple("Finding", ["line", "text"])
+
+def checkable_file(fn):
+    if any(fn.endswith(ext) for ext in ['.h', '.cpp']):
+        return '_template.' not in fn
+    return False
+
+def get_commit_files(sha):
+    cmd = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', sha]
+    files = subprocess.check_output(cmd).decode().splitlines()
+    return [fn for fn in files if checkable_file(fn)]
+
+def parse_clang_output(output):
+    error_re = ".*:(\d+):\d+: (.*)"
+    out = []
+    for l in output.splitlines():
+        m = re.match(error_re, l)
+        if m:
+            line = int(m.group(1))
+            msg = m.group(2)
+            out.append(Finding(line=line, text=msg))
+
+    return out
+
+def get_findings(files):
+    result = {}
+    for fn in files:
+        cmd = ['clang-tidy', '-p', 'build', fn]
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        out, err = proc.communicate()
+        result[fn] = parse_clang_output(out.decode())
+    return result
 
 def report_github_status(repo, token, sha, findings):
     url = "https://api.github.com/repos/{}/check-runs".format(repo)
@@ -43,13 +80,12 @@ def report_github_status(repo, token, sha, findings):
 
 
 def main():
-    findings = {
-            'CMakeLists.txt': [Finding(5, 'foobar')]
-            }
+    sha = os.environ['GITHUB_SHA']
+    files = get_commit_files(sha)
+    findings = get_findings(files)
 
     if 'GITHUB_TOKEN' in os.environ:
         repo = os.environ['GITHUB_REPOSITORY']
-        sha = os.environ['GITHUB_SHA']
         token = os.environ['GITHUB_TOKEN']
         report_github_status(repo, token, sha, findings)
 
