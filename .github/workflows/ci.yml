@@ -178,3 +178,5 @@ jobs:
       run: |
         ../.github/workflows/run-clang-tidy.py
       working-directory: build
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
