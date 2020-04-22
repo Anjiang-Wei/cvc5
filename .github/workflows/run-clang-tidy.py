@@ -80,12 +80,13 @@ def report_github_status(repo, token, sha, findings):
 
 
 def main():
-    sha = os.environ['GITHUB_SHA']
+    sha = os.environ['GITHUB_BASE_REF']
     files = get_commit_files(sha)
     findings = get_findings(files)
 
     if 'GITHUB_TOKEN' in os.environ:
         repo = os.environ['GITHUB_REPOSITORY']
+        sha = os.environ['GITHUB_SHA']
         token = os.environ['GITHUB_TOKEN']
         report_github_status(repo, token, sha, findings)
 
