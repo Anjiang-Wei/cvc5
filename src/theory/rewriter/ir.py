@@ -12,7 +12,10 @@ class CFGEdge:
         return '{} -> {}'.format(self.cond, self.target)
 
 
-class CFGNode:
+class BaseNode:
+    pass
+
+class CFGNode(BaseNode):
     def __init__(self, instrs, edges):
         self.instrs = instrs
         self.edges = edges
@@ -25,6 +28,19 @@ class CFGNode:
         for edge in self.edges:
             result += str(edge) + '\n'
 
+        return result
+
+
+class CFGLoop(BaseNode):
+    def __init__(self, loop_var, domain, body):
+        self.loop_var = loop_var
+        self.domain = domain
+        self.body = body
+
+    def __repr__(self):
+        result = 'for {} in {}:\n'.format(self.loop_var, self.domain)
+        result += self.body
+        result += 'end'
         return result
 
 
@@ -45,9 +61,10 @@ class Assign(IRNode):
 
 
 class Assert(IRNode):
-    def __init__(self, expr):
+    def __init__(self, expr, in_loop):
         super(IRNode, self).__init__()
         self.expr = expr
+        self.in_loop = in_loop
 
     def __repr__(self):
         return 'assert {}'.format(self.expr)
@@ -74,7 +91,7 @@ def optimize_cfg(out_var, entry, cfg):
     while change:
         change = False
         for label, node in cfg.items():
-            if len(node.edges) == 1:
+            if isinstance(node, CFGNode) and len(node.edges) == 1 and isinstance(node.edges[0], CFGNode):
                 assert node.edges[0].cond == BoolConst(True)
                 next_block = cfg[node.edges[0].target]
                 cfg[label].instrs += next_block.instrs
@@ -88,11 +105,16 @@ def optimize_cfg(out_var, entry, cfg):
         to_visit.pop()
 
         not_called.remove(curr)
-        for edge in cfg[curr].edges:
-            to_visit.append(edge.target)
+        if isinstance(cfg[curr], CFGNode):
+            for edge in cfg[curr].edges:
+                to_visit.append(edge.target)
+        elif isinstance(cfg[curr], CFGLoop):
+            to_visit.append(cfg[curr].body)
 
     for target in not_called:
         del cfg[target]
+
+    return
 
     # Inline assignments that are used only once
     used_count = defaultdict(lambda: 0)
@@ -137,9 +159,12 @@ def optimize_cfg(out_var, entry, cfg):
 def cfg_collect_vars(cfg):
     cfg_vars = set()
     for label, node in cfg.items():
-        for instr in node.instrs:
-            if isinstance(instr, Assign):
-                cfg_vars.add(instr.name)
+        if isinstance(node, CFGLoop):
+            cfg_vars.add(node.loop_var)
+        else:
+            for instr in node.instrs:
+                if isinstance(instr, Assign):
+                    cfg_vars.add(instr.name)
     return cfg_vars
 
 

@@ -17,6 +17,7 @@ add_custom_command(
     ${CMAKE_CURRENT_BINARY_DIR}/rules.plf
   DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/compiler.py
+    ${CMAKE_CURRENT_LIST_DIR}/rules/basic.rules
 )
 
 add_custom_target(gen-rewriter

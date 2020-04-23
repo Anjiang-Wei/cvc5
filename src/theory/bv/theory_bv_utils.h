@@ -38,6 +38,8 @@ namespace utils {
 typedef std::unordered_map<TNode, bool, TNodeHashFunction> TNodeBoolMap;
 typedef std::unordered_set<Node, NodeHashFunction> NodeSet;
 
+std::vector<Node> getChildren(TNode node, std::function<bool(size_t)> filter);
+
 /* Get the bit-width of given node. */
 unsigned getSize(TNode node);
 

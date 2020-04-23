@@ -1,18 +1,243 @@
-(define-rule NegIdemp ((n Num) (x (_ BitVec n)))
+/******************************************************************************
+ * Operator Elimination
+ ******************************************************************************/
+
+(define-rule UgtEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvugt x y)
+    (bvult y x))
+
+(define-rule UgeEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvuge x y)
+    (bvule y x))
+
+(define-rule SgtEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsgt x y)
+    (bvslt y x))
+
+(define-rule SgeEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsge x y)
+    (bvsle y x))
+
+(define-rule SltEliminate ((n Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
+    (bvslt x y)
+    (let ((pow_two (bvshl (_ bv 1 n) (_ bv (- n 1) n))))
+      (bvult (bvadd x pow_two) (bvadd y pow_two))))
+
+(define-rule SleEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsle x y)
+    (not (bvslt y x)))
+
+(define-rule UleEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvule x y)
+    (not (bvult y x)))
+
+/*
+(define-rule CompEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+   (bvcomp x y)
+   (ite (= x y) (_ bv 1 1) (_ bv 0 1)))
+*/
+
+(define-rule SubEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsub x y)
+    (bvadd x (bvneg y)))
+
+/* RepeatEliminate: Worth it? */
+
+/*
+(define-rule RotateLeftEliminate ((i Int) (x (_ BitVec n)))
+    ((_ rotate_left i) x)
+    (ite (= i 0) x (concat ((_ extract (- n (+ 1 i)) 0) ) ((_ extract (- n 1) (- n i)) x))))
+
+(define-rule RotateRightEliminate ((i Int) (x (_ BitVec n)))
+    ((_ rotate_right i) x)
+    (ite (= i 0) x (concat ((_ extract (- i 1) 0) ) ((_ extract (- n 1) i) x))))
+*/
+
+/* BVToNatEliminate: COMPLEX */
+
+/* IntToBVEliminate: COMPLEX */
+
+/*
+(define-rule NandEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvnand x y)
+    (bvnot (bvand x y)))
+
+(define-rule NorEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvnor x y)
+    (bvnot (bvor x y)))
+
+(define-rule XnorEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvxnor x y)
+    (bvnot (bvxor x y)))
+*/
+
+/******************************************************************************
+ * Simplification
+ ******************************************************************************/
+
+/*
+(define-rule BvIteConstCond ((m Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite (_ bv m 1) x y)
+  (cond
+    ((= m 1) x)
+    y))
+*/
+
+(define-rule BvIteEqualChildren ((c (_ BitVec 1)) (x (_ BitVec m)))
+  (bvite c x x)
+  x)
+
+/*
+(define-rule BvIteConstChildren ((n Int) (m Int) (x (_ BitVec o)))
+  (bvite x (_ bv n 1) (_ bv m 1))
+  (cond
+    ((and (= n 1) (= m 0)) x)
+    (bvnot x)))
+*/
+
+(define-rule BvIteEqualCondThen ((c (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)) (z (_ BitVec n)))
+  (bvite c (bvite c x y) z)
+  (bvite c x z))
+
+(define-rule BvIteEqualCondElse ((c (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)) (z (_ BitVec n)))
+  (bvite c x (bvite c y z))
+  (bvite c x z))
+
+/*
+(define-rule BvIteMergeThenIf ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 (bvite c1 x y) x)
+  (bvite (bvand c0 (bvnot c1)) y x))
+
+(define-rule BvIteMergeElseIf ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 (bvite c1 x y) y)
+  (bvite (bvand c0 c1) x y))
+
+(define-rule BvIteMergeThenElse ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 x (bvite c1 x y))
+  (bvite (bvand (bvnot c0) (bvnot c1)) y x))
+
+(define-rule BvIteMergeElseElse ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 x (bvite c1 y x))
+  (bvite (bvand (bvnot c0) c1) y x))
+
+(define-rule BvComp ((n Int) (x (_ BitVec 1)))
+  (bvcomp (_ bv n 1) x)
+  (ite (= n 0) (bvnot x) x))
+*/
+
+/*
+(define-rule ShlByConst (())
+  (bvshl x (_ bv n m))
+  (ite (= n 0)
+    x
+    (cond
+      ((>= n m) (_ bv 0 m))
+      (concat ((_ extract (- m (+ n 1)) 0) ) (_ bv 0 n)))))
+*/
+
+/******************************************************************************
+ * Experimental
+ ******************************************************************************/
+
+(define-rule LteSelfUle ((x (_ BitVec n)))
+    (bvule x x)
+    true)
+
+(define-rule NegIdemp ((n Int :const) (x (_ BitVec n)))
     (bvneg (bvneg x))
     x)
 
-(define-rule ZeroExtendEliminate ((i Num) (x (_ BitVec n)))
+(define-rule ZeroExtendEliminate ((i Int :const) (x (_ BitVec n)))
   ((_ zero_extend i) x)
   (cond
     ((= i 0) x)
     (concat (_ bv 0 i) x)))
 
-(define-rule SltEliminate ((n Num) (x (_ BitVec n)) (y (_ BitVec n)))
-    (bvslt x y)
-    (let ((pow_two (bvshl (_ bv 1 n) (_ bv (- n 1) n))))
-      (bvult (bvadd x pow_two) (bvadd y pow_two))))
 
-(define-rule UleMax ((n Num) (x (_ BitVec n)))
+(define-rule UleMax ((n Int :const) (x (_ BitVec n)))
     (bvule x (bvnot (_ bv 0 n)))
     true)
+
+(define-rule AndCancel ((x Bool) (xs Bool :list))
+    (and x (not x) xs)
+    false)
+
+(define-rule AndRemDups ((x Bool) (xs Bool :list))
+    (and x x xs)
+    (and xs))
+
+(define-rule IffTrue ((x Bool))
+  (= true x)
+  x)
+
+(define-rule IffFalse ((x Bool))
+  (= true x)
+  (not x))
+
+(define-rule IffSelf ((x Bool))
+  (= x x)
+  true)
+
+(define-rule IffCancel ((x Bool))
+  (= x (not x))
+  false)
+
+/* Double eq rules */
+
+
+/*
+(define-rule XorTrue ((x Bool))
+  (xor true x)
+  (not x))
+
+(define-rule XorFalse ((x Bool))
+  (xor false x)
+  x)
+*/
+
+(define-rule XorSelf ((x Bool))
+  (xor x x)
+  false)
+
+(define-rule XorSelfNeg ((x Bool))
+  (xor x (not x))
+  true)
+
+/*
+(define-rule IffCancel ((x Bool) (xs (List Bool)))
+    (and x (not x) xs)
+    false)
+
+(define-rule IffCancel ((x Bool) (xs Bool :list))
+    (and x (not x) xs)
+    false)
+
+; (declare-const x Bool)
+; (declare-const xs Bool)
+; (assert (not (= (and x (not x) xs) false)))
+; (check-sat)
+;
+; ^^^
+; Make argument for why it is sufficient to only check this form
+
+; :list/:multiple
+
+(define-rule IffCancel ((x Bool))
+    (! and x x :binary)
+    x)
+
+; (and t t s u)
+; (and t (and t (and s u)))
+; (and (and (and t t) s) u)
+
+; have an attribute for fixed number of children
+
+(define-rule IffCancelTwo ((x Bool))
+    (= (not x) x)
+    false)
+
+; (declare-rule ...)
+; (define-strategy
+; ...
+; )
+*/

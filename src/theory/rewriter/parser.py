@@ -17,10 +17,14 @@ symbol_to_op = {
     'bvsub': Op.BVSUB,
     'bvshl': Op.BVSHL,
     'bvnot': Op.BVNOT,
+    'bvand': Op.BVAND,
     'concat': Op.CONCAT,
+    'bvite': Op.BVITE,
     'bv': Op.BVCONST,
     'zero_extend': Op.ZERO_EXTEND,
     'not': Op.NOT,
+    'and': Op.AND,
+    'xor': Op.XOR,
     '+': Op.PLUS,
     '-': Op.MINUS,
     '=': Op.EQ
@@ -33,7 +37,8 @@ def bv_to_int(s):
 
 
 def symbol():
-    return pp.Word(pp.alphas + '=' + '_' + '+' + '-')
+    special_chars = '=' + '_' + '+' + '-'
+    return pp.Word(pp.alphas + special_chars, pp.alphanums + special_chars)
 
 def mk_let(let):
     body = let[-1]
@@ -93,14 +98,28 @@ def sort():
     bv_sort = (pp.Suppress('(') + (pp.Suppress('_') + pp.Keyword('BitVec')) +
                expr() + pp.Suppress(')')
                ).setParseAction(lambda s, l, t: Sort(BaseSort.BitVec, [t[1]]))
-    int_sort = pp.Keyword('Num').setParseAction(
-        lambda s, l, t: Sort(BaseSort.Int, [], True))
-    return bv_sort | int_sort
+    int_sort = pp.Keyword('Int').setParseAction(
+        lambda s, l, t: Sort(BaseSort.Int, []))
+    bool_sort = pp.Keyword('Bool').setParseAction(
+        lambda s, l, t: Sort(BaseSort.Bool, []))
+    return bv_sort | int_sort | bool_sort
 
+
+def process_var_decl(name, sort, attrs):
+    if ':const' in attrs:
+        sort.const = True
+    elif ':list' in attrs:
+        sort = Sort(BaseSort.List, [sort])
+    print(sort)
+    return (name, sort)
+
+
+def attrs():
+    return pp.Keyword(':list') | pp.Keyword(':const')
 
 def var_decl():
-    return (pp.Suppress('(') + pp.Word(pp.alphas) + sort() +
-            pp.Suppress(')')).setParseAction(lambda s, l, t: (t[0], t[1]))
+    return (pp.Suppress('(') + symbol() + sort() + pp.ZeroOrMore(attrs()) +
+            pp.Suppress(')')).setParseAction(lambda s, l, t: process_var_decl(t[0], t[1], t[2:]))
 
 
 def var_list():
@@ -115,5 +134,5 @@ def parse_rules(s):
                        pp.Word(pp.alphas) + var_list() + expr() + expr() +
                        pp.Suppress(')')).setParseAction(lambda s, l, t: Rule(
                            t[1], t[2], BoolConst(True), t[3], t[4]))
-    rules = pp.OneOrMore(rule) + pp.StringEnd()
+    rules = pp.OneOrMore(rule) + comments + pp.StringEnd()
     return rules.parseString(s)

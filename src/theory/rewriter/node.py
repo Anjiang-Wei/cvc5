@@ -2,6 +2,11 @@ from enum import Enum, auto
 
 
 class Op(Enum):
+
+    ###########################################################################
+    # Bit-vectors
+    ###########################################################################
+
     # Bit-vector predicates
     BVUGT = auto()
     BVUGE = auto()
@@ -22,29 +27,61 @@ class Op(Enum):
 
     # Bitwise bit-vector operations
     BVNOT = auto()
+    BVAND = auto()
 
     CONCAT = auto()
+
+    BVITE = auto()
 
     BVCONST = auto()
     ZERO_EXTEND = auto()
 
+    ###########################################################################
+    # Boolean
+    ###########################################################################
+
     NOT = auto()
+    AND = auto()
+    XOR = auto()
+
+    ###########################################################################
+    # Arithmetic
+    ###########################################################################
 
     PLUS = auto()
     MINUS = auto()
 
+    ###########################################################################
+    # Theory-independent
+    ###########################################################################
+
     EQ = auto()
+
+    ###########################################################################
+    # Node manipulation
+    ###########################################################################
 
     GET_KIND = auto()
     GET_CHILD = auto()
+    GET_CHILDREN = auto()
     GET_INDEX = auto()
     MK_NODE = auto()
     MK_CONST = auto()
     BV_SIZE = auto()
 
+    ###########################################################################
+    # Language operators
+    ###########################################################################
+
+    # Conditional
     COND = auto()
+    # Case in a conditional
     CASE = auto()
+    # Let binding
     LET = auto()
+
+commutative_ops = set([Op.AND, Op.XOR, Op.EQ])
+nary_ops = set([Op.AND])
 
 
 class BaseSort(Enum):
@@ -52,6 +89,7 @@ class BaseSort(Enum):
     BitVec = auto()
     Int = auto()
     Kind = auto()
+    List = auto()
 
 
 class Node:
@@ -177,7 +215,6 @@ class Sort(Node):
         super().__init__(args)
         self.base = base
         self.const = const
-        print(base, args)
 
     def __eq__(self, other):
         return self.base == other.base and super().__eq__(other)
@@ -186,11 +223,10 @@ class Sort(Node):
         return hash((self.base, tupe(self.children)))
 
     def __repr__(self):
-        return '({} {})'.format(
+        return '({} {}{})'.format(
             self.base, ' '.join(
                 str(child)
-                for child in self.children)) if self.children else str(
-                    self.children)
+                for child in self.children), ' :const' if self.const else '')
 
 
 def collect_vars(node):
@@ -288,6 +324,13 @@ def infer_types(context, node):
         elif node.op in [Op.BVNEG, Op.BVNOT]:
             assert node.children[0].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
+        elif node.op == Op.BVITE:
+            # TODO: check bit-width of condition
+            # TODO: check that the types are the same across branches
+            assert node.children[0].sort.base == BaseSort.BitVec
+            assert node.children[1].sort.base == BaseSort.BitVec
+            assert node.children[2].sort.base == BaseSort.BitVec
+            sort = Sort(BaseSort.BitVec, [IntConst(1)])
         elif node.op in [Op.NOT]:
             assert node.children[0].sort.base == BaseSort.Bool
             sort = Sort(BaseSort.Bool, [])
@@ -308,6 +351,14 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.Int
             sort = Sort(BaseSort.Int, [])
+        elif node.op in [Op.XOR]:
+            assert node.children[0].sort.base == BaseSort.Bool
+            assert node.children[1].sort.base == BaseSort.Bool
+            sort = Sort(BaseSort.Bool, [])
+        elif node.op in [Op.AND]:
+            assert all(child.sort.base == BaseSort.Bool or (child.sort.base == BaseSort.List and child.sort.children[0].base == BaseSort.Bool) for child in node.children)
+            # TODO: Check that list is used correctly
+            sort = Sort(BaseSort.Bool, [])
         else:
             print('Unsupported operator: {}'.format(node.op))
             assert False

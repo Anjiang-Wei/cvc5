@@ -28,6 +28,16 @@ namespace utils {
 
 /* ------------------------------------------------------------------------- */
 
+std::vector<Node> getChildren(TNode node, std::function<bool(size_t)> filter) {
+  std::vector<Node> result;
+  for (size_t i = 0, size = node.getNumChildren(); i < size; i++) {
+    if (filter(i)) {
+      result.push_back(node[i]);
+    }
+  }
+  return result;
+}
+
 unsigned getSize(TNode node)
 {
   return node.getType().getBitVectorSize();
