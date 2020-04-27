@@ -12,22 +12,42 @@ symbol_to_op = {
     'bvsle': Op.BVSLE,
     'bvult': Op.BVULT,
     'bvule': Op.BVULE,
+    'bvredand': Op.BVREDAND,
+    'bvredor': Op.BVREDOR,
     'bvneg': Op.BVNEG,
     'bvadd': Op.BVADD,
     'bvsub': Op.BVSUB,
+    'bvsdiv': Op.BVSDIV,
+    'bvudiv': Op.BVUDIV,
+    'bvsrem': Op.BVSREM,
+    'bvurem': Op.BVUREM,
+    'bvsmod': Op.BVSMOD,
     'bvshl': Op.BVSHL,
+    'rotate_left': Op.ROTATE_LEFT,
+    'rotate_right': Op.ROTATE_RIGHT,
     'bvnot': Op.BVNOT,
     'bvand': Op.BVAND,
+    'bvor': Op.BVOR,
+    'bvxor': Op.BVXOR,
+    'bvnand': Op.BVNAND,
+    'bvnor': Op.BVNOT,
+    'bvxnor': Op.BVXNOR,
     'concat': Op.CONCAT,
     'bvite': Op.BVITE,
+    'bvcomp': Op.BVCOMP,
     'bv': Op.BVCONST,
     'zero_extend': Op.ZERO_EXTEND,
+    'sign_extend': Op.SIGN_EXTEND,
+    'extract': Op.EXTRACT,
+    'repeat': Op.REPEAT,
     'not': Op.NOT,
     'and': Op.AND,
     'xor': Op.XOR,
     '+': Op.PLUS,
     '-': Op.MINUS,
-    '=': Op.EQ
+    '>=': Op.GEQ,
+    '=': Op.EQ,
+    'ite': Op.ITE,
 }
 
 
@@ -37,7 +57,7 @@ def bv_to_int(s):
 
 
 def symbol():
-    special_chars = '=' + '_' + '+' + '-'
+    special_chars = '=' + '_' + '+' + '-' + '<' + '>'
     return pp.Word(pp.alphas + special_chars, pp.alphanums + special_chars)
 
 def mk_let(let):
@@ -47,8 +67,10 @@ def mk_let(let):
     return body
 
 def mk_case(cases):
-    if not isinstance(cases[-1], Fn) or cases[-1].op != Op.CASE:
+    if cases[-1].op != Op.CASE:
         cases[-1] = Fn(Op.CASE, [BoolConst(True), cases[-1]])
+    else:
+        cases.append(Fn(Op.CASE, [BoolConst(True), Fn(Op.FAIL, [])]))
     return Fn(Op.COND, cases)
 
 

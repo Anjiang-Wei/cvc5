@@ -21,18 +21,39 @@ op_to_kind = {
     Op.BVSLE: 'BITVECTOR_SLE',
     Op.BVULT: 'BITVECTOR_ULT',
     Op.BVULE: 'BITVECTOR_ULE',
+    Op.BVREDAND: 'BITVECTOR_REDAND',
+    Op.BVREDOR: 'BITVECTOR_REDOR',
     Op.BVNEG: 'BITVECTOR_NEG',
     Op.BVADD: 'BITVECTOR_PLUS',
     Op.BVSUB: 'BITVECTOR_SUB',
+    Op.BVSDIV: 'BITVECTOR_SDIV',
+    Op.BVUDIV: 'BITVECTOR_UDIV_TOTAL',
+    Op.BVSREM: 'BITVECTOR_SREM',
+    Op.BVUREM: 'BITVECTOR_UREM_TOTAL',
+    Op.BVSMOD: 'BITVECTOR_SMOD',
     Op.BVSHL: 'BITVECTOR_SHL',
+    Op.ROTATE_LEFT: 'BITVECTOR_ROTATE_LEFT',
+    Op.ROTATE_RIGHT: 'BITVECTOR_ROTATE_RIGHT',
+    Op.BVNOT: 'BITVECTOR_NOT',
+    Op.BVAND: 'BITVECTOR_AND',
+    Op.BVOR: 'BITVECTOR_OR',
+    Op.BVXOR: 'BITVECTOR_XOR',
+    Op.BVNAND: 'BITVECTOR_NAND',
+    Op.BVNOR: 'BITVECTOR_NOR',
+    Op.BVXNOR: 'BITVECTOR_XNOR',
     Op.CONCAT: 'BITVECTOR_CONCAT',
     Op.BVITE: 'BITVECTOR_ITE',
+    Op.BVCOMP: 'BITVECTOR_COMP',
     Op.BVCONST: 'CONST_BITVECTOR',
     Op.ZERO_EXTEND: 'BITVECTOR_ZERO_EXTEND',
+    Op.SIGN_EXTEND: 'BITVECTOR_SIGN_EXTEND',
+    Op.EXTRACT: 'BITVECTOR_EXTRACT',
+    Op.REPEAT: 'BITVECTOR_REPEAT',
     Op.NOT: 'NOT',
     Op.AND: 'AND',
     Op.XOR: 'XOR',
     Op.EQ: 'EQUAL',
+    Op.ITE: 'ITE',
 }
 
 op_to_const_eval = {
@@ -40,6 +61,7 @@ op_to_const_eval = {
     Op.BVNOT: '(~{})',
     Op.PLUS: '({} + {})',
     Op.MINUS: '({} - {})',
+    Op.GEQ: '({} >= {})',
     Op.NOT: '(!{})',
     Op.EQ: '({} == {})',
 }
@@ -71,18 +93,39 @@ op_to_nindex = {
     Op.BVSLE: 0,
     Op.BVULT: 0,
     Op.BVULE: 0,
+    Op.BVREDAND: 0,
+    Op.BVREDOR: 0,
     Op.BVNEG: 0,
     Op.BVADD: 0,
     Op.BVSUB: 0,
+    Op.BVSDIV: 0,
+    Op.BVUDIV: 0,
+    Op.BVSREM: 0,
+    Op.BVUREM: 0,
+    Op.BVSMOD: 0,
+    Op.BVSHL: 0,
+    Op.ROTATE_LEFT: 1,
+    Op.ROTATE_RIGHT: 1,
     Op.BVNOT: 0,
+    Op.BVAND: 0,
+    Op.BVOR: 0,
+    Op.BVXOR: 0,
+    Op.BVNAND: 0,
+    Op.BVNOR: 0,
+    Op.BVXNOR: 0,
     Op.CONCAT: 0,
     Op.BVITE: 0,
+    Op.BVCOMP: 0,
     Op.BVCONST: 2,
     Op.ZERO_EXTEND: 1,
+    Op.SIGN_EXTEND: 1,
+    Op.EXTRACT: 2,
+    Op.REPEAT: 1,
     Op.NOT: 0,
     Op.AND: 0,
     Op.XOR: 0,
     Op.EQ: 0,
+    Op.ITE: 0,
 }
 
 
@@ -96,8 +139,8 @@ def mk_simple_block(cfg, next_block, instr):
     return instr_block
 
 
-def rule_to_in_ir(cfg, entry, node_var, rvars, lhs):
-    def expr_to_ir(next_block, expr, node, vars_seen, in_loop=False):
+def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
+    def expr_to_ir(const_checks, next_block, expr, node, vars_seen, in_loop=False):
         if isinstance(expr, Var):
             if expr.name in vars_seen:
                 return mk_simple_block(cfg, next_block,
@@ -120,12 +163,28 @@ def rule_to_in_ir(cfg, entry, node_var, rvars, lhs):
                 return next_block
 
         elif expr.sort.const:
-            instr = None
+            if isinstance(expr, Fn) and expr.op == Op.BVCONST:
+                # bvval = 
+                # next_block = mk_simple_block(
+                #     cfg, next_block,
+                #     Assert(
+                #         Fn(Op.EQ,
+                #            [Fn(Op.GET_KIND, [node]),
+                #             KindConst(expr.op)]), in_loop))
+                return mk_simple_block(
+                    cfg, next_block,
+                    Assert(
+                        Fn(Op.EQ,
+                           [Fn(Op.GET_KIND, [node]),
+                            KindConst(expr.op)]), in_loop))
+
             # TODO: node.sort should not be None
+            instr = None
             if node.sort and node.sort.const:
                 instr = Fn(Op.EQ, [node, expr])
             else:
                 instr = Fn(Op.EQ, [node, Fn(Op.MK_CONST, [expr])])
+
             return mk_simple_block(
                 cfg, next_block,
                 Assert(instr, in_loop))
@@ -147,7 +206,7 @@ def rule_to_in_ir(cfg, entry, node_var, rvars, lhs):
 
                     loop_idx = loop_idxs[i]
                     loop_var = Var(fresh_name('loopv'), child.sort)
-                    next_block = expr_to_ir(next_block, child, loop_var, sub_expr_vars_seen, True)
+                    next_block = expr_to_ir(const_checks, next_block, child, loop_var, sub_expr_vars_seen, True)
                     next_block = mk_simple_block(cfg, next_block, Assign(loop_var, Fn(
                         Op.GET_CHILD,
                         [node, loop_idx])))
@@ -177,7 +236,7 @@ def rule_to_in_ir(cfg, entry, node_var, rvars, lhs):
                             Op.GET_CHILD,
                             [node,
                              IntConst(i - op_to_nindex[expr.op])])
-                    next_block = expr_to_ir(next_block, child, child_node,
+                    next_block = expr_to_ir(const_checks, next_block, child, child_node,
                                             sub_expr_vars_seen, in_loop)
 
             return mk_simple_block(
@@ -188,6 +247,7 @@ def rule_to_in_ir(cfg, entry, node_var, rvars, lhs):
                         KindConst(expr.op)]), in_loop))
 
         elif isinstance(expr, BVConst):
+            assert False
             next_block = mk_simple_block(
                 cfg, next_block,
                 Assert(Fn(
@@ -207,7 +267,12 @@ def rule_to_in_ir(cfg, entry, node_var, rvars, lhs):
         assert False
 
     vars_seen = set()
-    return expr_to_ir(entry, lhs, node_var, vars_seen)
+    const_check_block = fresh_name('block')
+    const_checks = []
+    entry = expr_to_ir(const_checks, const_check_block, lhs, node_var, vars_seen)
+    cfg[const_check_block] = CFGNode(const_checks,
+                                   [CFGEdge(BoolConst(True), out_block)])
+    return entry
 
 
 name_id = 0
@@ -220,108 +285,117 @@ def fresh_name(prefix):
 
 
 def rule_to_out_expr(cfg, next_block, res, expr):
-    if isinstance(expr, Fn):
-        if expr.op == Op.COND:
-            edges = []
-            for case in expr.children:
-                cond = case.children[0]
-                result = rule_to_out_expr(cfg, next_block, res,
-                                          case.children[1])
-                edges.append(CFGEdge(cond, result))
-            cond_block = fresh_name('block')
-            cfg[cond_block] = CFGNode([], edges)
-            return cond_block
-        elif expr.op == Op.LET:
-            next_block = rule_to_out_expr(cfg, next_block, res,
-                                          expr.children[2])
-            next_block = rule_to_out_expr(cfg, next_block, expr.children[0],
-                                          expr.children[1])
-            return next_block
-        elif expr.op == Op.BVCONST:
-            new_vars = [
-                Var(fresh_name('__v'), child.sort) for child in expr.children
-            ]
-            bvc = Fn(Op.BVCONST, new_vars)
-            bvc.sort = expr.sort
-            assign = Assign(res, bvc)
+    def rule_to_out_expr_rec(cfg, next_block, res, expr):
+        if isinstance(expr, Fn):
+            if expr.op == Op.COND:
+                edges = []
+                for case in expr.children:
+                    cond = case.children[0]
+                    result = rule_to_out_expr(cfg, next_block, res,
+                                              case.children[1])
+                    edges.append(CFGEdge(cond, result))
+                cond_block = fresh_name('block')
+                cfg[cond_block] = CFGNode([], edges)
+                return cond_block
+            elif expr.op == Op.FAIL:
+                return mk_simple_block(cfg, next_block, Assert(BoolConst(False), False))
+            elif expr.op == Op.LET:
+                next_block = rule_to_out_expr(cfg, next_block, res,
+                                              expr.children[2])
+                next_block = rule_to_out_expr(cfg, next_block, expr.children[0],
+                                              expr.children[1])
+                return next_block
+            elif expr.op == Op.BVCONST:
+                new_vars = [
+                    Var(fresh_name('__v'), child.sort) for child in expr.children
+                ]
+                bvc = Fn(Op.BVCONST, new_vars)
+                bvc.sort = expr.sort
+                assign = None
+                if res.sort and res.sort.const:
+                    assign = Assign(res, bvc)
+                else:
+                    assign = Assign(res, Fn(Op.MK_CONST, [bvc]))
 
+                assign_block = fresh_name('block')
+                if next_block:
+                    cfg[assign_block] = CFGNode(
+                        [assign], [CFGEdge(BoolConst(True), next_block)])
+                else:
+                    cfg[assign_block] = CFGNode([assign], [])
+
+                next_block = assign_block
+                for var, child in zip(new_vars, expr.children):
+                    next_block = rule_to_out_expr(cfg, next_block, var, child)
+                return next_block
+            else:
+                new_vars = [
+                    Var(fresh_name('__v'), child.sort) for child in expr.children
+                ]
+
+                assign = None
+                if expr.sort.const:
+                    fn = Fn(expr.op, new_vars)
+                    fn.sort = expr.sort
+                    assign = Assign(res, fn)
+                else:
+                    # If we have a non-constant expression with constant arguments,
+                    # we have to cast the constant arguments to terms
+                    new_args = []
+                    for i, new_var in enumerate(new_vars):
+                        if new_var.sort.const and i >= op_to_nindex[expr.op]:
+                            new_args.append(Fn(Op.MK_CONST, [new_var]))
+                        else:
+                            new_args.append(new_var)
+                    assign = Assign(
+                        res, Fn(Op.MK_NODE, [KindConst(expr.op)] + new_args))
+
+                assign_block = fresh_name('block')
+                if next_block:
+                    cfg[assign_block] = CFGNode(
+                        [assign], [CFGEdge(BoolConst(True), next_block)])
+                else:
+                    cfg[assign_block] = CFGNode([assign], [])
+
+                next_block = assign_block
+                for var, child in zip(new_vars, expr.children):
+                    next_block = rule_to_out_expr(cfg, next_block, var, child)
+                return next_block
+        elif isinstance(expr, BoolConst):
             assign_block = fresh_name('block')
+            res.sort = Sort(BaseSort.Bool, [])
+            assign = Assign(res, expr)
             if next_block:
-                cfg[assign_block] = CFGNode(
-                    [assign], [CFGEdge(BoolConst(True), next_block)])
+                cfg[assign_block] = CFGNode([assign],
+                                            [CFGEdge(BoolConst(True), next_block)])
+            else:
+                assign.expr = Fn(Op.MK_CONST, [assign.expr])
+                cfg[assign_block] = CFGNode([assign], [])
+            return assign_block
+        elif isinstance(expr, IntConst):
+            assign_block = fresh_name('block')
+            res.sort = Sort(BaseSort.Int, [], True)
+            assign = Assign(res, expr)
+            if next_block:
+                cfg[assign_block] = CFGNode([assign],
+                                            [CFGEdge(BoolConst(True), next_block)])
             else:
                 cfg[assign_block] = CFGNode([assign], [])
-
-            next_block = assign_block
-            for var, child in zip(new_vars, expr.children):
-                next_block = rule_to_out_expr(cfg, next_block, var, child)
-            return next_block
-        else:
-            new_vars = [
-                Var(fresh_name('__v'), child.sort) for child in expr.children
-            ]
-
-            assign = None
-            if expr.sort.const:
-                fn = Fn(expr.op, new_vars)
-                fn.sort = expr.sort
-                assign = Assign(res, fn)
-            else:
-                # If we have a non-constant expression with constant arguments,
-                # we have to cast the constant arguments to terms
-                new_args = []
-                for new_var in new_vars:
-                    if new_var.sort.const:
-                        new_args.append(Fn(Op.MK_CONST, [new_var]))
-                    else:
-                        new_args.append(new_var)
-                assign = Assign(
-                    res, Fn(Op.MK_NODE, [KindConst(expr.op)] + new_args))
-
+            return assign_block
+        elif isinstance(expr, Var):
             assign_block = fresh_name('block')
+            assign = Assign(res, expr)
+            res.sort = expr.sort
             if next_block:
-                cfg[assign_block] = CFGNode(
-                    [assign], [CFGEdge(BoolConst(True), next_block)])
+                cfg[assign_block] = CFGNode([assign],
+                                            [CFGEdge(BoolConst(True), next_block)])
             else:
                 cfg[assign_block] = CFGNode([assign], [])
+            return assign_block
+        else:
+            return expr
 
-            next_block = assign_block
-            for var, child in zip(new_vars, expr.children):
-                next_block = rule_to_out_expr(cfg, next_block, var, child)
-            return next_block
-    elif isinstance(expr, BoolConst):
-        assign_block = fresh_name('block')
-        res.sort = Sort(BaseSort.Bool, [])
-        assign = Assign(res, expr)
-        if next_block:
-            cfg[assign_block] = CFGNode([assign],
-                                        [CFGEdge(BoolConst(True), next_block)])
-        else:
-            assign.expr = Fn(Op.MK_CONST, [assign.expr])
-            cfg[assign_block] = CFGNode([assign], [])
-        return assign_block
-    elif isinstance(expr, IntConst):
-        assign_block = fresh_name('block')
-        res.sort = Sort(BaseSort.Int, [], True)
-        assign = Assign(res, expr)
-        if next_block:
-            cfg[assign_block] = CFGNode([assign],
-                                        [CFGEdge(BoolConst(True), next_block)])
-        else:
-            cfg[assign_block] = CFGNode([assign], [])
-        return assign_block
-    elif isinstance(expr, Var):
-        assign_block = fresh_name('block')
-        assign = Assign(res, expr)
-        res.sort = expr.sort
-        if next_block:
-            cfg[assign_block] = CFGNode([assign],
-                                        [CFGEdge(BoolConst(True), next_block)])
-        else:
-            cfg[assign_block] = CFGNode([assign], [])
-        return assign_block
-    else:
-        return expr
+    return rule_to_out_expr_rec(cfg, next_block, res, expr)
 
 
 def expr_to_code(expr):
@@ -339,7 +413,12 @@ def expr_to_code(expr):
         elif expr.op == Op.MK_CONST:
             return 'nm->mkConst({})'.format(', '.join(args))
         elif expr.op == Op.MK_NODE:
-            return 'nm->mkNode({})'.format(', '.join(args))
+            kind = expr.children[0].val
+            if op_to_nindex[kind] != 0:
+                op = 'bv::utils::mkIndexedOp({})'.format(', '.join(args[:op_to_nindex[kind] + 1]))
+                return 'nm->mkNode({})'.format(', '.join([op] + args[op_to_nindex[kind] + 1:]))
+            else:
+                return 'nm->mkNode({})'.format(', '.join(args))
         elif expr.op == Op.GET_CHILD:
             return '{}[{}]'.format(args[0], args[1])
         elif expr.op == Op.GET_CHILDREN:
@@ -434,7 +513,7 @@ def name_to_enum(name):
 
 def gen_rule(rule):
     node_var = Var('__node', rule.lhs.sort)
-    out_var = Var('__ret', rule.rhs.sort)
+    out_var = Var('__ret', Sort(rule.rhs.sort.base, rule.rhs.sort.children))
     rule_pattern = """
     RewriteResponse {}(TNode __node) {{
       NodeManager* nm = NodeManager::currentNM();

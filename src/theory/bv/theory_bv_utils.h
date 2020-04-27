@@ -40,6 +40,9 @@ typedef std::unordered_set<Node, NodeHashFunction> NodeSet;
 
 std::vector<Node> getChildren(TNode node, std::function<bool(size_t)> filter);
 
+Node mkIndexedOp(Kind k, uint32_t arg);
+Node mkIndexedOp(Kind k, uint32_t arg1, uint32_t arg2);
+
 /* Get the bit-width of given node. */
 unsigned getSize(TNode node);
 

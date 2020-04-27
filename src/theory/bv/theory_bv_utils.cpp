@@ -38,6 +38,28 @@ std::vector<Node> getChildren(TNode node, std::function<bool(size_t)> filter) {
   return result;
 }
 
+Node mkIndexedOp(Kind k, uint32_t arg)
+{
+  NodeManager *nm = NodeManager::currentNM();
+  switch (k) {
+    case kind::BITVECTOR_REPEAT:
+      return nm->mkConst<BitVectorRepeat>(BitVectorRepeat(arg));
+    default:
+      return Node::null();
+  }
+}
+
+Node mkIndexedOp(Kind k, uint32_t arg1, uint32_t arg2)
+{
+  NodeManager *nm = NodeManager::currentNM();
+  switch (k) {
+    case kind::BITVECTOR_EXTRACT:
+      return nm->mkConst<BitVectorExtract>(BitVectorExtract(arg1, arg2));
+    default:
+      return Node::null();
+  }
+}
+
 unsigned getSize(TNode node)
 {
   return node.getType().getBitVectorSize();
