@@ -23,6 +23,8 @@ symbol_to_op = {
     'bvurem': Op.BVUREM,
     'bvsmod': Op.BVSMOD,
     'bvshl': Op.BVSHL,
+    'bvlshr': Op.BVLSHR,
+    'bvashr': Op.BVASHR,
     'rotate_left': Op.ROTATE_LEFT,
     'rotate_right': Op.ROTATE_RIGHT,
     'bvnot': Op.BVNOT,
@@ -45,6 +47,7 @@ symbol_to_op = {
     'xor': Op.XOR,
     '+': Op.PLUS,
     '-': Op.MINUS,
+    '<': Op.LT,
     '>=': Op.GEQ,
     '=': Op.EQ,
     'ite': Op.ITE,
@@ -60,14 +63,16 @@ def symbol():
     special_chars = '=' + '_' + '+' + '-' + '<' + '>'
     return pp.Word(pp.alphas + special_chars, pp.alphanums + special_chars)
 
+
 def mk_let(let):
     body = let[-1]
     for binding in reversed(let[0:-1]):
         body = Fn(Op.LET, [binding[0], binding[1], body])
     return body
 
+
 def mk_case(cases):
-    if cases[-1].op != Op.CASE:
+    if not isinstance(cases[-1], Fn) or cases[-1].op != Op.CASE:
         cases[-1] = Fn(Op.CASE, [BoolConst(True), cases[-1]])
     else:
         cases.append(Fn(Op.CASE, [BoolConst(True), Fn(Op.FAIL, [])]))
@@ -99,11 +104,11 @@ def expr():
            ).setParseAction(lambda s, l, t: Fn(symbol_to_op[t[0]], t[1:]))
 
     # Let bindings
-    binding = (pp.Suppress('(') + var + expr + pp.Suppress(')')
-               ).setParseAction(lambda s, l, t: (t[0], t[1]))
+    binding = (pp.Suppress('(') + var + expr +
+               pp.Suppress(')')).setParseAction(lambda s, l, t: (t[0], t[1]))
     let = (pp.Suppress('(') + pp.Keyword('let') + pp.Suppress('(') +
-           pp.OneOrMore(binding) + pp.Suppress(')') + expr + pp.Suppress(')')
-           ).setParseAction(lambda s, l, t: mk_let(t[1:]))
+           pp.OneOrMore(binding) + pp.Suppress(')') + expr +
+           pp.Suppress(')')).setParseAction(lambda s, l, t: mk_let(t[1:]))
 
     # Conditionals
     case = (pp.Suppress('(') + expr + expr + pp.Suppress(')')
@@ -139,9 +144,11 @@ def process_var_decl(name, sort, attrs):
 def attrs():
     return pp.Keyword(':list') | pp.Keyword(':const')
 
+
 def var_decl():
     return (pp.Suppress('(') + symbol() + sort() + pp.ZeroOrMore(attrs()) +
-            pp.Suppress(')')).setParseAction(lambda s, l, t: process_var_decl(t[0], t[1], t[2:]))
+            pp.Suppress(')')).setParseAction(
+                lambda s, l, t: process_var_decl(t[0], t[1], t[2:]))
 
 
 def var_list():

@@ -31,6 +31,13 @@
   ((_ extract i j) (bvnot x))
   (bvnot ((_ extract i j) x)))
 
+(define-rule ExtractSignExtend ((i Int :const) (j Int :const) (k Int :const) (n Int :const) (x (_ BitVec n)))
+  ((_ extract i j) ((_ sign_extend k) x))
+  (cond
+    ((< i n) ((_ extract i j) x))
+    ((and (< j n) (>= i n)) ((_ sign_extend (+ (- i n) 1)) ((_ extract (- n 1) j) x)))
+    (true ((_ repeat (+ (- i j) 1)) ((_ extract (- n 1) (- n 1)) x)))))
+
 /******************************************************************************
  * Operator Elimination
  ******************************************************************************/
@@ -167,25 +174,21 @@
  * Simplification
  ******************************************************************************/
 
-/*
 (define-rule BvIteConstCond ((m Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
   (bvite (_ bv m 1) x y)
   (cond
     ((= m 1) x)
     y))
-*/
 
 (define-rule BvIteEqualChildren ((c (_ BitVec 1)) (x (_ BitVec m)))
   (bvite c x x)
   x)
 
-/*
-(define-rule BvIteConstChildren ((n Int) (m Int) (x (_ BitVec o)))
+(define-rule BvIteConstChildren ((n Int :const) (m Int :const) (x (_ BitVec o)))
   (bvite x (_ bv n 1) (_ bv m 1))
   (cond
     ((and (= n 1) (= m 0)) x)
-    (bvnot x)))
-*/
+    (true (bvnot x))))
 
 (define-rule BvIteEqualCondThen ((c (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)) (z (_ BitVec n)))
   (bvite c (bvite c x y) z)
@@ -211,10 +214,11 @@
   (bvite c0 x (bvite c1 y x))
   (bvite (bvand (bvnot c0) c1) y x))
 
-/*
-(define-rule BvComp ((n Int) (x (_ BitVec 1)))
+(define-rule BvComp ((n Int :const) (x (_ BitVec 1)))
   (bvcomp (_ bv n 1) x)
-  (ite (= n 0) (bvnot x) x))
+  (cond
+    ((= n 0) (bvnot x))
+    x))
 
 (define-rule ShlByConst ((n Int :const) (m Int :const) (x (_ BitVec m)))
   (bvshl x (_ bv n m))
@@ -222,13 +226,20 @@
     ((= n 0) x)
     ((>= n m) (_ bv 0 m))
     (concat ((_ extract (- m (+ n 1)) 0) x) (_ bv 0 n))))
-*/
 
 /*
+(define-rule XorOne ((n Int :const) (xs (_ BitVec n) :list))
+  (bvxor (bvnot (_ bv 0 n)) xs)
+  (bvxor xs))
+*/
+
+(define-rule XorZero ((n Int :const) (xs (_ BitVec n) :list))
+  (bvxor (_ bv 0 n) xs)
+  (bvxor xs))
+
 (define-rule NotXor ((x (_ BitVec n)) (xs (_ BitVec n) :list))
   (bvnot (bvxor x xs))
   (bvxor (bvnot x) xs))
-*/
 
 (define-rule NotIdemp ((x (_ BitVec n)))
     (bvnot (bvnot x))
@@ -250,10 +261,30 @@
     (bvsle x x)
     true)
 
+(define-rule ZeroUlt ((n Int :const) (x (_ BitVec n)))
+    (bvult (_ bv 0 n) x)
+    (not (= (_ bv 0 n) x)))
+
+(define-rule UltZero ((n Int :const) (x (_ BitVec n)))
+    (bvult x (_ bv 0 n))
+    false)
+
+(define-rule UltOne ((n Int :const) (x (_ BitVec n)))
+    (bvult x (_ bv 1 n))
+    (= x (_ bv 0 n)))
+
+(define-rule SltZero ((n Int :const) (x (_ BitVec n)))
+    (bvslt x (_ bv 0 n))
+    (= ((_ extract (- n 1) (- n 1)) x) (_ bv 1 1)))
+
 /* Note: Duplicate of LtSelfUlt */
 (define-rule UltSelf ((x (_ BitVec n)))
     (bvult x x)
     false)
+
+(define-rule UleZero ((n Int :const) (x (_ BitVec n)))
+    (bvule x (_ bv 0 n))
+    (= x (_ bv 0 n)))
 
 /* Note: Duplicate of LteSelfUle */
 (define-rule UleSelf ((x (_ BitVec n)))
@@ -290,8 +321,24 @@
     (bvudiv x (_ bv 1 n))
     x)
 
+(define-rule UremOne ((n Int :const) (x (_ BitVec n)))
+    (bvudiv x (_ bv 1 n))
+    (_ bv 0 n))
+
 (define-rule UremSelf ((n Int :const) (x (_ BitVec n)))
     (bvudiv x x)
+    (_ bv 0 n))
+
+(define-rule ShiftZeroShl ((n Int :const) (x (_ BitVec n)))
+    (bvshl (_ bv 0 n) x)
+    (_ bv 0 n))
+
+(define-rule ShiftZeroLshr ((n Int :const) (x (_ BitVec n)))
+    (bvlshr (_ bv 0 n) x)
+    (_ bv 0 n))
+
+(define-rule ShiftZeroAshr ((n Int :const) (x (_ BitVec n)))
+    (bvashr (_ bv 0 n) x)
     (_ bv 0 n))
 
 (define-rule MergeSignExtendSign ((i Int :const) (j Int :const) (n Int :const) (x (_ BitVec n)))
@@ -303,6 +350,16 @@
   (cond
     ((= j 0) ((_ sign_extend i) x))
     (true ((_ zero_extend (+ i j)) x))))
+
+(define-rule ZeroExtendEqConst ((i Int :const) (n Int :const) (m Int :const) (x (_ BitVec n)))
+  (= ((_ zero_extend i) x) (_ bv m n))
+  (cond
+    ((= ((_ extract (- (+ n m) 1) n) (_ bv m n)) (_ bv 0 n)) (= x ((_ extract (- n 1) 0) (_ bv m n))))
+    false))
+
+(define-rule UltPlusOne ( (n Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvult x (bvadd y (_ bv 1 n)))
+  (and (bvult (bvnot y) x) (not (= y (bvnot (_ bv 0 n))))))
 
 /******************************************************************************
  * Experimental

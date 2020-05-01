@@ -31,6 +31,8 @@ class Op(Enum):
 
     # Bit-vector shifts
     BVSHL = auto()
+    BVLSHR = auto()
+    BVASHR = auto()
     ROTATE_LEFT = auto()
     ROTATE_RIGHT = auto()
 
@@ -69,6 +71,7 @@ class Op(Enum):
     PLUS = auto()
     MINUS = auto()
     MULT = auto()
+    LT = auto()
     GEQ = auto()
 
     ###########################################################################
@@ -89,6 +92,7 @@ class Op(Enum):
     MK_NODE = auto()
     MK_CONST = auto()
     BV_SIZE = auto()
+    APPEND = auto()
 
     ###########################################################################
     # Language operators
@@ -102,8 +106,9 @@ class Op(Enum):
     LET = auto()
     FAIL = auto()
 
-commutative_ops = set([Op.AND, Op.XOR, Op.EQ])
-nary_ops = set([Op.AND])
+
+commutative_ops = set([Op.BVADD, Op.BVXOR, Op.AND, Op.XOR, Op.EQ])
+nary_ops = set([Op.BVADD, Op.AND])
 
 
 class BaseSort(Enum):
@@ -247,9 +252,8 @@ class Sort(Node):
 
     def __repr__(self):
         return '({} {}{})'.format(
-            self.base, ' '.join(
-                str(child)
-                for child in self.children), ' :const' if self.const else '')
+            self.base, ' '.join(str(child) for child in self.children),
+            ' :const' if self.const else '')
 
 
 def collect_vars(node):
@@ -294,6 +298,16 @@ def unify_types(t1, t2):
                 return t1
 
 
+def are_types_compatible(t1, t2):
+    if t1.base == t2.base:
+        return True
+    if t1.base == BaseSort.List:
+        return are_types_compatible(t1.children[0], t2)
+    elif t2.base == BaseSort.List:
+        return are_types_compatible(t1, t2.children[0])
+    return False
+
+
 def infer_types(context, node):
     if node.sort:
         return
@@ -323,14 +337,21 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.BitVec
             assert node.children[0].sort == node.children[1].sort
             sort = Sort(BaseSort.Bool, [])
-        elif node.op in [
-                Op.BVREDAND, Op.BVREDOR
-        ]:
+        elif node.op in [Op.BVREDAND, Op.BVREDOR]:
             assert node.children[0].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.Bool, [])
-        elif node.op in [Op.BVADD, Op.BVSUB, Op.BVSDIV, Op.BVUDIV, Op.BVSREM, Op.BVUREM, Op.BVSMOD, Op.BVSHL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.BVNAND, Op.BVNOR, Op.BVXNOR]:
-            assert node.children[0].sort.base == BaseSort.BitVec
-            assert node.children[0].sort == node.children[1].sort
+        elif node.op in [
+                Op.BVADD, Op.BVSUB, Op.BVSDIV, Op.BVUDIV, Op.BVSREM, Op.BVUREM,
+                Op.BVSMOD, Op.BVSHL, Op.BVLSHR, Op.BVASHR, Op.BVAND, Op.BVOR,
+                Op.BVXOR, Op.BVNAND, Op.BVNOR, Op.BVXNOR
+        ]:
+            assert node.children[0].sort.base == BaseSort.BitVec or (
+                node.children[0].sort.base == BaseSort.List
+                and node.children[0].sort.children[0].base == BaseSort.BitVec)
+            arg_sort = node.children[0].sort
+            assert all(
+                are_types_compatible(arg_sort, child.sort)
+                for child in node.children)
             sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
         elif node.op in [Op.ROTATE_LEFT, Op.ROTATE_RIGHT]:
             assert node.children[0].sort.base == BaseSort.Int
@@ -367,8 +388,10 @@ def infer_types(context, node):
             assert node.children[1].sort.base == BaseSort.Int
             assert node.children[2].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.BitVec, [
-                Fn(Op.PLUS, [Fn(Op.MINUS,
-                   [node.children[0], node.children[1]]), IntConst(1)])
+                Fn(Op.PLUS, [
+                    Fn(Op.MINUS, [node.children[0], node.children[1]]),
+                    IntConst(1)
+                ])
             ])
         elif node.op in [Op.BVNEG, Op.BVNOT]:
             assert node.children[0].sort.base == BaseSort.BitVec
@@ -410,7 +433,7 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.Int
             sort = Sort(BaseSort.Int, [])
-        elif node.op in [Op.GEQ]:
+        elif node.op in [Op.LT, Op.GEQ]:
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.Int
             sort = Sort(BaseSort.Bool, [])
@@ -419,7 +442,10 @@ def infer_types(context, node):
             assert node.children[1].sort.base == BaseSort.Bool
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [Op.AND]:
-            assert all(child.sort.base == BaseSort.Bool or (child.sort.base == BaseSort.List and child.sort.children[0].base == BaseSort.Bool) for child in node.children)
+            assert all(child.sort.base == BaseSort.Bool or (
+                child.sort.base == BaseSort.List
+                and child.sort.children[0].base == BaseSort.Bool)
+                       for child in node.children)
             # TODO: Check that list is used correctly
             sort = Sort(BaseSort.Bool, [])
         elif node.op == Op.FAIL:
