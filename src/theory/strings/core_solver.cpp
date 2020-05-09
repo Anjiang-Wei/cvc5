@@ -1263,7 +1263,7 @@ void CoreSolver::processSimpleNEq(NormalForm& nfi,
           // purify variable for this string to communicate that
           // we have inferred whether it is empty.
           SkolemCache* skc = d_termReg.getSkolemCache();
-          Node p = skc->mkSkolemCached(nc, SkolemCache::SK_PURIFY, "lsym");
+          Node p = skc->mkSkolemCached(nc, SkolemId::SK_PURIFY, "lsym");
           Node pEq = p.eqNode(emp);
           // should not be constant
           Assert(!Rewriter::rewrite(pEq).isConst());
@@ -1341,7 +1341,7 @@ void CoreSolver::processSimpleNEq(NormalForm& nfi,
           Node sk = skc->mkSkolemCached(
               nc,
               prea,
-              isRev ? SkolemCache::SK_ID_C_SPT_REV : SkolemCache::SK_ID_C_SPT,
+              isRev ? SkolemId::SK_ID_C_SPT_REV : SkolemId::SK_ID_C_SPT,
               "c_spt");
           Trace("strings-csp")
               << "Const Split: " << prea << " is removed from " << stra
@@ -1367,7 +1367,7 @@ void CoreSolver::processSimpleNEq(NormalForm& nfi,
       SkolemCache* skc = d_termReg.getSkolemCache();
       Node sk = skc->mkSkolemCached(
           nc,
-          isRev ? SkolemCache::SK_ID_VC_SPT_REV : SkolemCache::SK_ID_VC_SPT,
+          isRev ? SkolemId::SK_ID_VC_SPT_REV : SkolemId::SK_ID_VC_SPT,
           "c_spt");
       Trace("strings-csp") << "Const Split: " << firstChar
                            << " is removed from " << stra << " (serial) "
@@ -1442,8 +1442,8 @@ void CoreSolver::processSimpleNEq(NormalForm& nfi,
     SkolemCache* skc = d_termReg.getSkolemCache();
     Node sk = skc->mkSkolemCached(x,
                                   y,
-                                  isRev ? SkolemCache::SK_ID_V_UNIFIED_SPT_REV
-                                        : SkolemCache::SK_ID_V_UNIFIED_SPT,
+                                  isRev ? SkolemId::SK_ID_V_UNIFIED_SPT_REV
+                                        : SkolemId::SK_ID_V_UNIFIED_SPT,
                                   "v_spt");
     iinfo.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk);
     Node eq1 =
@@ -1856,11 +1856,10 @@ void CoreSolver::processDeq(Node ni, Node nj)
           // E.g. x ++ x' ++ ... != "abc" ++ y' ++ ... ^ len(x) != "" --->
           //      x = k1 ++ k2 ^ len(k1) = 1 ^ (k1 != "a" v x = "a" ++  k2)
           SkolemCache* skc = d_termReg.getSkolemCache();
-          Node sk =
-              skc->mkSkolemCached(nck, SkolemCache::SK_ID_DC_SPT, "dc_spt");
+          Node sk = skc->mkSkolemCached(nck, SkolemId::SK_ID_DC_SPT, "dc_spt");
           d_termReg.registerTermAtomic(sk, LENGTH_ONE);
           Node skr = skc->mkSkolemCached(
-              nck, SkolemCache::SK_ID_DC_SPT_REM, "dc_spt_rem");
+              nck, SkolemId::SK_ID_DC_SPT_REM, "dc_spt_rem");
           Node eq1 = nck.eqNode(nm->mkNode(kind::STRING_CONCAT, sk, skr));
           eq1 = Rewriter::rewrite(eq1);
           Node eq2 =
@@ -1904,14 +1903,10 @@ void CoreSolver::processDeq(Node ni, Node nj)
 
         std::vector<Node> conc;
         SkolemCache* skc = d_termReg.getSkolemCache();
-        Node sk1 =
-            skc->mkSkolemCached(x, y, SkolemCache::SK_ID_DEQ_X, "x_dsplit");
-        Node sk2 =
-            skc->mkSkolemCached(x, y, SkolemCache::SK_ID_DEQ_Y, "y_dsplit");
-        Node sk3 =
-            skc->mkSkolemCached(y, x, SkolemCache::SK_ID_V_SPT, "z_dsplit");
-        Node sk4 =
-            skc->mkSkolemCached(x, y, SkolemCache::SK_ID_V_SPT, "w_dsplit");
+        Node sk1 = skc->mkSkolemCached(x, y, SkolemId::SK_ID_DEQ_X, "x_dsplit");
+        Node sk2 = skc->mkSkolemCached(x, y, SkolemId::SK_ID_DEQ_Y, "y_dsplit");
+        Node sk3 = skc->mkSkolemCached(y, x, SkolemId::SK_ID_V_SPT, "z_dsplit");
+        Node sk4 = skc->mkSkolemCached(x, y, SkolemId::SK_ID_V_SPT, "w_dsplit");
         d_termReg.registerTermAtomic(sk3, LENGTH_GEQ_ONE);
         d_termReg.registerTermAtomic(sk4, LENGTH_GEQ_ONE);
         Node sk1Len = utils::mkNLength(sk1);

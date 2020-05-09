@@ -38,7 +38,9 @@ SequencesStatistics::SequencesStatistics()
       d_lemmasRegisterTerm("theory::strings::lemmasRegisterTerm", 0),
       d_lemmasRegisterTermAtomic("theory::strings::lemmasRegisterTermAtomic",
                                  0),
-      d_lemmasInfer("theory::strings::lemmasInfer", 0)
+      d_lemmasInfer("theory::strings::lemmasInfer", 0),
+      d_numCachedSkolemsPre("theory::strings::NumCachedSkolemsPre"),
+      d_numCachedSkolemsPost("theory::strings::NumCachedSkolemsPost")
 {
   smtStatisticsRegistry()->registerStat(&d_checkRuns);
   smtStatisticsRegistry()->registerStat(&d_strategyRuns);
@@ -56,6 +58,8 @@ SequencesStatistics::SequencesStatistics()
   smtStatisticsRegistry()->registerStat(&d_lemmasRegisterTerm);
   smtStatisticsRegistry()->registerStat(&d_lemmasRegisterTermAtomic);
   smtStatisticsRegistry()->registerStat(&d_lemmasInfer);
+  smtStatisticsRegistry()->registerStat(&d_numCachedSkolemsPre);
+  smtStatisticsRegistry()->registerStat(&d_numCachedSkolemsPost);
 }
 
 SequencesStatistics::~SequencesStatistics()
@@ -76,6 +80,8 @@ SequencesStatistics::~SequencesStatistics()
   smtStatisticsRegistry()->unregisterStat(&d_lemmasRegisterTerm);
   smtStatisticsRegistry()->unregisterStat(&d_lemmasRegisterTermAtomic);
   smtStatisticsRegistry()->unregisterStat(&d_lemmasInfer);
+  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolemsPre);
+  smtStatisticsRegistry()->unregisterStat(&d_numCachedSkolemsPost);
 }
 
 }
