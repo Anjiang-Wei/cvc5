@@ -161,8 +161,8 @@ bool ExtfSolver::doReduction(int effort, Node n)
     Node s = n[1];
     // positive contains reduces to a equality
     SkolemCache* skc = d_termReg.getSkolemCache();
-    Node sk1 = skc->mkSkolemCached(x, s, SkolemCache::SK_FIRST_CTN_PRE, "sc1");
-    Node sk2 = skc->mkSkolemCached(x, s, SkolemCache::SK_FIRST_CTN_POST, "sc2");
+    Node sk1 = skc->mkSkolemCached(x, s, SkolemId::SK_FIRST_CTN_PRE, "sc1");
+    Node sk2 = skc->mkSkolemCached(x, s, SkolemId::SK_FIRST_CTN_POST, "sc2");
     Node eq = Rewriter::rewrite(x.eqNode(utils::mkNConcat(sk1, s, sk2)));
     std::vector<Node> exp_vec;
     exp_vec.push_back(n);

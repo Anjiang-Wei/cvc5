@@ -59,7 +59,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node s = t[0];
     Node n = t[1];
     Node m = t[2];
-    Node skt = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "sst");
+    Node skt = d_sc->mkSkolemCached(t, SkolemId::SK_PURIFY, "sst");
     Node t12 = nm->mkNode(PLUS, n, m);
     t12 = Rewriter::rewrite(t12);
     Node lt0 = nm->mkNode(STRING_LENGTH, s);
@@ -73,13 +73,13 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
 
     Node emp = Word::mkEmptyWord(t.getType());
 
-    Node sk1 = n == d_zero ? emp
-                           : d_sc->mkSkolemCached(
-                                 s, n, SkolemCache::SK_PREFIX, "sspre");
-    Node sk2 = ArithEntail::check(t12, lt0)
+    Node sk1 = n == d_zero
                    ? emp
-                   : d_sc->mkSkolemCached(
-                       s, t12, SkolemCache::SK_SUFFIX_REM, "sssufr");
+                   : d_sc->mkSkolemCached(s, n, SkolemId::SK_PREFIX, "sspre");
+    Node sk2 =
+        ArithEntail::check(t12, lt0)
+            ? emp
+            : d_sc->mkSkolemCached(s, t12, SkolemId::SK_SUFFIX_REM, "sssufr");
     Node b11 = s.eqNode(nm->mkNode(STRING_CONCAT, sk1, skt, sk2));
     //length of first skolem is second argument
     Node b12 = nm->mkNode(STRING_LENGTH, sk1).eqNode(n);
@@ -139,9 +139,9 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
                          n,
                          nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, x), n));
     Node io2 =
-        d_sc->mkSkolemCached(st, y, SkolemCache::SK_FIRST_CTN_PRE, "iopre");
+        d_sc->mkSkolemCached(st, y, SkolemId::SK_FIRST_CTN_IOPRE, "iopre");
     Node io4 =
-        d_sc->mkSkolemCached(st, y, SkolemCache::SK_FIRST_CTN_POST, "iopost");
+        d_sc->mkSkolemCached(st, y, SkolemId::SK_FIRST_CTN_IOPOST, "iopost");
 
     // ~contains( substr( x, n, len( x ) - n ), y )
     Node c11 = nm->mkNode(STRING_STRCTN, st, y).negate();
@@ -198,7 +198,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
   {
     // processing term:  int.to.str( n )
     Node n = t[0];
-    Node itost = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "itost");
+    Node itost = d_sc->mkSkolemCached(t, SkolemId::SK_PURIFY, "itost");
     Node leni = nm->mkNode(STRING_LENGTH, itost);
 
     std::vector<Node> conc;
@@ -362,10 +362,10 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node z = t[2];
     TypeNode tn = t[0].getType();
     Node rp1 =
-        d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_CTN_PRE, "rfcpre");
+        d_sc->mkSkolemCached(x, y, SkolemId::SK_FIRST_CTN_RFCPRE, "rfcpre");
     Node rp2 =
-        d_sc->mkSkolemCached(x, y, SkolemCache::SK_FIRST_CTN_POST, "rfcpost");
-    Node rpw = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "rpw");
+        d_sc->mkSkolemCached(x, y, SkolemId::SK_FIRST_CTN_RFCPOST, "rfcpost");
+    Node rpw = d_sc->mkSkolemCached(t, SkolemId::SK_PURIFY, "rpw");
 
     // y = ""
     Node emp = Word::mkEmptyWord(tn);
@@ -421,17 +421,17 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
     Node x = t[0];
     Node y = t[1];
     Node z = t[2];
-    Node rpaw = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "rpaw");
+    Node rpaw = d_sc->mkSkolemCached(t, SkolemId::SK_PURIFY, "rpaw");
 
     Node numOcc = d_sc->mkTypedSkolemCached(
-        nm->integerType(), x, y, SkolemCache::SK_NUM_OCCUR, "numOcc");
+        nm->integerType(), x, y, SkolemId::SK_NUM_OCCUR, "numOcc");
     std::vector<TypeNode> argTypes;
     argTypes.push_back(nm->integerType());
     Node us =
         nm->mkSkolem("Us", nm->mkFunctionType(argTypes, nm->stringType()));
     TypeNode ufType = nm->mkFunctionType(argTypes, nm->integerType());
-    Node uf = d_sc->mkTypedSkolemCached(
-        ufType, x, y, SkolemCache::SK_OCCUR_INDEX, "Uf");
+    Node uf =
+        d_sc->mkTypedSkolemCached(ufType, x, y, SkolemId::SK_OCCUR_INDEX, "Uf");
 
     Node ufno = nm->mkNode(APPLY_UF, uf, numOcc);
     Node usno = nm->mkNode(APPLY_UF, us, numOcc);
@@ -495,7 +495,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
   else if (t.getKind() == STRING_TOLOWER || t.getKind() == STRING_TOUPPER)
   {
     Node x = t[0];
-    Node r = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "r");
+    Node r = d_sc->mkSkolemCached(t, SkolemId::SK_PURIFY, "r");
 
     Node lenx = nm->mkNode(STRING_LENGTH, x);
     Node lenr = nm->mkNode(STRING_LENGTH, r);
@@ -541,7 +541,7 @@ Node StringsPreprocess::simplify( Node t, std::vector< Node > &new_nodes ) {
   else if (t.getKind() == STRING_REV)
   {
     Node x = t[0];
-    Node r = d_sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "r");
+    Node r = d_sc->mkSkolemCached(t, SkolemId::SK_PURIFY, "r");
 
     Node lenx = nm->mkNode(STRING_LENGTH, x);
     Node lenr = nm->mkNode(STRING_LENGTH, r);

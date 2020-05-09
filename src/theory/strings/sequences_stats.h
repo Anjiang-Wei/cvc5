@@ -20,6 +20,7 @@
 #include "expr/kind.h"
 #include "theory/strings/infer_info.h"
 #include "theory/strings/rewrites.h"
+#include "theory/strings/skolem_cache.h"
 #include "util/statistics_registry.h"
 
 namespace CVC4 {
@@ -104,6 +105,8 @@ class SequencesStatistics
   /** Number of lemmas added due to inferences */
   IntStat d_lemmasInfer;
   //--------------- end of lemmas
+  HistogramStat<SkolemId> d_numCachedSkolemsPre;
+  HistogramStat<SkolemId> d_numCachedSkolemsPost;
 };
 
 }

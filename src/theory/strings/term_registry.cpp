@@ -44,6 +44,7 @@ TermRegistry::TermRegistry(context::Context* c,
       d_out(out),
       d_statistics(statistics),
       d_hasStrCode(false),
+      d_skCache(statistics),
       d_functionsTerms(c),
       d_inputVars(u),
       d_preregisteredTerms(u),
@@ -276,7 +277,7 @@ Node TermRegistry::getRegisterTermLemma(Node n)
       return Node::null();
     }
   }
-  Node sk = d_skCache.mkSkolemCached(n, SkolemCache::SK_PURIFY, "lsym");
+  Node sk = d_skCache.mkSkolemCached(n, SkolemId::SK_PURIFY, "lsym");
   StringsProxyVarAttribute spva;
   sk.setAttribute(spva, true);
   Node eq = Rewriter::rewrite(sk.eqNode(n));
