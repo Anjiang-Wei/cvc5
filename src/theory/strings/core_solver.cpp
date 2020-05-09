@@ -1440,11 +1440,11 @@ void CoreSolver::processSimpleNEq(NormalForm& nfi,
       }
     }
     SkolemCache* skc = d_termReg.getSkolemCache();
-    Node sk = skc->mkSkolemCached(
-        x,
-        y,
-        isRev ? SkolemCache::SK_ID_V_SPT_REV : SkolemCache::SK_ID_V_SPT,
-        "v_spt");
+    Node sk = skc->mkSkolemCached(x,
+                                  y,
+                                  isRev ? SkolemCache::SK_ID_V_UNIFIED_SPT_REV
+                                        : SkolemCache::SK_ID_V_UNIFIED_SPT,
+                                  "v_spt");
     iinfo.d_new_skolem[LENGTH_GEQ_ONE].push_back(sk);
     Node eq1 =
         x.eqNode(isRev ? utils::mkNConcat(sk, y) : utils::mkNConcat(y, sk));
@@ -1909,15 +1909,18 @@ void CoreSolver::processDeq(Node ni, Node nj)
         Node sk2 =
             skc->mkSkolemCached(x, y, SkolemCache::SK_ID_DEQ_Y, "y_dsplit");
         Node sk3 =
-            skc->mkSkolemCached(x, y, SkolemCache::SK_ID_DEQ_Z, "z_dsplit");
+            skc->mkSkolemCached(y, x, SkolemCache::SK_ID_V_SPT, "z_dsplit");
+        Node sk4 =
+            skc->mkSkolemCached(x, y, SkolemCache::SK_ID_V_SPT, "w_dsplit");
         d_termReg.registerTermAtomic(sk3, LENGTH_GEQ_ONE);
+        d_termReg.registerTermAtomic(sk4, LENGTH_GEQ_ONE);
         Node sk1Len = utils::mkNLength(sk1);
         conc.push_back(sk1Len.eqNode(xLenTerm));
         Node sk2Len = utils::mkNLength(sk2);
         conc.push_back(sk2Len.eqNode(yLenTerm));
         conc.push_back(nm->mkNode(OR,
                                   y.eqNode(utils::mkNConcat(sk1, sk3)),
-                                  x.eqNode(utils::mkNConcat(sk2, sk3))));
+                                  x.eqNode(utils::mkNConcat(sk2, sk4))));
         d_im.sendInference(antec,
                            antecNewLits,
                            nm->mkNode(AND, conc),

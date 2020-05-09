@@ -368,6 +368,11 @@ Node TermRegistry::getRegisterTermAtomicLemma(Node n,
                                               LengthStatus s,
                                               std::map<Node, bool>& reqPhase)
 {
+  if (n.isConst())
+  {
+    return Node::null();
+  }
+
   Assert(n.getType().isStringLike());
   NodeManager* nm = NodeManager::currentNM();
   Node n_len = nm->mkNode(kind::STRING_LENGTH, n);

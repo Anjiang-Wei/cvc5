@@ -65,6 +65,8 @@ libcvc4_add_sources(
   dtype_selector.cpp
   record.cpp
   record.h
+  proof_skolem_cache.cpp
+  proof_skolem_cache.h
   sygus_datatype.cpp
   sygus_datatype.h
   uninterpreted_constant.cpp
