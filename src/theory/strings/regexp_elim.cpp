@@ -232,7 +232,14 @@ Node RegExpElimination::eliminateConcat(Node atom)
           prev_end = nm->mkNode(PLUS, prev_end, k);
         }
         Node curr = nm->mkNode(STRING_STRIDOF, x, sc, prev_end);
-        Node idofFind = curr.eqNode(d_neg_one).negate();
+        Node idofFind = nm->mkNode(
+            STRING_STRCTN,
+            nm->mkNode(
+                STRING_SUBSTR,
+                x,
+                prev_end,
+                nm->mkNode(MINUS, nm->mkNode(STRING_LENGTH, x), prev_end)),
+            sc);  // curr.eqNode(d_neg_one).negate();
         conj.push_back(idofFind);
         prev_end = nm->mkNode(PLUS, curr, lensc);
       }
