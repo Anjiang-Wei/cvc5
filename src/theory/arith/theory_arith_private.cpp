@@ -34,6 +34,7 @@
 #include "expr/node.h"
 #include "expr/node_algorithm.h"
 #include "expr/node_builder.h"
+#include "expr/node_traversal.h"
 #include "options/arith_options.h"
 #include "options/smt_options.h"  // for incrementalSolving()
 #include "preprocessing/util/ite_utilities.h"
@@ -1527,31 +1528,6 @@ void TheoryArithPrivate::setupDivLike(const Variable& v){
 
   cautiousSetupPolynomial(m);
   cautiousSetupPolynomial(n);
-
-  Node lem;
-  switch(vnode.getKind()){
-  case DIVISION:
-  case INTS_DIVISION:
-  case INTS_MODULUS:
-    // these should be removed during expand definitions
-    Assert(false);
-    break;
-  case DIVISION_TOTAL:
-    lem = axiomIteForTotalDivision(vnode);
-    break;
-  case INTS_DIVISION_TOTAL:
-  case INTS_MODULUS_TOTAL:
-    lem = axiomIteForTotalIntDivision(vnode);
-    break;
-  default:
-    /* intentionally blank */
-    break;
-  }
-
-  if(!lem.isNull()){
-    Debug("arith::div") << lem << endl;
-    outputLemma(lem);
-  }
 }
 
 Node TheoryArithPrivate::axiomIteForTotalDivision(Node div_tot){
@@ -1700,6 +1676,34 @@ void TheoryArithPrivate::preRegisterTerm(TNode n) {
 
   try {
     if(isRelationOperator(n.getKind())){
+      for (const Node& vnode : NodeDfsIterable(n))
+      {
+        Node lem;
+        switch (vnode.getKind())
+        {
+          case DIVISION:
+          case INTS_DIVISION:
+          case INTS_MODULUS:
+            // these should be removed during expand definitions
+            Assert(false);
+            break;
+          case DIVISION_TOTAL: lem = axiomIteForTotalDivision(vnode); break;
+          case INTS_DIVISION_TOTAL:
+          case INTS_MODULUS_TOTAL:
+            lem = axiomIteForTotalIntDivision(vnode);
+            break;
+          default:
+            /* intentionally blank */
+            break;
+        }
+
+        if (!lem.isNull())
+        {
+          Debug("arith::div") << lem << endl;
+          outputLemma(lem);
+        }
+      }
+
       if(!isSetup(n)){
         setupAtom(n);
       }
