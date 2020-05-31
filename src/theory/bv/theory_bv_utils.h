@@ -40,6 +40,8 @@ typedef std::unordered_set<Node, NodeHashFunction> NodeSet;
 
 std::vector<Node> getChildren(TNode node, std::function<bool(size_t)> filter);
 
+std::vector<Node> mapVector(const std::vector<Node> xs, std::function<Node(Node)> f);
+
 Node mkIndexedOp(Kind k, uint32_t arg);
 Node mkIndexedOp(Kind k, uint32_t arg1, uint32_t arg2);
 

@@ -38,6 +38,12 @@ std::vector<Node> getChildren(TNode node, std::function<bool(size_t)> filter) {
   return result;
 }
 
+std::vector<Node> mapVector(const std::vector<Node> xs, std::function<Node(Node)> f) {
+  std::vector<Node> result;
+  std::transform(xs.begin(), xs.end(), std::back_inserter(result), f);
+  return result;
+}
+
 Node mkIndexedOp(Kind k, uint32_t arg)
 {
   NodeManager *nm = NodeManager::currentNM();

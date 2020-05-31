@@ -23,6 +23,7 @@ class Op(Enum):
     BVNEG = auto()
     BVADD = auto()
     BVSUB = auto()
+    BVMUL = auto()
     BVSDIV = auto()
     BVUDIV = auto()
     BVSREM = auto()
@@ -105,10 +106,13 @@ class Op(Enum):
     # Let binding
     LET = auto()
     FAIL = auto()
+    MAP = auto()
+    LAMBDA = auto()
 
 
-commutative_ops = set([Op.BVADD, Op.BVXOR, Op.AND, Op.XOR, Op.EQ])
-nary_ops = set([Op.BVADD, Op.AND])
+commutative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.AND, Op.XOR, Op.EQ])
+associative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND, Op.XOR, Op.EQ])
+nary_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND])
 
 
 class BaseSort(Enum):
@@ -316,14 +320,22 @@ def infer_types(context, node):
         node.sort = context[node.name]
         return
 
-    if isinstance(node, Fn) and node.op == Op.LET:
-        infer_types(context, node.children[1])
-        node.children[0].sort = node.children[1].sort
-        child_context = context.copy()
-        child_context[node.children[0].name] = node.children[1].sort
-        infer_types(child_context, node.children[2])
-        node.sort = node.children[2].sort
-        return
+    if isinstance(node, Fn):
+        if node.op == Op.LET:
+            infer_types(context, node.children[1])
+            node.children[0].sort = node.children[1].sort
+            child_context = context.copy()
+            child_context[node.children[0].name] = node.children[1].sort
+            infer_types(child_context, node.children[2])
+            node.sort = node.children[2].sort
+            return
+        elif node.op == Op.LAMBDA:
+            infer_types(context, node.children[0])
+            child_context = context.copy()
+            child_context[node.children[0].name] = node.children[0].sort
+            infer_types(child_context, node.children[1])
+            node.sort = node.children[1].sort
+            return
 
     for child in node.children:
         infer_types(context, child)
@@ -341,7 +353,7 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [
-                Op.BVADD, Op.BVSUB, Op.BVSDIV, Op.BVUDIV, Op.BVSREM, Op.BVUREM,
+                Op.BVADD, Op.BVSUB, Op.BVMUL, Op.BVSDIV, Op.BVUDIV, Op.BVSREM, Op.BVUREM,
                 Op.BVSMOD, Op.BVSHL, Op.BVLSHR, Op.BVASHR, Op.BVAND, Op.BVOR,
                 Op.BVXOR, Op.BVNAND, Op.BVNOR, Op.BVXNOR
         ]:
@@ -358,12 +370,16 @@ def infer_types(context, node):
             assert node.children[1].sort.base == BaseSort.BitVec
             sort = node.children[1].sort
         elif node.op in [Op.CONCAT]:
-            assert node.children[0].sort.base == BaseSort.BitVec
-            assert node.children[1].sort.base == BaseSort.BitVec
+            assert node.children[0].sort.base == BaseSort.BitVec or (
+                node.children[0].sort.base == BaseSort.List
+                and node.children[0].sort.children[0].base == BaseSort.BitVec)
+            arg_sort = node.children[0].sort
+            assert all(
+                are_types_compatible(arg_sort, child.sort)
+                for child in node.children)
             sort = Sort(BaseSort.BitVec, [
                 Fn(Op.PLUS, [
-                    node.children[0].sort.children[0],
-                    node.children[1].sort.children[0]
+                    child.sort.children[0] for child in node.children
                 ])
             ])
         elif node.op in [Op.ZERO_EXTEND, Op.SIGN_EXTEND]:
@@ -450,6 +466,9 @@ def infer_types(context, node):
             sort = Sort(BaseSort.Bool, [])
         elif node.op == Op.FAIL:
             sort = Sort(BaseSort.Fail, [], True)
+        elif node.op == Op.MAP:
+            assert node.children[1].sort.base == BaseSort.List
+            sort = Sort(BaseSort.List, [node.children[0].sort], True)
         else:
             print('Unsupported operator: {}'.format(node.op))
             assert False

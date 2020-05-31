@@ -26,6 +26,7 @@ op_to_kind = {
     Op.BVNEG: 'BITVECTOR_NEG',
     Op.BVADD: 'BITVECTOR_PLUS',
     Op.BVSUB: 'BITVECTOR_SUB',
+    Op.BVMUL: 'BITVECTOR_MULT',
     Op.BVSDIV: 'BITVECTOR_SDIV',
     Op.BVUDIV: 'BITVECTOR_UDIV_TOTAL',
     Op.BVSREM: 'BITVECTOR_SREM',
@@ -59,16 +60,18 @@ op_to_kind = {
 }
 
 op_to_const_eval = {
-    Op.BVSHL: '({}.leftShift({}))',
-    Op.EXTRACT: '({2}.extract({0}, {1}))',
-    Op.BVNOT: '(~{})',
-    Op.PLUS: '({} + {})',
-    Op.MINUS: '({} - {})',
-    Op.LT: '({} < {})',
-    Op.GEQ: '({} >= {})',
-    Op.NOT: '(!{})',
-    Op.AND: '({} && {})',
-    Op.EQ: '({} == {})',
+        Op.BVSHL: lambda args: '({}.leftShift({}))'.format(args[0], args[1]),
+    Op.BVNEG: lambda args: '(-{})'.format(args[0]),
+    Op.EXTRACT: lambda args: '({2}.extract({0}, {1}))'.format(*args),
+    Op.BVNOT: lambda args: '(~{})'.format(args[0]),
+    Op.CONCAT: lambda args: '({}.concat({}))'.format(args[0], args[1]),
+    Op.PLUS: lambda args: '({} + {})'.format(args[0], args[1]),
+    Op.MINUS: lambda args: '({} - {})'.format(args[0], args[1]),
+    Op.LT: lambda args: '({} < {})'.format(args[0], args[1]),
+    Op.GEQ: lambda args: '({} >= {})'.format(args[0], args[1]),
+    Op.NOT: lambda args: '(!{})'.format(args[0]),
+    Op.AND: lambda args: '({})'.format(' && '.join(args)) if len(args) > 0 else 'true',
+    Op.EQ: lambda args: '({} == {})'.format(args[0], args[1]),
 }
 
 op_to_lfsc = {
@@ -103,6 +106,7 @@ op_to_nindex = {
     Op.BVNEG: 0,
     Op.BVADD: 0,
     Op.BVSUB: 0,
+    Op.BVMUL: 0,
     Op.BVSDIV: 0,
     Op.BVUDIV: 0,
     Op.BVSREM: 0,
@@ -221,7 +225,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
             return mk_simple_block(cfg, next_block, Assert(instr, in_loop))
 
         elif isinstance(expr, Fn):
-            if expr.op in commutative_ops:
+            if expr.op in commutative_ops and expr.op in associative_ops:
                 nlist_children = [
                     child for child in expr.children
                     if child.sort.base != BaseSort.List
@@ -235,10 +239,19 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                 if len(nlist_children) != len(expr.children):
                     list_child = next(child for child in expr.children
                                       if child.sort.base == BaseSort.List)
+                    print(loop_idxs)
+                    cond = Fn(Op.AND, [Fn(Op.NOT, [Fn(Op.EQ, [Var('i', Sort(BaseSort.Int, [], True)), idx])]) for idx in loop_idxs])
+
+                    # TODO: Do at creation-time
+                    cond.sort = Sort(BaseSort.Bool, [], True)
+                    for child in cond.children:
+                        child.sort = Sort(BaseSort.Bool, [], True)
+                        child.children[0].sort = Sort(BaseSort.Bool, [], True)
+
                     next_block = mk_simple_block(
                         cfg, next_block,
                         Assign(list_child,
-                               Fn(Op.GET_CHILDREN, [node] + loop_idxs)))
+                               Fn(Op.GET_CHILDREN, [node, cond])))
 
                 for i, child in reversed(list(enumerate(nlist_children))):
                     sub_expr_vars_seen = vars_seen.copy()
@@ -260,6 +273,70 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                         # Use infer types
                         check.sort = Sort(BaseSort.Bool, [], True)
                         check.children[0].sort = Sort(BaseSort.Bool, [], True)
+                        next_block = mk_simple_block(cfg, next_block,
+                                                     Assert(check, True))
+
+                    loop_block = fresh_name('loop')
+                    cfg[loop_block] = CFGLoop(loop_idx, node, next_block)
+                    next_block = loop_block
+            elif expr.op in associative_ops:
+                nlist_children = [
+                    child for child in expr.children
+                    if child.sort.base != BaseSort.List
+                ]
+                loop_idxs = [
+                    (Var(fresh_name('loopi'), Sort(BaseSort.Int, [], True)) if child.sort.base != BaseSort.List else None)
+                    for child in expr.children
+                ]
+
+                # Assign the list children
+                if len(nlist_children) != len(expr.children):
+                    for i, child in enumerate(expr.children):
+                        if child.sort.base != BaseSort.List:
+                            continue
+
+                        var_i = Var('i', Sort(BaseSort.Int, [], True))
+                        conds = []
+                        if i != 0:
+                            conds.append(Fn(Op.LT, [loop_idxs[i - 1], var_i]))
+                        if i != len(expr.children) - 1:
+                            conds.append(Fn(Op.LT, [var_i, loop_idxs[i + 1]]))
+                        cond = Fn(Op.AND, conds)
+
+                        # TODO: Do at creation-time
+                        cond.sort = Sort(BaseSort.Bool, [], True)
+                        for cond_child in cond.children:
+                            cond_child.sort = Sort(BaseSort.Bool, [], True)
+
+                        next_block = mk_simple_block(
+                            cfg, next_block,
+                            Assign(child,
+                                   Fn(Op.GET_CHILDREN, [node, cond])))
+
+                for i, child in reversed(list(enumerate(expr.children))):
+                    if child.sort and child.sort.base == BaseSort.List:
+                        continue
+
+                    sub_expr_vars_seen = vars_seen.copy()
+                    for child2 in expr.children[:i - 1]:
+                        sub_expr_vars_seen |= collect_vars(child2)
+
+                    loop_idx = loop_idxs[i]
+                    loop_var_sort = Sort(child.sort.base, child.sort.children)
+                    loop_var = Var(fresh_name('loopv'), loop_var_sort)
+                    next_block = expr_to_ir(const_checks, next_block, child,
+                                            loop_var, sub_expr_vars_seen, True)
+                    next_block = mk_simple_block(
+                        cfg, next_block,
+                        Assign(loop_var, Fn(Op.GET_CHILD, [node, loop_idx])))
+
+                    for j in range(i):
+                        if not loop_idxs[j]:
+                            continue
+
+                        check = Fn(Op.LT, [loop_idxs[j], loop_idx])
+                        # Use infer types
+                        check.sort = Sort(BaseSort.Bool, [], True)
                         next_block = mk_simple_block(cfg, next_block,
                                                      Assert(check, True))
 
@@ -330,6 +407,15 @@ def fresh_name(prefix):
 
 
 def rule_to_out_expr(cfg, next_block, res, expr):
+    def expr_to_out_expr(expr):
+        if isinstance(expr, Fn):
+            new_args = []
+            for child in expr.children:
+                new_args.append(expr_to_out_expr(child))
+            return Fn(Op.MK_NODE, [KindConst(expr.op)] + new_args)
+        else:
+            return expr
+
     def rule_to_out_expr_rec(cfg, next_block, res, expr):
         if isinstance(expr, Fn):
             if expr.op == Op.COND:
@@ -352,6 +438,10 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                                               expr.children[0],
                                               expr.children[1])
                 return next_block
+            elif expr.op == Op.MAP:
+                lambda_var = expr.children[0].children[0]
+                new_body = expr_to_out_expr(expr.children[0].children[1])
+                return mk_simple_block(cfg, next_block, Assign(res, Fn(Op.MAP, [Fn(Op.LAMBDA, [lambda_var, new_body]), expr.children[1]])))
             elif expr.op == Op.BVCONST:
                 new_vars = [
                     Var(fresh_name('__v'), child.sort)
@@ -363,7 +453,9 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                 if res.sort and res.sort.const:
                     assign = Assign(res, bvc)
                 else:
-                    assign = Assign(res, Fn(Op.MK_CONST, [bvc]))
+                    mk_const = Fn(Op.MK_CONST, [bvc])
+                    mk_const.sort = Sort(bvc.sort.base, bvc.sort.children)
+                    assign = Assign(res, mk_const)
 
                 assign_block = fresh_name('block')
                 if next_block:
@@ -389,14 +481,18 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                     if res.sort and res.sort.const:
                         assign = Assign(res, fn)
                     else:
-                        assign = Assign(res, Fn(Op.MK_CONST, [fn]))
+                        mk_const = Fn(Op.MK_CONST, [fn])
+                        mk_const.sort = Sort(fn.sort.base, fn.sort.children)
+                        assign = Assign(res, mk_const)
                 else:
                     # If we have a non-constant expression with constant arguments,
                     # we have to cast the constant arguments to terms
                     new_args = []
                     for i, new_var in enumerate(new_vars):
                         if new_var.sort.const and i >= op_to_nindex[expr.op]:
-                            new_args.append(Fn(Op.MK_CONST, [new_var]))
+                            mk_const = Fn(Op.MK_CONST, [new_var])
+                            mk_const.sort = Sort(new_var.sort.base, new_var.sort.children)
+                            new_args.append(mk_const)
                         else:
                             new_args.append(new_var)
 
@@ -496,15 +592,21 @@ def expr_to_code(expr):
         elif expr.op == Op.GET_CHILD:
             return '{}[{}]'.format(args[0], args[1])
         elif expr.op == Op.GET_CHILDREN:
-            cond = ' && '.join('i != {}'.format(arg) for arg in args[1:])
-            return 'bv::utils::getChildren({}, [&](size_t i) {{ return {}; }})'.format(
-                args[0], cond)
+            if len(args) == 1:
+                return 'std::vector<Node>({0}.begin(), {0}.end())'.format(args[0])
+            else:
+                return 'bv::utils::getChildren({}, [&](size_t i) {{ return {}; }})'.format(
+                    args[0], args[1])
         elif expr.op == Op.GET_INDEX:
             return 'bv::utils::getIndex({}, {})'.format(args[0], args[1])
         elif expr.sort and expr.sort.const:
-            return op_to_const_eval[expr.op].format(*args)
+            return op_to_const_eval[expr.op](args)
+        elif expr.op == Op.MAP:
+            return 'bv::utils::mapVector({}, {})'.format(args[1], args[0])
+        elif expr.op == Op.LAMBDA:
+            return '[&]({} {}) {{ return {}; }}'.format(sort_to_code(expr.children[0].sort), args[0], args[1])
         else:
-            print('No code generation for op {}'.format(expr.op))
+            print('No code generation for op {} in {}'.format(expr.op, expr))
             assert False
     elif isinstance(expr, BoolConst):
         return ('true' if expr.val else 'false')

@@ -6,7 +6,15 @@
 
 /* ConcatExtractMerge */
 
-/* ConcatConstantMerge */
+(define-rule ConcatExtractMerge ((i Int :const) (n Int :const) (m Int :const) (o Int :const) (p Int :const) (q Int :const) (r Int :const) (x (_ BitVec i)) (xs (_ BitVec n) :list) (ys (_ BitVec m) :list))
+  (concat xs ((_ extract o p) x) ((_ extract q r) x) ys)
+  (cond
+    ((= p (+ q 1)) (concat xs ((_ extract o r) x) ys)))
+)
+
+(define-rule ConcatConstantMerge ((n Int :const) (m Int :const) (o Int :const) (p Int :const) (q Int :const) (r Int :const) (xs (_ BitVec n) :list) (ys (_ BitVec m) :list))
+  (concat xs (_ bv o p) (_ bv q r) ys)
+  (concat xs (concat (_ bv o p) (_ bv q r)) ys))
 
 (define-rule ExtractWhole ((i Int :const) (n Int :const) (x (_ BitVec n)))
   ((_ extract i 0) x)
@@ -27,6 +35,18 @@
  * Normalization
  ******************************************************************************/
 
+(define-rule ExtractBitwiseAnd ((n Int :const) (i Int :const) (j Int :const) (xs (_ BitVec n) :list))
+  ((_ extract i j) (bvand xs))
+  (bvand (map (lambda (x (_ BitVec n)) ((_ extract i j) x)) xs)))
+
+(define-rule ExtractBitwiseOr ((n Int :const) (i Int :const) (j Int :const) (xs (_ BitVec n) :list))
+  ((_ extract i j) (bvor xs))
+  (bvor (map (lambda (x (_ BitVec n)) ((_ extract i j) x)) xs)))
+
+(define-rule ExtractBitwiseXor ((n Int :const) (i Int :const) (j Int :const) (xs (_ BitVec n) :list))
+  ((_ extract i j) (bvxor xs))
+  (bvxor (map (lambda (x (_ BitVec n)) ((_ extract i j) x)) xs)))
+
 (define-rule ExtractNot ((i Int :const) (j Int :const) (x (_ BitVec n)))
   ((_ extract i j) (bvnot x))
   (bvnot ((_ extract i j) x)))
@@ -37,6 +57,38 @@
     ((< i n) ((_ extract i j) x))
     ((and (< j n) (>= i n)) ((_ sign_extend (+ (- i n) 1)) ((_ extract (- n 1) j) x)))
     (true ((_ repeat (+ (- i j) 1)) ((_ extract (- n 1) (- n 1)) x)))))
+
+(define-rule ExtractArithAdd ((n Int :const) (i Int :const) (xs (_ BitVec n) :list))
+  ((_ extract i 0) (bvadd xs))
+  (bvadd (map (lambda (x (_ BitVec n)) ((_ extract i 0) x)) xs)))
+
+(define-rule ExtractArithMul ((n Int :const) (i Int :const) (xs (_ BitVec n) :list))
+  ((_ extract i 0) (bvmul xs))
+  (bvmul (map (lambda (x (_ BitVec n)) ((_ extract i 0) x)) xs)))
+
+(define-rule MultDistribConstAdd ((n Int :const) (m Int :const) (x (_ BitVec n)) (xs (_ BitVec n) :list))
+  (bvmul (bvadd xs) (_ bv n m))
+  (bvadd (map (lambda (y (_ BitVec n)) (bvmul y (_ bv n m))) xs)))
+
+(define-rule MultDistribConstSub ((n Int :const) (m Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvmul (bvsub x y) (_ bv n m))
+  (bvsub (bvmul x (_ bv n m)) (bvmul y (_ bv n m))))
+
+(define-rule MultDistribConstNeg ((n Int :const) (m Int :const) (x (_ BitVec n)))
+  (bvmul (bvneg x) (_ bv n m))
+  (bvneg (bvmul x (_ bv n m))))
+
+(define-rule NegMult ((n Int :const) (m Int :const) (x (_ BitVec n)) (xs (_ BitVec n) :list))
+  (bvneg (bvadd (_ bv m n) xs))
+  (bvadd (bvneg (_ bv m n)) xs))
+
+(define-rule NegSub ((n Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvneg (bvsub x y))
+  (bvsub y x))
+
+(define-rule NegPlus ((n Int :const) (xs (_ BitVec n) :list))
+  (bvneg (bvadd xs))
+  (bvadd (map (lambda (x (_ BitVec n)) (bvneg x)) xs)))
 
 /******************************************************************************
  * Operator Elimination
@@ -226,6 +278,20 @@
     ((= n 0) x)
     ((>= n m) (_ bv 0 m))
     (concat ((_ extract (- m (+ n 1)) 0) x) (_ bv 0 n))))
+
+(define-rule LshrByConst ((n Int :const) (m Int :const) (x (_ BitVec m)))
+  (bvlshr x (_ bv n m))
+  (cond
+    ((= n 0) x)
+    ((>= n m) (_ bv 0 m))
+    (concat (_ bv 0 n) ((_ extract (- m 1) n) x))))
+
+(define-rule AshrByConst ((n Int :const) (m Int :const) (x (_ BitVec m)))
+  (bvashr x (_ bv n m))
+  (cond
+    ((= n 0) x)
+    ((>= n m) ((_ repeat m) ((_ extract (- m 1) (- m 1)) x)))
+    (concat ((_ repeat n) ((_ extract (- m 1) (- m 1)) x)) ((_ extract (- m 1) n) x))))
 
 /*
 (define-rule XorOne ((n Int :const) (xs (_ BitVec n) :list))

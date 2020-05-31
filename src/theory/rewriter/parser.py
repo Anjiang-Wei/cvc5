@@ -17,6 +17,7 @@ symbol_to_op = {
     'bvneg': Op.BVNEG,
     'bvadd': Op.BVADD,
     'bvsub': Op.BVSUB,
+    'bvmul': Op.BVMUL,
     'bvsdiv': Op.BVSDIV,
     'bvudiv': Op.BVUDIV,
     'bvsrem': Op.BVSREM,
@@ -79,7 +80,7 @@ def mk_case(cases):
     return Fn(Op.COND, cases)
 
 
-def expr():
+def expr(allow_comprehension = True):
     expr = pp.Forward()
 
     # Variable
@@ -117,13 +118,20 @@ def expr():
             pp.Optional(expr) +
             pp.Suppress(')')).setParseAction(lambda s, l, t: mk_case(t[1:]))
 
-    expr <<= bconst | iconst | bvconst | cond | indexed_app | app | let | var
+    options = bconst | iconst | bvconst | cond | indexed_app | app | let | var
+    if allow_comprehension:
+        lambda_def = (pp.Suppress('(') + pp.Keyword('lambda') + pp.Suppress('(') + symbol() + sort() + pp.Suppress(')') + expr + pp.Suppress(')')).setParseAction(lambda s, l, t: Fn(Op.LAMBDA, [Var(t[1], t[2]), t[3]]))
+        comprehension = (pp.Suppress('(') + pp.Keyword('map') + lambda_def + expr() + pp.Suppress(')')).setParseAction(lambda s, l, t: Fn(Op.MAP, [t[1], t[2]]))
+        options = comprehension | options 
+
+
+    expr <<= options
     return expr
 
 
 def sort():
     bv_sort = (pp.Suppress('(') + (pp.Suppress('_') + pp.Keyword('BitVec')) +
-               expr() + pp.Suppress(')')
+               expr(False) + pp.Suppress(')')
                ).setParseAction(lambda s, l, t: Sort(BaseSort.BitVec, [t[1]]))
     int_sort = pp.Keyword('Int').setParseAction(
         lambda s, l, t: Sort(BaseSort.Int, []))
