@@ -20,6 +20,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <memory>
 
 namespace CVC4 {
   // messy; Expr needs EmptySet (because it's the payload of a
@@ -28,7 +29,7 @@ namespace CVC4 {
   // order to break the build cycle.
   // Uses of SetType need to be as an incomplete type throughout
   // this header.
-  class SetType;
+class TypeNode;
 }/* CVC4 namespace */
 
 namespace CVC4 {
@@ -38,12 +39,12 @@ class CVC4_PUBLIC EmptySet {
    * Constructs an emptyset of the specified type. Note that the argument
    * is the type of the set itself, NOT the type of the elements.
    */
-  EmptySet(const SetType& setType);
+  EmptySet(const TypeNode& setType);
   ~EmptySet();
   EmptySet(const EmptySet& other);
   EmptySet& operator=(const EmptySet& other);
 
-  const SetType& getType() const;
+  const TypeNode& getType() const;
   bool operator==(const EmptySet& es) const;
   bool operator!=(const EmptySet& es) const;
   bool operator<(const EmptySet& es) const;
@@ -52,11 +53,9 @@ class CVC4_PUBLIC EmptySet {
   bool operator>=(const EmptySet& es) const;
 
  private:
-  /** Pointer to the SetType node. This is never NULL. */
-  SetType* d_type;
-
   EmptySet();
 
+  std::unique_ptr<TypeNode> d_type;
 };/* class EmptySet */
 
 std::ostream& operator<<(std::ostream& out, const EmptySet& es) CVC4_PUBLIC;
