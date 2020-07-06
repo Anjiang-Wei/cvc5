@@ -63,6 +63,7 @@ class Op(Enum):
 
     NOT = auto()
     AND = auto()
+    OR = auto()
     XOR = auto()
 
     ###########################################################################
@@ -94,6 +95,8 @@ class Op(Enum):
     MK_CONST = auto()
     BV_SIZE = auto()
     APPEND = auto()
+    POW2 = auto()
+    BITS = auto()
 
     ###########################################################################
     # Language operators
@@ -108,11 +111,12 @@ class Op(Enum):
     FAIL = auto()
     MAP = auto()
     LAMBDA = auto()
+    APPLY = auto()
 
-
-commutative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.AND, Op.XOR, Op.EQ])
-associative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND, Op.XOR, Op.EQ])
-nary_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND])
+fns = set(["pow2"])
+commutative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.AND, Op.OR, Op.XOR, Op.EQ])
+associative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND, Op.OR, Op.XOR, Op.EQ])
+nary_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND, Op.OR])
 
 
 class BaseSort(Enum):
@@ -457,7 +461,11 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.Bool
             assert node.children[1].sort.base == BaseSort.Bool
             sort = Sort(BaseSort.Bool, [])
-        elif node.op in [Op.AND]:
+        elif node.op in [Op.BITS]:
+            sort = Sort(BaseSort.Int, [], True)
+        elif node.op in [Op.POW2]:
+            sort = Sort(BaseSort.Int, [], True)
+        elif node.op in [Op.AND, Op.OR]:
             assert all(child.sort.base == BaseSort.Bool or (
                 child.sort.base == BaseSort.List
                 and child.sort.children[0].base == BaseSort.Bool)

@@ -45,6 +45,7 @@ symbol_to_op = {
     'repeat': Op.REPEAT,
     'not': Op.NOT,
     'and': Op.AND,
+    'or': Op.OR,
     'xor': Op.XOR,
     '+': Op.PLUS,
     '-': Op.MINUS,
@@ -52,6 +53,9 @@ symbol_to_op = {
     '>=': Op.GEQ,
     '=': Op.EQ,
     'ite': Op.ITE,
+
+    'pow2': Op.POW2,
+    'bits': Op.BITS,
 }
 
 

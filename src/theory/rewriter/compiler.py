@@ -54,16 +54,20 @@ op_to_kind = {
     Op.REPEAT: 'BITVECTOR_REPEAT',
     Op.NOT: 'NOT',
     Op.AND: 'AND',
+    Op.OR: 'OR',
     Op.XOR: 'XOR',
     Op.EQ: 'EQUAL',
     Op.ITE: 'ITE',
 }
 
 op_to_const_eval = {
-        Op.BVSHL: lambda args: '({}.leftShift({}))'.format(args[0], args[1]),
+    Op.BVSHL: lambda args: '({}.leftShift({}))'.format(args[0], args[1]),
     Op.BVNEG: lambda args: '(-{})'.format(args[0]),
     Op.EXTRACT: lambda args: '({2}.extract({0}, {1}))'.format(*args),
     Op.BVNOT: lambda args: '(~{})'.format(args[0]),
+    Op.BVAND: lambda args: '({} && {})'.format(args[0], args[1]),
+    Op.BVOR: lambda args: '({} || {})'.format(args[0], args[1]),
+    Op.BVXOR: lambda args: '({} ^ {})'.format(args[0], args[1]),
     Op.CONCAT: lambda args: '({}.concat({}))'.format(args[0], args[1]),
     Op.PLUS: lambda args: '({} + {})'.format(args[0], args[1]),
     Op.MINUS: lambda args: '({} - {})'.format(args[0], args[1]),
@@ -71,7 +75,10 @@ op_to_const_eval = {
     Op.GEQ: lambda args: '({} >= {})'.format(args[0], args[1]),
     Op.NOT: lambda args: '(!{})'.format(args[0]),
     Op.AND: lambda args: '({})'.format(' && '.join(args)) if len(args) > 0 else 'true',
+    Op.OR: lambda args: '({})'.format(' || '.join(args)) if len(args) > 0 else 'true',
     Op.EQ: lambda args: '({} == {})'.format(args[0], args[1]),
+    Op.BITS: lambda args: 'bv::utils::bits({})'.format(args[0]),
+    Op.POW2: lambda args: 'bv::utils::isPow2({})'.format(args[0]),
 }
 
 op_to_lfsc = {
@@ -200,7 +207,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                                                [node]), vars_seen, in_loop)
 
                 if isinstance(expr.children[1],
-                              Var) and expr.children[1] not in vars_seen:
+                              Var) and expr.children[1].name not in vars_seen:
                     next_block = expr_to_ir(const_checks, next_block,
                                             expr.children[1],
                                             Fn(Op.BV_SIZE,
