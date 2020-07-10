@@ -1887,11 +1887,21 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
         << " got from " << toExplain.d_theory << endl;
     Assert(explanation != toExplain.d_node)
         << "wasn't sent to you, so why are you explaining it trivially";
+
+    if (toExplain.d_theory == THEORY_STRINGS)
+    {
+      lemma(explanation.impNode(Rewriter::rewrite(toExplain.d_node)),
+            ProofRule::RULE_TRUST,
+            false,
+            false,
+            true,
+            THEORY_LAST);
+    }
+
     // Mark the explanation
     NodeTheoryPair newExplain(
         explanation, toExplain.d_theory, toExplain.d_timestamp);
     explanationVector.push_back(newExplain);
-
     ++ i;
 
     PROOF({
