@@ -303,7 +303,7 @@ bool SygusInference::solveSygus(std::vector<Node>& assertions,
   SmtEngine* currSmt = smt::currentSmtEngine();
   SmtEngine rrSygus(nm->toExprManager(), &currSmt->getOptions());
   rrSygus.setLogic(currSmt->getLogicInfo());
-  rrSygus.assertFormula(body.toExpr());
+  rrSygus.assertFormula(body);
   Trace("sygus-infer") << "*** Check sat..." << std::endl;
   Result r = rrSygus.checkSat();
   Trace("sygus-infer") << "...result : " << r << std::endl;

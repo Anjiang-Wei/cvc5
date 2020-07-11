@@ -745,7 +745,7 @@ Node CegisCoreConnective::constructSolutionFromPool(Component& ccheck,
     Node query = rasserts.size() == 1 ? rasserts[0] : nm->mkNode(AND, rasserts);
     for (const Node& a : rasserts)
     {
-      checkSol->assertFormula(a.toExpr());
+      checkSol->assertFormula(a);
     }
     Result r = checkSol->checkSat();
     Trace("sygus-ccore") << "----- check-sat returned " << r << std::endl;

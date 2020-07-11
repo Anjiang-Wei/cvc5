@@ -59,7 +59,7 @@ void initializeSubsolver(std::unique_ptr<SmtEngine>& smte,
   smte->setLogic(smt::currentSmtEngine()->getLogicInfo());
   if (!query.isNull())
   {
-    smte->assertFormula(query.toExpr());
+    smte->assertFormula(query);
   }
 }
 
