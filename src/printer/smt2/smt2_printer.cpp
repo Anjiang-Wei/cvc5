@@ -1554,12 +1554,17 @@ static void toStream(std::ostream& out, const PopCommand* c)
 static void toStream(std::ostream& out, const CheckSatCommand* c)
 {
   Expr e = c->getExpr();
-  if(!e.isNull() && !(e.getKind() == kind::CONST_BOOLEAN && e.getConst<bool>())) {
+  if (!e.isNull()
+      && !(e.getKind() == kind::CONST_BOOLEAN
+           && Node::fromExpr(e).getConst<bool>()))
+  {
     out << PushCommand() << endl
         << AssertCommand(e) << endl
         << CheckSatCommand() << endl
         << PopCommand();
-  } else {
+  }
+  else
+  {
     out << "(check-sat)";
   }
 }

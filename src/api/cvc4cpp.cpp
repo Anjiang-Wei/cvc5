@@ -1222,12 +1222,12 @@ std::string Op::getIndices() const
   {
     // DIVISIBLE returns a string index to support
     // arbitrary precision integers
-    CVC4::Integer _int = d_expr->getConst<Divisible>().k;
+    CVC4::Integer _int = Node::fromExpr(*d_expr).getConst<Divisible>().k;
     i = _int.toString();
   }
   else if (k == RECORD_UPDATE)
   {
-    i = d_expr->getConst<RecordUpdate>().getField();
+    i = Node::fromExpr(*d_expr).getConst<RecordUpdate>().getField();
   }
   else
   {
@@ -1250,29 +1250,41 @@ uint32_t Op::getIndices() const
   switch (k)
   {
     case BITVECTOR_REPEAT:
-      i = d_expr->getConst<BitVectorRepeat>().d_repeatAmount;
+      i = Node::fromExpr(*d_expr).getConst<BitVectorRepeat>().d_repeatAmount;
       break;
     case BITVECTOR_ZERO_EXTEND:
-      i = d_expr->getConst<BitVectorZeroExtend>().d_zeroExtendAmount;
+      i = Node::fromExpr(*d_expr)
+              .getConst<BitVectorZeroExtend>()
+              .d_zeroExtendAmount;
       break;
     case BITVECTOR_SIGN_EXTEND:
-      i = d_expr->getConst<BitVectorSignExtend>().d_signExtendAmount;
+      i = Node::fromExpr(*d_expr)
+              .getConst<BitVectorSignExtend>()
+              .d_signExtendAmount;
       break;
     case BITVECTOR_ROTATE_LEFT:
-      i = d_expr->getConst<BitVectorRotateLeft>().d_rotateLeftAmount;
+      i = Node::fromExpr(*d_expr)
+              .getConst<BitVectorRotateLeft>()
+              .d_rotateLeftAmount;
       break;
     case BITVECTOR_ROTATE_RIGHT:
-      i = d_expr->getConst<BitVectorRotateRight>().d_rotateRightAmount;
+      i = Node::fromExpr(*d_expr)
+              .getConst<BitVectorRotateRight>()
+              .d_rotateRightAmount;
       break;
-    case INT_TO_BITVECTOR: i = d_expr->getConst<IntToBitVector>().d_size; break;
-    case IAND: i = d_expr->getConst<IntAnd>().d_size; break;
+    case INT_TO_BITVECTOR:
+      i = Node::fromExpr(*d_expr).getConst<IntToBitVector>().d_size;
+      break;
+    case IAND: i = Node::fromExpr(*d_expr).getConst<IntAnd>().d_size; break;
     case FLOATINGPOINT_TO_UBV:
-      i = d_expr->getConst<FloatingPointToUBV>().bvs.d_size;
+      i = Node::fromExpr(*d_expr).getConst<FloatingPointToUBV>().bvs.d_size;
       break;
     case FLOATINGPOINT_TO_SBV:
-      i = d_expr->getConst<FloatingPointToSBV>().bvs.d_size;
+      i = Node::fromExpr(*d_expr).getConst<FloatingPointToSBV>().bvs.d_size;
       break;
-    case TUPLE_UPDATE: i = d_expr->getConst<TupleUpdate>().getIndex(); break;
+    case TUPLE_UPDATE:
+      i = Node::fromExpr(*d_expr).getConst<TupleUpdate>().getIndex();
+      break;
     default:
       CVC4ApiExceptionStream().ostream() << "Can't get uint32_t index from"
                                          << " kind " << kindToString(k);
@@ -1293,42 +1305,44 @@ std::pair<uint32_t, uint32_t> Op::getIndices() const
   // using if/else instead of case statement because want local variables
   if (k == BITVECTOR_EXTRACT)
   {
-    CVC4::BitVectorExtract ext = d_expr->getConst<BitVectorExtract>();
+    CVC4::BitVectorExtract ext =
+        Node::fromExpr(*d_expr).getConst<BitVectorExtract>();
     indices = std::make_pair(ext.d_high, ext.d_low);
   }
   else if (k == FLOATINGPOINT_TO_FP_IEEE_BITVECTOR)
   {
     CVC4::FloatingPointToFPIEEEBitVector ext =
-        d_expr->getConst<FloatingPointToFPIEEEBitVector>();
+        Node::fromExpr(*d_expr).getConst<FloatingPointToFPIEEEBitVector>();
     indices = std::make_pair(ext.t.exponent(), ext.t.significand());
   }
   else if (k == FLOATINGPOINT_TO_FP_FLOATINGPOINT)
   {
     CVC4::FloatingPointToFPFloatingPoint ext =
-        d_expr->getConst<FloatingPointToFPFloatingPoint>();
+        Node::fromExpr(*d_expr).getConst<FloatingPointToFPFloatingPoint>();
     indices = std::make_pair(ext.t.exponent(), ext.t.significand());
   }
   else if (k == FLOATINGPOINT_TO_FP_REAL)
   {
-    CVC4::FloatingPointToFPReal ext = d_expr->getConst<FloatingPointToFPReal>();
+    CVC4::FloatingPointToFPReal ext =
+        Node::fromExpr(*d_expr).getConst<FloatingPointToFPReal>();
     indices = std::make_pair(ext.t.exponent(), ext.t.significand());
   }
   else if (k == FLOATINGPOINT_TO_FP_SIGNED_BITVECTOR)
   {
     CVC4::FloatingPointToFPSignedBitVector ext =
-        d_expr->getConst<FloatingPointToFPSignedBitVector>();
+        Node::fromExpr(*d_expr).getConst<FloatingPointToFPSignedBitVector>();
     indices = std::make_pair(ext.t.exponent(), ext.t.significand());
   }
   else if (k == FLOATINGPOINT_TO_FP_UNSIGNED_BITVECTOR)
   {
     CVC4::FloatingPointToFPUnsignedBitVector ext =
-        d_expr->getConst<FloatingPointToFPUnsignedBitVector>();
+        Node::fromExpr(*d_expr).getConst<FloatingPointToFPUnsignedBitVector>();
     indices = std::make_pair(ext.t.exponent(), ext.t.significand());
   }
   else if (k == FLOATINGPOINT_TO_FP_GENERIC)
   {
     CVC4::FloatingPointToFPGeneric ext =
-        d_expr->getConst<FloatingPointToFPGeneric>();
+        Node::fromExpr(*d_expr).getConst<FloatingPointToFPGeneric>();
     indices = std::make_pair(ext.t.exponent(), ext.t.significand());
   }
   else
@@ -1565,7 +1579,9 @@ Term Term::getConstArrayBase() const
   // CONST_ARRAY kind maps to STORE_ALL internal kind
   CVC4_API_CHECK(d_expr->getKind() == CVC4::Kind::STORE_ALL)
       << "Expecting a CONST_ARRAY Term when calling getConstArrayBase()";
-  return Term(d_solver, d_expr->getConst<ArrayStoreAll>().getValue().toExpr());
+  return Term(
+      d_solver,
+      Node::fromExpr(*d_expr).getConst<ArrayStoreAll>().getValue().toExpr());
 }
 
 std::vector<Term> Term::getConstSequenceElements() const
@@ -1574,7 +1590,8 @@ std::vector<Term> Term::getConstSequenceElements() const
   CVC4_API_CHECK(d_expr->getKind() == CVC4::Kind::CONST_SEQUENCE)
       << "Expecting a CONST_SEQUENCE Term when calling "
          "getConstSequenceElements()";
-  const std::vector<Node>& elems = d_expr->getConst<Sequence>().getVec();
+  const std::vector<Node>& elems =
+      Node::fromExpr(*d_expr).getConst<Sequence>().getVec();
   std::vector<Term> terms;
   for (const Node& t : elems)
   {
@@ -3643,8 +3660,8 @@ Term Solver::mkFloatingPoint(uint32_t exp, uint32_t sig, Term val) const
       val.getSort().isBitVector() && val.d_expr->isConst(), val)
       << "bit-vector constant";
 
-  return mkValHelper<CVC4::FloatingPoint>(
-      CVC4::FloatingPoint(exp, sig, val.d_expr->getConst<BitVector>()));
+  return mkValHelper<CVC4::FloatingPoint>(CVC4::FloatingPoint(
+      exp, sig, Node::fromExpr(*val.d_expr).getConst<BitVector>()));
 
   CVC4_API_SOLVER_TRY_CATCH_END;
 }

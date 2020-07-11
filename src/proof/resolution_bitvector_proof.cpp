@@ -144,9 +144,9 @@ void ResolutionBitVectorProof::finalizeConflicts(std::vector<Expr>& conflicts)
     // Special case: if the conflict has a (true) or a (not false) in it, it is
     // trivial...
     bool ignoreConflict = false;
-    if ((confl.isConst() && confl.getConst<bool>())
+    if ((confl.isConst() && Node::fromExpr(confl).getConst<bool>())
         || (confl.getKind() == kind::NOT && confl[0].isConst()
-            && !confl[0].getConst<bool>()))
+            && !Node::fromExpr(confl[0]).getConst<bool>()))
     {
       ignoreConflict = true;
     }
@@ -154,9 +154,9 @@ void ResolutionBitVectorProof::finalizeConflicts(std::vector<Expr>& conflicts)
     {
       for (unsigned k = 0; k < confl.getNumChildren(); ++k)
       {
-        if ((confl[k].isConst() && confl[k].getConst<bool>())
+        if ((confl[k].isConst() && Node::fromExpr(confl[k]).getConst<bool>())
             || (confl[k].getKind() == kind::NOT && confl[k][0].isConst()
-                && !confl[k][0].getConst<bool>()))
+                && !Node::fromExpr(confl[k][0]).getConst<bool>()))
         {
           ignoreConflict = true;
         }

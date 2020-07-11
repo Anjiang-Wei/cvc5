@@ -413,32 +413,6 @@ class ExprPublic : public CxxTest::TestSuite {
     }
   }
 
-  void testGetConst() {
-    /* template <class T>
-       const T& getConst() const; */
-
-    TS_ASSERT_THROWS(a_bool->getConst<Kind>(), IllegalArgumentException&);
-    TS_ASSERT_THROWS(b_bool->getConst<Kind>(), IllegalArgumentException&);
-    TS_ASSERT_THROWS(c_bool_and->getConst<Kind>(), IllegalArgumentException&);
-    TS_ASSERT(and_op->getConst<Kind>() == AND);
-    TS_ASSERT_THROWS(and_op->getConst<Rational>(), IllegalArgumentException&);
-    TS_ASSERT(plus_op->getConst<Kind>() == PLUS);
-    TS_ASSERT_THROWS(plus_op->getConst<Rational>(), IllegalArgumentException&);
-    TS_ASSERT_THROWS(d_apply_fun_bool->getConst<Kind>(),
-                     IllegalArgumentException&);
-    TS_ASSERT_THROWS(null->getConst<Kind>(), IllegalArgumentException&);
-
-    TS_ASSERT(i1->getConst<Rational>() == 0);
-    TS_ASSERT(i2->getConst<Rational>() == 23);
-    TS_ASSERT(r1->getConst<Rational>() == Rational(1, 5));
-    TS_ASSERT(r2->getConst<Rational>() == Rational("0"));
-
-    TS_ASSERT_THROWS(i1->getConst<Kind>(), IllegalArgumentException&);
-    TS_ASSERT_THROWS(i2->getConst<Kind>(), IllegalArgumentException&);
-    TS_ASSERT_THROWS(r1->getConst<Kind>(), IllegalArgumentException&);
-    TS_ASSERT_THROWS(r2->getConst<Kind>(), IllegalArgumentException&);
-  }
-
   void testGetExprManager() {
     /* ExprManager* getExprManager() const; */
 

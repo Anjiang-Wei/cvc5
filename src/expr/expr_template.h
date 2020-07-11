@@ -571,8 +571,8 @@ public:
   // bool properlyContainsDecision(); // maybe not atomic but all children are
 
   /** Extract a constant of type T */
-  template <class T>
-  const T& getConst() const;
+  // template <class T>
+  // const T& getConst() const;
 
   /**
    * Returns the expression reponsible for this expression.

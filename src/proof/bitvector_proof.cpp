@@ -235,7 +235,8 @@ void BitVectorProof::printBitOf(Expr term,
                                 const ProofLetMap& map)
 {
   Assert(term.getKind() == kind::BITVECTOR_BITOF);
-  unsigned bit = term.getOperator().getConst<BitVectorBitOf>().d_bitIndex;
+  unsigned bit =
+      Node::fromExpr(term).getOperator().getConst<BitVectorBitOf>().d_bitIndex;
   Expr var = term[0];
 
   Debug("pf::bv") << "BitVectorProof::printBitOf( " << term << " ), "
@@ -319,19 +320,25 @@ void BitVectorProof::printOperatorParametric(Expr term,
   os << utils::toLFSCKindTerm(term) << " " << utils::getSize(term) <<" ";
   os <<" ";
   if (term.getKind() == kind::BITVECTOR_REPEAT) {
-    unsigned amount =
-        term.getOperator().getConst<BitVectorRepeat>().d_repeatAmount;
+    unsigned amount = Node::fromExpr(term)
+                          .getOperator()
+                          .getConst<BitVectorRepeat>()
+                          .d_repeatAmount;
     os << amount <<" _ ";
   }
   if (term.getKind() == kind::BITVECTOR_SIGN_EXTEND) {
-    unsigned amount =
-        term.getOperator().getConst<BitVectorSignExtend>().d_signExtendAmount;
+    unsigned amount = Node::fromExpr(term)
+                          .getOperator()
+                          .getConst<BitVectorSignExtend>()
+                          .d_signExtendAmount;
     os << amount <<" _ ";
   }
 
   if (term.getKind() == kind::BITVECTOR_ZERO_EXTEND) {
-    unsigned amount =
-        term.getOperator().getConst<BitVectorZeroExtend>().d_zeroExtendAmount;
+    unsigned amount = Node::fromExpr(term)
+                          .getOperator()
+                          .getConst<BitVectorZeroExtend>()
+                          .d_zeroExtendAmount;
     os << amount<<" _ ";
   }
   if (term.getKind() == kind::BITVECTOR_EXTRACT) {
@@ -526,19 +533,25 @@ void BitVectorProof::printTermBitblasting(Expr term, std::ostream& os)
     os << "(bv_bbl_" << utils::toLFSCKind(kind) << " ";
     os << utils::getSize(term) << " ";
     if (term.getKind() == kind::BITVECTOR_REPEAT) {
-      unsigned amount =
-          term.getOperator().getConst<BitVectorRepeat>().d_repeatAmount;
+      unsigned amount = Node::fromExpr(term)
+                            .getOperator()
+                            .getConst<BitVectorRepeat>()
+                            .d_repeatAmount;
       os << amount;
     }
     if (term.getKind() == kind::BITVECTOR_SIGN_EXTEND) {
-      unsigned amount =
-          term.getOperator().getConst<BitVectorSignExtend>().d_signExtendAmount;
+      unsigned amount = Node::fromExpr(term)
+                            .getOperator()
+                            .getConst<BitVectorSignExtend>()
+                            .d_signExtendAmount;
       os << amount;
     }
 
     if (term.getKind() == kind::BITVECTOR_ZERO_EXTEND) {
-      unsigned amount =
-          term.getOperator().getConst<BitVectorZeroExtend>().d_zeroExtendAmount;
+      unsigned amount = Node::fromExpr(term)
+                            .getOperator()
+                            .getConst<BitVectorZeroExtend>()
+                            .d_zeroExtendAmount;
       os << amount;
     }
 
@@ -681,7 +694,7 @@ void BitVectorProof::printBitblasting(std::ostream& os, std::ostream& paren)
 
     os << "(th_let_pf _ ";
     if (ait->first.getKind() == kind::CONST_BOOLEAN) {
-      bool val = ait->first.getConst<bool>();
+      bool val = Node::fromExpr(ait->first).getConst<bool>();
       os << "(iff_symm " << (val ? "true" : "false" ) << ")";
     } else {
       Assert(ait->first == ait->second[0]);
@@ -689,9 +702,13 @@ void BitVectorProof::printBitblasting(std::ostream& os, std::ostream& paren)
       bool swap = false;
       if (ait->first.getKind() == kind::EQUAL) {
         Expr bitwiseEquivalence = ait->second[1];
-        if ((bitwiseEquivalence.getKind() == kind::CONST_BOOLEAN) && !bitwiseEquivalence.getConst<bool>()) {
+        if ((bitwiseEquivalence.getKind() == kind::CONST_BOOLEAN)
+            && !Node::fromExpr(bitwiseEquivalence).getConst<bool>())
+        {
           printAtomBitblastingToFalse(ait->first, os);
-        } else {
+        }
+        else
+        {
           if (bitwiseEquivalence.getKind() != kind::AND) {
             // Just one bit
             if (bitwiseEquivalence.getNumChildren() > 0 && bitwiseEquivalence[0].getKind() == kind::BITVECTOR_BITOF) {

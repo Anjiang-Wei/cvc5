@@ -707,7 +707,7 @@ void LFSCArithProof::printOwnedTermAsType(Expr term,
       Assert(term.getNumChildren() == 0);
       Assert(term.getType().isInteger() || term.getType().isReal());
 
-      const Rational& r = term.getConst<Rational>();
+      const Rational& r = Node::fromExpr(term).getConst<Rational>();
       bool neg = (r < 0);
 
       os << (term.getType().isInteger() ? "(a_int " : "(a_real ");

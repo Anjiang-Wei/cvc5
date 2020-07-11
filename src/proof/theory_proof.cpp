@@ -1284,7 +1284,7 @@ void LFSCBooleanProof::printOwnedTermAsType(Expr term,
     return;
 
   case kind::CONST_BOOLEAN:
-    os << (term.getConst<bool>() ? "true" : "false");
+    os << (Node::fromExpr(term).getConst<bool>() ? "true" : "false");
     return;
 
   default: Unhandled() << k;

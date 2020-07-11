@@ -93,11 +93,11 @@ std::string toLFSCKind(Kind kind);
 std::string toLFSCKindTerm(Expr node);
 
 inline unsigned getExtractHigh(Expr node) {
-  return node.getOperator().getConst<BitVectorExtract>().d_high;
+  return Node::fromExpr(node).getOperator().getConst<BitVectorExtract>().d_high;
 }
 
 inline unsigned getExtractLow(Expr node) {
-  return node.getOperator().getConst<BitVectorExtract>().d_low;
+  return Node::fromExpr(node).getOperator().getConst<BitVectorExtract>().d_low;
 }
 
 inline unsigned getSize(Type type) {
@@ -221,7 +221,8 @@ inline Expr mkSortedExpr(Kind kind, const std::vector<Expr>& children) {
 
 inline const bool getBit(Expr expr, unsigned i) {
   Assert(i < utils::getSize(expr) && expr.isConst());
-  Integer bit = expr.getConst<BitVector>().extract(i, i).getValue();
+  Integer bit =
+      Node::fromExpr(expr).getConst<BitVector>().extract(i, i).getValue();
   return (bit == 1u);
 }
 

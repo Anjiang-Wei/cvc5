@@ -1186,8 +1186,7 @@ api::Term Smt2::applyParseOp(ParseOp& p, std::vector<api::Term>& args)
       // integer constants. We must ensure numerator and denominator are
       // constant and the denominator is non-zero.
       if (constVal.getKind() == api::DIVISION && constVal[0].isConst()
-          && constVal[1].isConst()
-          && !constVal[1].getExpr().getConst<Rational>().isZero())
+          && constVal[1].isConst() && constVal[1] != d_solver->mkReal(0))
       {
         std::stringstream sdiv;
         sdiv << constVal[0] << "/" << constVal[1];
@@ -1219,7 +1218,7 @@ api::Term Smt2::applyParseOp(ParseOp& p, std::vector<api::Term>& args)
   else if (p.d_kind == api::APPLY_SELECTOR && !p.d_expr.isNull())
   {
     // tuple selector case
-    Integer x = p.d_expr.getExpr().getConst<Rational>().getNumerator();
+    Integer x(p.d_expr.getExpr().toString());
     if (!x.fitsUnsignedInt())
     {
       parseError("index of tupSel is larger than size of unsigned int");
