@@ -1779,6 +1779,8 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
   unsigned i = 0; // Index of the current literal we are processing
   unsigned j = 0; // Index of the last literal we are keeping
 
+  std::vector<NodeTheoryPair> toVisit(explanationVector);
+
   std::unique_ptr<std::set<Node>> inputAssertions = nullptr;
   PROOF({
     if (proofRecipe)
@@ -1788,7 +1790,7 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
     }
   });
   // cache of nodes we have already explained by some theory
-  std::unordered_map<Node, size_t, NodeHashFunction> cache;
+  std::unordered_map<Node, std::pair<size_t, std::vector<NodeTheoryPair>>, NodeHashFunction> explanations;
 
   while (i < explanationVector.size()) {
     // Get the current literal to explain
@@ -1799,13 +1801,12 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
         << toExplain.d_timestamp << "] " << toExplain.d_node << " sent from "
         << toExplain.d_theory << endl;
 
-    if (cache.find(toExplain.d_node) != cache.end()
-        && cache[toExplain.d_node] < toExplain.d_timestamp)
+    if (explanations.find(toExplain.d_node) != explanations.end()
+        && explanations[toExplain.d_node].first <= toExplain.d_timestamp)
     {
       ++i;
       continue;
     }
-    cache[toExplain.d_node] = toExplain.d_timestamp;
 
     // If a true constant or a negation of a false constant we can ignore it
     if (toExplain.d_node.isConst() && toExplain.d_node.getConst<bool>())
@@ -1824,7 +1825,9 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
     if (toExplain.d_theory == THEORY_SAT_SOLVER)
     {
       Debug("theory::explain") << "\tLiteral came from THEORY_SAT_SOLVER. Kepping it." << endl;
-      explanationVector[j++] = explanationVector[i++];
+      std::vector<NodeTheoryPair> exps;
+      explanations[toExplain.d_node] = std::make_pair(toExplain.d_timestamp, exps);
+      ++i;
       continue;
     }
 
@@ -1834,12 +1837,15 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
       Debug("theory::explain")
           << "TheoryEngine::explain(): expanding " << toExplain.d_node
           << " got from " << toExplain.d_theory << endl;
+      std::vector<NodeTheoryPair> exps;
       for (unsigned k = 0; k < toExplain.d_node.getNumChildren(); ++k)
       {
         NodeTheoryPair newExplain(
             toExplain.d_node[k], toExplain.d_theory, toExplain.d_timestamp);
         explanationVector.push_back(newExplain);
+        exps.push_back(newExplain);
       }
+      explanations[toExplain.d_node] = std::make_pair(toExplain.d_timestamp, exps);
       ++ i;
       continue;
     }
@@ -1857,6 +1863,8 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
             << "\tRelevant timetsamp, pushing " << (*find).second.d_node
             << "to index = " << explanationVector.size() << std::endl;
         explanationVector.push_back((*find).second);
+        std::vector<NodeTheoryPair> exps = {(*find).second};
+        explanations[toExplain.d_node] = std::make_pair(toExplain.d_timestamp, exps);
         ++i;
 
         PROOF({
@@ -1903,6 +1911,8 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
     NodeTheoryPair newExplain(
         explanation, toExplain.d_theory, toExplain.d_timestamp);
     explanationVector.push_back(newExplain);
+    std::vector<NodeTheoryPair> exps = {newExplain};
+    explanations[toExplain.d_node] = std::make_pair(toExplain.d_timestamp, exps);
 
     ++ i;
 
@@ -1947,8 +1957,21 @@ void TheoryEngine::getExplanation(std::vector<NodeTheoryPair>& explanationVector
     });
   }
 
-  // Keep only the relevant literals
-  explanationVector.resize(j);
+  explanationVector.clear();
+
+  while(!toVisit.empty()) {
+    NodeTheoryPair curr = toVisit.back();
+    toVisit.pop_back();
+
+    Assert(explanations.find(curr.d_node) != explanations.end());
+
+    if (explanations[curr.d_node].second.empty()) {
+      explanationVector.push_back(curr);
+      continue;
+    }
+
+    toVisit.insert(toVisit.end(), explanations[curr.d_node].second.begin(), explanations[curr.d_node].second.end());
+  }
 
   PROOF({
       if (proofRecipe) {
