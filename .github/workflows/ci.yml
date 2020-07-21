@@ -14,6 +14,10 @@ jobs:
           debug-cln
         ]
 
+        exclude:
+          - name: production-clang
+            os: macos-latest
+
         include:
           - name: production
             config: production --all-bindings --lfsc --editline
@@ -26,6 +30,7 @@ jobs:
             cache-key: production-clang
             check-examples: true
             env: CC=clang CXX=clang++
+            os: ubuntu-latest
 
           - name: debug
             config: debug --symfpu --lfsc --no-debug-symbols --editline
