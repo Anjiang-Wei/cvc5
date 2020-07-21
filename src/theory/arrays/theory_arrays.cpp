@@ -1705,6 +1705,17 @@ void TheoryArrays::checkRIntro1(TNode a, TNode b)
   if (d_infoMap.getStores(b)->size() > 0) {
     // Case (a): two stores become equal
     apply = true;
+
+    /*
+    if (a.getKind() == kind::STORE && b.getKind() == kind::STORE)
+    {
+      if (!d_equalityEngine.areEqual(a[0], b[0]))
+      {
+        NodeManager* nm = NodeManager::currentNM();
+        d_out->lemma(nm->mkNode(kind::IMPLIES, a.eqNode(b), a[0].eqNode(b[0])));
+      }
+    }
+    */
   }
   else {
     const CTNodeList* i_b = d_infoMap.getIndices(b);
@@ -1728,10 +1739,16 @@ void TheoryArrays::checkRIntro1(TNode a, TNode b)
 
   if (apply) {
     NodeManager* nm = NodeManager::currentNM();
-    d_infoMap.setRIntro1Applied(s);
-    Node ni = nm->mkNode(kind::SELECT, s, s[1]);
-    preRegisterTermInternal(ni);
-    d_equalityEngine.assertEquality(ni.eqNode(s[2]), true, d_true, d_reasonRow1);
+
+    while (s.getKind() == kind::STORE)
+    {
+      d_infoMap.setRIntro1Applied(s);
+      Node ni = nm->mkNode(kind::SELECT, s, s[1]);
+      preRegisterTermInternal(ni);
+      d_equalityEngine.assertEquality(
+          ni.eqNode(s[2]), true, d_true, d_reasonRow1);
+      s = s[0];
+    }
   }
 }
 
