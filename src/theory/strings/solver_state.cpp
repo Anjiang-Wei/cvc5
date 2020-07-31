@@ -127,6 +127,13 @@ void SolverState::eqNotifyNewClass(TNode t)
   {
     addEndpointsToEqcInfo(t, t, t);
   }
+  else if (k == STRING_SUBSTR) {
+    d_watchlist[t[0]].push_back(t);
+    /*
+    d_watchlist[t[1]].push_back(t);
+    d_watchlist[t[2]].push_back(t);
+    */
+  }
 }
 
 void SolverState::eqNotifyPreMerge(TNode t1, TNode t2)
@@ -161,6 +168,29 @@ void SolverState::eqNotifyPreMerge(TNode t1, TNode t2)
     if (!e2->d_normalizedLength.get().isNull())
     {
       e1->d_normalizedLength.set(e2->d_normalizedLength);
+    }
+  }
+
+  if (t1.isConst() || t2.isConst())
+  {
+    for (size_t i = 0; i < 2; i++)
+    {
+      Node c = (i == 0 ? t1 : t2);
+      Node nc = (i == 0 ? t2 : t1);
+      if (c.isConst()) {
+        const auto& it = d_watchlist.find(nc);
+        if (it != d_watchlist.end()) {
+          std::cout << "FOUND " << it->second << " " << nc << " -> " << c << std::endl;
+          for (const Node& n : it->second) {
+            std::cout << n.substitute(TNode(nc), TNode(c)) << std::endl;
+            Node rn = Rewriter::rewrite(n.substitute(TNode(nc), TNode(c)));
+            if (rn.isConst()) {
+              d_ee.assertEquality(n.eqNode(rn), true, t1.eqNode(t2));
+              break;
+            }
+          }
+        }
+      }
     }
   }
 }

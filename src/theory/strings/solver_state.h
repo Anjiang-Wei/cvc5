@@ -18,6 +18,7 @@
 #define CVC4__THEORY__STRINGS__SOLVER_STATE_H
 
 #include <map>
+#include <unordered_map>
 
 #include "context/context.h"
 #include "expr/node.h"
@@ -201,6 +202,8 @@ class SolverState
   context::CDO<Node> d_pendingConflict;
   /** Map from representatives to their equivalence class information */
   std::map<Node, EqcInfo*> d_eqcInfo;
+
+  std::unordered_map<Node, std::vector<Node>, NodeHashFunction> d_watchlist;
 }; /* class TheoryStrings */
 
 }  // namespace strings
