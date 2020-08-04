@@ -183,7 +183,7 @@ class TheoryStrings : public Theory {
 
     void eqNotifyRewrite(TNode t1, TNode t2) override
     {
-      d_termReg.registerTerm(t2, 0);
+      // d_termReg.registerTerm(t2, 0);
     }
 
    private:

@@ -918,6 +918,10 @@ void TheoryStrings::checkCodes()
         cc = Rewriter::rewrite(cc);
         Assert(cc.isConst());
         Node cp = d_termReg.getProxyVariableFor(c);
+        if (cp.isNull()) {
+          d_termReg.registerTerm(c, 0);
+          cp = d_termReg.getProxyVariableFor(c);
+        }
         AlwaysAssert(!cp.isNull());
         Node vc = nm->mkNode(STRING_TO_CODE, cp);
         if (!d_state.areEqual(cc, vc))
