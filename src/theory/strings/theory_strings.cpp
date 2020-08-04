@@ -65,28 +65,28 @@ TheoryStrings::TheoryStrings(context::Context* c,
       d_stringsFmf(c, u, valuation, d_termReg)
 {
   // The kinds we are treating as function application in congruence
-  d_equalityEngine.addFunctionKind(kind::STRING_LENGTH);
-  d_equalityEngine.addFunctionKind(kind::STRING_CONCAT);
-  d_equalityEngine.addFunctionKind(kind::STRING_IN_REGEXP);
-  d_equalityEngine.addFunctionKind(kind::STRING_TO_CODE);
-  d_equalityEngine.addFunctionKind(kind::SEQ_UNIT);
+  d_equalityEngine.addFunctionKind(kind::STRING_LENGTH, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_CONCAT, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_IN_REGEXP, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_TO_CODE, true);
+  d_equalityEngine.addFunctionKind(kind::SEQ_UNIT, true);
 
   // extended functions
-  d_equalityEngine.addFunctionKind(kind::STRING_STRCTN);
-  d_equalityEngine.addFunctionKind(kind::STRING_LEQ);
-  d_equalityEngine.addFunctionKind(kind::STRING_SUBSTR);
-  d_equalityEngine.addFunctionKind(kind::STRING_UPDATE);
-  d_equalityEngine.addFunctionKind(kind::STRING_ITOS);
-  d_equalityEngine.addFunctionKind(kind::STRING_STOI);
-  d_equalityEngine.addFunctionKind(kind::STRING_STRIDOF);
-  d_equalityEngine.addFunctionKind(kind::STRING_STRREPL);
-  d_equalityEngine.addFunctionKind(kind::STRING_STRREPLALL);
-  d_equalityEngine.addFunctionKind(kind::STRING_REPLACE_RE);
-  d_equalityEngine.addFunctionKind(kind::STRING_REPLACE_RE_ALL);
-  d_equalityEngine.addFunctionKind(kind::STRING_STRREPLALL);
-  d_equalityEngine.addFunctionKind(kind::STRING_TOLOWER);
-  d_equalityEngine.addFunctionKind(kind::STRING_TOUPPER);
-  d_equalityEngine.addFunctionKind(kind::STRING_REV);
+  d_equalityEngine.addFunctionKind(kind::STRING_STRCTN, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_LEQ, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_SUBSTR, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_UPDATE, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_ITOS, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_STOI, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_STRIDOF, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_STRREPL, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_STRREPLALL, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_REPLACE_RE, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_REPLACE_RE_ALL, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_STRREPLALL, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_TOLOWER, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_TOUPPER, true);
+  d_equalityEngine.addFunctionKind(kind::STRING_REV, true);
 
   d_zero = NodeManager::currentNM()->mkConst( Rational( 0 ) );
   d_one = NodeManager::currentNM()->mkConst( Rational( 1 ) );

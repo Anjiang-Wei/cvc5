@@ -124,6 +124,7 @@ public:
    */
   virtual void eqNotifyDisequal(TNode t1, TNode t2, TNode reason) = 0;
 
+  virtual void eqNotifyRewrite(TNode t1, TNode t2) {};
 };/* class EqualityEngineNotify */
 
 /**

@@ -120,7 +120,7 @@ class TheoryStrings : public Theory {
   /** NotifyClass for equality engine */
   class NotifyClass : public eq::EqualityEngineNotify {
   public:
-   NotifyClass(TheoryStrings& ts) : d_str(ts), d_state(ts.d_state) {}
+   NotifyClass(TheoryStrings& ts) : d_str(ts), d_state(ts.d_state), d_termReg(ts.d_termReg) {}
    bool eqNotifyTriggerEquality(TNode equality, bool value) override
    {
      Debug("strings") << "NotifyClass::eqNotifyTriggerEquality(" << equality
@@ -181,11 +181,17 @@ class TheoryStrings : public Theory {
       d_state.eqNotifyDisequal(t1, t2, reason);
     }
 
+    void eqNotifyRewrite(TNode t1, TNode t2) override
+    {
+      d_termReg.registerTerm(t2, 0);
+    }
+
    private:
     /** The theory of strings object to notify */
     TheoryStrings& d_str;
     /** The solver state of the theory of strings */
     SolverState& d_state;
+    TermRegistry& d_termReg;
   };/* class TheoryStrings::NotifyClass */
   /** propagate method */
   bool propagate(TNode literal);

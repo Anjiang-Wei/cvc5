@@ -1639,6 +1639,10 @@ void EqualityEngine::processEvaluationQueue() {
     Node nodeEvaluated = evaluateTerm(d_nodes[id]);
     Debug("equality::evaluation") << d_name << "::eq::processEvaluationQueue(): " << d_nodes[id] << " evaluates to " << nodeEvaluated << std::endl;
     Assert(nodeEvaluated.isConst());
+    if (d_performNotify)
+    {
+      d_notify.eqNotifyRewrite(d_nodes[id], nodeEvaluated);
+    }
     addTermInternal(nodeEvaluated);
     EqualityNodeId nodeEvaluatedId = getNodeId(nodeEvaluated);
 
