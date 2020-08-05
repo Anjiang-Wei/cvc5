@@ -21,6 +21,7 @@
 
 #include "context/cdo.h"
 #include "context/context.h"
+#include "context/cdlist.h"
 #include "expr/node.h"
 
 namespace CVC4 {
@@ -72,6 +73,8 @@ class EqcInfo
   context::CDO<Node> d_prefixC;
   /** same as above, for suffix. */
   context::CDO<Node> d_suffixC;
+
+  context::CDList<Node> d_prefixes;
 };
 
 }  // namespace strings

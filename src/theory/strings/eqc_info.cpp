@@ -31,7 +31,8 @@ EqcInfo::EqcInfo(context::Context* c)
       d_cardinalityLemK(c),
       d_normalizedLength(c),
       d_prefixC(c),
-      d_suffixC(c)
+      d_suffixC(c),
+      d_prefixes(c)
 {
 }
 

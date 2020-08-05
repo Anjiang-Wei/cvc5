@@ -184,6 +184,16 @@ Node getConstantComponent(Node t)
 Node getConstantEndpoint(Node e, bool isSuf)
 {
   Kind ek = e.getKind();
+  if (ek == EQUAL) {
+    for (size_t i = 0; i < 2; i++) {
+      if (e[i].isConst()) {
+        Node c = e[i];
+        Node nc = e[1 - i];
+        size_t len = std::min(Word::getLength(c), (size_t) nc[2].getConst<Rational>().getNumerator().toUnsignedInt());
+        return Word::substr(c, 0, len);
+      }
+    }
+  }
   if (ek == STRING_IN_REGEXP)
   {
     e = e[1];

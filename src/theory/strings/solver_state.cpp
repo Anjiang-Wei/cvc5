@@ -127,6 +127,14 @@ void SolverState::eqNotifyNewClass(TNode t)
   {
     addEndpointsToEqcInfo(t, t, t);
   }
+  else if (k == STRING_SUBSTR)
+  {
+    if (t[1].isConst() && t[1].getConst<Rational>().isZero() && t[2].isConst())
+    {
+      EqcInfo* ei = getOrMakeEqcInfo(t);
+      ei->d_prefixes.push_back(t);
+    }
+  }
 }
 
 void SolverState::eqNotifyPreMerge(TNode t1, TNode t2)
@@ -161,6 +169,30 @@ void SolverState::eqNotifyPreMerge(TNode t1, TNode t2)
     if (!e2->d_normalizedLength.get().isNull())
     {
       e1->d_normalizedLength.set(e2->d_normalizedLength);
+    }
+
+    if (t1.isConst())
+    {
+      for (const Node& prefix : e2->d_prefixes)
+      {
+        EqcInfo* e3 = getOrMakeEqcInfo(prefix[0]);
+        setPendingConflictWhen(e3->addEndpointConst(t1.eqNode(t2), Node::null(), false));
+      }
+    }
+    else if (t2.isConst())
+    {
+      for (const Node& prefix : e1->d_prefixes)
+      {
+        EqcInfo* e3 = getOrMakeEqcInfo(prefix[0]);
+        setPendingConflictWhen(e3->addEndpointConst(t1.eqNode(t2), Node::null(), false));
+      }
+    }
+    else
+    {
+      for (const Node& prefix : e2->d_prefixes)
+      {
+        e1->d_prefixes.push_back(prefix);
+      }
     }
   }
 }
