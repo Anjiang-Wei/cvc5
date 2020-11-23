@@ -1,0 +1,489 @@
+/******************************************************************************
+ * Operator Elimination
+ ******************************************************************************/
+
+(define-rule UgtEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvugt x y)
+    (bvult y x))
+
+(define-rule UgeEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvuge x y)
+    (bvule y x))
+
+(define-rule SgtEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsgt x y)
+    (bvslt y x))
+
+(define-rule SgeEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsge x y)
+    (bvsle y x))
+
+(define-rule SltEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvslt x y)
+    (let ((pow_two (bvshl (_ bv 1 n) (_ bv (- size 1) n))))
+      (bvult (bvadd x pow_two) (bvadd y pow_two)))))
+
+(define-rule SleEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsle x y)
+    (not (bvslt y x)))
+
+(define-rule UleEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvule x y)
+    (not (bvult y x)))
+
+(define-rule CompEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+   (bvcomp x y)
+   (ite (= x y) (_ bv 1 1) (_ bv 0 1)))
+
+(define-rule SubEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvsub x y)
+    (bvadd x (bvneg y)))
+
+/* RepeatEliminate: Worth it? */
+
+(define-rule RotateLeftEliminate ((i Int) (x (_ BitVec n)))
+    ((_ rotate_left i) x)
+    (ite (= i 0) x (concat ((_ extract (- n (+ 1 i)) 0) ) ((_ extract (- n 1) (- n i)) x))))
+
+(define-rule RotateRightEliminate ((i Int) (x (_ BitVec n)))
+    ((_ rotate_right i) x)
+    (ite (= i 0) x (concat ((_ extract (- i 1) 0) ) ((_ extract (- n 1) i) x))))
+
+/* BVToNatEliminate: COMPLEX */
+
+/* IntToBVEliminate: COMPLEX */
+
+(define-rule NandEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvnand x y)
+    (bvnot (bvand x y)))
+
+(define-rule NorEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvnor x y)
+    (bvnot (bvor x y)))
+
+(define-rule XnorEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+    (bvxnor x y)
+    (bvnot (bvxor x y)))
+
+(define-rule SdivEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+  (bvsdiv x y)
+  (let ((x_lt_0 (= ((_ extract (- n 1) (- n 1)) x) (_ bv 1 1)))
+        (y_lt_0 (= ((_ extract (- n 1) (- n 1)) y) (_ bv 1 1)))
+        (abs_x (ite x_lt_0 (bvneg x) x))
+        (abs_y (ite y_lt_0 (bvneg y) y))
+        (x_udiv_y (bvudiv abs_x abs_y)))
+    (ite (xor x_lt_0 y_lt_0)
+      (bvneg x_udiv_y)
+      x_udiv_y)))
+
+(define-rule SremEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+  (bvsdiv x y)
+  (let ((x_lt_0 (= ((_ extract (- n 1) (- n 1)) x) (_ bv 1 1)))
+        (y_lt_0 (= ((_ extract (- n 1) (- n 1)) y) (_ bv 1 1)))
+        (abs_x (ite x_lt_0 (bvneg x) x))
+        (abs_y (ite y_lt_0 (bvneg y) y))
+        (x_urem_y (bvurem abs_x abs_y)))
+    (ite x_lt_0
+      (bvneg x_urem_y)
+      x_urem_y)))
+
+(define-rule SmodEliminate ((x (_ BitVec n)) (y (_ BitVec n)))
+  (bvsdiv x y)
+  (let ((msb_x ((_ extract (- n 1) (- n 1)) x))
+        (msb_y ((_ extract (- n 1) (- n 1)) y))
+        (x_lt_0 (= msb_x (_ bv 1 1)))
+        (y_lt_0 (= msb_y (_ bv 1 1)))
+        (abs_x (ite x_lt_0 (bvneg x) x))
+        (abs_y (ite y_lt_0 (bvneg y) y))
+        (x_urem_y (bvurem abs_x abs_y)))
+    (ite (= x_urem_y (_ bv 0 n))
+      x_urem_y
+      (ite (and (= msb_x (_ bv 0 1)) (= msb_y (_ bv 0 1)))
+        x_urem_y
+        (ite (and (= msb_x (_ bv 1 1)) (= msb_y (_ bv 0 1)))
+          (bvadd (bvneg x_urem_y) y)
+          (ite (and (= msb_x (_ bv 0 1)) (= msb_y (_ bv 1 1)))
+            (bvadd x_urem_y y)
+            (bvneg x_urem_y)))))))
+
+(define-rule ZeroExtendEliminate ((i Int) (x (_ BitVec n)))
+  ((_ zero_extend i) x)
+  (ite (= i 0) x (concat (_ bv 0 i) x)))
+
+(define-rule SignExtendEliminate ((i Int) (x (_ BitVec n)))
+  ((_ zero_extend i) x)
+  (ite (= i 0) x (concat ((_ repeat i) ((_ extract (- n 1) (- n 1)) x)) x)))
+
+(define-rule RedorEliminate ((x (_ BitVec n)))
+    (redor x)
+    (not (= x (_ bv 0 n))))
+
+(define-rule RedandEliminate ((x (_ BitVec n)))
+    (redand x)
+    (= x (bvnot (_ bv 0 n))))
+
+/******************************************************************************
+ * Simplification
+ ******************************************************************************/
+
+(define-rule BvIteConstCond ((x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite (_ bv m 1) x y)
+  (ite (= m 1) x y))
+
+(define-rule BvIteEqualChildren ((c (_ BitVec 1)) (x (_ BitVec m)))
+  (bvite c x x)
+  x)
+
+(define-rule BvIteConstChildren ((n Int) (m Int) (x (_ BitVec o)))
+  (bvite x (_ bv n 1) (_ bv m 1))
+  (ite (and (= n 1) (= m 0))
+    x
+    (bvnot x)))
+
+(define-rule BvIteEqualCond1 ((c (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)) (z (_ BitVec n)))
+  (bvite c (bvite c x y) z)
+  (bvite c x z))
+
+(define-rule BvIteEqualCond2 ((c (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)) (z (_ BitVec n)))
+  (bvite c x (bvite c y z))
+  (bvite c x z))
+
+(define-rule BvIteMergeThenIf ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 (bvite c1 x y) x)
+  (bvite (bvand c0 (bvnot c1)) y x))
+
+(define-rule BvIteMergeElseIf ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 (bvite c1 x y) y)
+  (bvite (bvand c0 c1) x y))
+
+(define-rule BvIteMergeThenElse ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 x (bvite c1 x y))
+  (bvite (bvand (bvnot c0) (bvnot c1)) y x))
+
+(define-rule BvIteMergeElseElse ((c0 (_ BitVec 1)) (c1 (_ BitVec 1)) (x (_ BitVec n)) (y (_ BitVec n)))
+  (bvite c0 x (bvite c1 y x))
+  (bvite (bvand (bvnot c0) c1) y x))
+
+(define-rule BvComp ((n Int) (x (_ BitVec 1)))
+  (bvcomp (_ bv n 1) x)
+  (ite (= n 0) (bvnot x) x))
+
+(define-rule ShlByConst (())
+  (bvshl x (_ bv n m))
+  (ite (= n 0)
+    x
+    (ite (>= n m) (_ bv 0 m) (concat ((_ extract (- m (+ n 1)) 0) ) (_ bv 0 n)))))
+    
+(define-rule LshrByConst (())
+  (bvshl x (_ bv n m))
+  (ite (= n 0)
+    x
+    (ite (>= n m) (_ bv 0 m) (concat (_ bv 0 n) ((_ extract (- m 1) n))))))
+
+(define-rule AshrByConst (())
+  (bvshl x (_ bv n m))
+  (ite (= n 0)
+    x
+    (let (sign_bit ((_ extract (- m 1) (- m 1)) x))
+      (ite (>= n m) ((_ repeat m) sign_bit) (concat ((_ repeat n) sign_bit) ((_ extract (- m (+ n 1)) 0)))))))
+
+/* Note: rewrite is limited to 2 children */
+(define-rule BitwiseIdempAnd ((x (_ BitVec n)))
+  (bvand x x)
+  x)
+  
+/* Note: rewrite is limited to 2 children */
+(define-rule BitwiseIdempOr ((x (_ BitVec n)))
+  (bvor x x)
+  x)
+
+/* Note: rewrite is limited to 2 children */
+(define-rule AndZero ((x (_ BitVec n)))
+  (bvand x (_ bv 0 n))
+  (_ bv 0 n))
+
+/* Note: rewrite is limited to 2 children */
+(define-rule AndOne ((x (_ BitVec n)))
+  (bvand x (bvnot (_ bv 0 n)))
+  x)
+
+/* AndOrXorConcatPullUp */
+
+/* Note: rewrite is limited to 2 children */
+(define-rule OrZero ((x (_ BitVec n)))
+  (bvor x (_ bv 0 n))
+  x)
+
+/* Note: rewrite is limited to 2 children */
+(define-rule OrOne ((x (_ BitVec n)))
+  (bvor x (bvnot (_ bv 0 n)))
+  (bvnot (_ bv 0 n)))
+
+/* Note: rewrite is limited to 2 children */
+(define-rule XorDuplicate ((x (_ BitVec n)))
+  (bvor x x)
+  (_ bv 0 n))
+
+/* FIXME */
+(define-rule XorOne ((x (_ BitVec n)))
+  (bvxor x (bvnot (_ bv 0 n)))
+  (bvnot (_ bv 0 n)))
+
+/* XorZero */
+
+/* Note: rewrite is limited to 2 children */
+(define-rule BitwiseNotAnd ((x (_ BitVec n)))
+  (bvand x (bvnot x))
+  (_ bv 0 n))
+
+/* Note: rewrite is limited to 2 children */
+(define-rule BitwiseNotOr ((x (_ BitVec n)))
+  (bvor x (bvnot x))
+  (bvnot (_ bv 0 n)))
+
+/* XorNot: DISABLED */
+
+(define-rule NotXor ((x (_ BitVec n)) (xs (_ Set (_ BitVec n))))
+  (bvnot (bvxor x xs))
+  (bvxor (bvnot x) xs))
+
+(define-rule NotIdemp ((x (_ BitVec n)))
+    (bvnot (bvnot x))
+    x)
+
+(define-rule LtSelfUlt ((x (_ BitVec n)))
+    (bvult x x)
+    false)
+
+(define-rule LtSelfSlt ((x (_ BitVec n)))
+    (bvslt x x)
+    false)
+
+(define-rule LteSelfUle ((x (_ BitVec n)))
+    (bvule x x)
+    true)
+
+(define-rule LteSelfSle ((x (_ BitVec n)))
+    (bvsle x x)
+    true)
+
+(define-rule ZeroUlt ((x (_ BitVec n)))
+    (bvult (_ bv 0 n) x)
+    (not (= (_ bv 0 n) x)))
+
+(define-rule UltZero ((x (_ BitVec n)))
+    (bvult x (_ bv 0 n))
+    false)
+
+(define-rule UltOne ((x (_ BitVec n)))
+    (bvult x (_ bv 1 n))
+    (= x (_ bv 0 n)))
+
+(define-rule SltZero ((x (_ BitVec n)))
+    (bvslt x (_ bv 0 n))
+    (= ((_ extract (- n 1) (- n 1)) x) (_ bv 1 1)))
+
+/* Note: Duplicate of LtSelfUlt */
+(define-rule UltSelf ((x (_ BitVec n)))
+    (bvult x x)
+    false)
+
+(define-rule UleZero ((x (_ BitVec n)))
+    (bvule x (_ bv0 n))
+    (= x (_ bv0 n)))
+
+/* Note: Duplicate of LteSelfUle */
+(define-rule UleSelf ((x (_ BitVec n)))
+    (bvule x x)
+    true)
+
+(define-rule ZeroUle ((x (_ BitVec n)))
+    (bvule (_ bv0 n) x)
+    true)
+
+(define-rule NotUlt ((x (_ BitVec n)) (y (_ BitVec n)))
+    (not (bvult x y))
+    (bvule y x))
+
+(define-rule UleMax ((x (_ BitVec n)))
+    (bvult x (bvnot (_ bv 0 n)))
+    true)
+
+(define-rule NotUlt ((x (_ BitVec n)) (y (_ BitVec n)))
+    (not (bvult x y))
+    (bvule y x))
+
+(define-rule NotUle ((x (_ BitVec n)) (y (_ BitVec n)))
+    (not (bvule x y))
+    (bvult y x))
+
+/* MultPow2 */
+
+/* ExtractMultLeadingBit: BROKEN? */
+
+(define-rule NegIdemp ((x (_ BitVec n)))
+    (bvneg (bvneg x))
+    x)
+
+/* UdivPow2 */
+
+(define-rule UdivZero ((x (_ BitVec n)))
+    (bvudiv x (_ bv 0 n))
+    (bvnot (_ bv 0 n)))
+
+(define-rule UdivOne ((x (_ BitVec n)))
+    (bvudiv x (_ bv 1 n))
+    x)
+
+/* UremPow2 */
+
+(define-rule UremOne ((x (_ BitVec n)))
+    (bvudiv x (_ bv 1 n))
+    (_ bv 0 n))
+
+(define-rule UremSelf ((x (_ BitVec n)))
+    (bvudiv x x)
+    (_ bv 0 n))
+
+(define-rule ShiftZeroShl ((x (_ BitVec n)))
+    (bvshl (_ bv 0 n) x)
+    (_ bv 0 n))
+
+(define-rule ShiftZeroLshr ((x (_ BitVec n)))
+    (bvlshr (_ bv 0 n) x)
+    (_ bv 0 n))
+
+(define-rule ShiftZeroAshr ((x (_ BitVec n)))
+    (bvashr (_ bv 0 n) x)
+    (_ bv 0 n))
+
+/* BBPlusNeg */
+
+/* MergeSignExtend */
+
+/* ZeroExtendEqConst */
+
+/* SignExtendEqConst */
+
+/* ZeroExtendUltConst */
+
+/* SignExtendUltConst */
+
+/* MultSlice */
+
+/* UltPlusOne */
+
+/* IsPowerOfTwo */
+
+/* MultSltMult */
+
+/******************************************************************************
+ * Core
+ ******************************************************************************/
+
+/* ConcatFlatten: FLATTEN IMPLICIT */
+
+/* ConcatExtractMerge */
+
+/* ConcatConstantMerge */
+
+(define-rule ExtractWhole ((x (_ BitVec n)))
+  ((_ extract (- n 1) 0) x)
+  x)
+
+/* ExtractConstant: CONST EVAL */
+
+/* ExtractConcat */
+
+(define-rule ExtractExtract ((i Int) (j Int) (k Int) (l Int) (x (_ BitVec n)))
+  ((_ extract i j) ((_ extract k l) x))
+  ((_ extract (+ k j) (+ l j)) x))
+
+/* FailEq: CONST EVAL */
+
+(define-rule SimplifyEq ((x (_ BitVec n)))
+  (= x x)
+  true)
+
+/* Do we want that as a rule? */
+(define-rule SimplifyEq ((x (_ BitVec n)) (y (_ BitVec n)))
+  (= x y)
+  (< (id x) (id y))
+  (= y x))
+
+/******************************************************************************
+ * Normalization
+ ******************************************************************************/
+
+(define-rule ExtractBitwiseAnd ((i Int) (j Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i j) (bvand xs))
+  (bvand (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i j) x)))))
+
+(define-rule ExtractBitwiseOr ((i Int) (j Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i j) (bvor xs))
+  (bvor (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i j) x)))))
+
+(define-rule ExtractBitwiseXor ((i Int) (j Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i j) (bvxor xs))
+  (bvxor (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i j) x)))))
+
+(define-rule ExtractNot ((i Int) (j Int) (x (_ BitVec n)))
+  ((_ extract i j) (bvnot x))
+  (bvnot ((_ extract i j) x)))
+
+/* ExtractSignExtend */
+
+(define-rule ExtractArithPlus ((i Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i 0) (bvadd xs))
+  (bvadd (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i 0) x)))))
+
+(define-rule ExtractArithMult ((i Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i 0) (bvmul xs))
+  (bvmul (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i 0) x)))))
+
+(define-rule ExtractArith2Plus ((i Int) (j Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i j) (bvadd xs))
+  ((_ extract i j) (bvadd (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i 0) x))))))
+
+(define-rule ExtractArith2Mult ((i Int) (j Int) (xs (_ Set (_ BitVec n))))
+  ((_ extract i j) (bvmul xs))
+  ((_ extract i j) (bvmul (map xs (lambda ((_ x (_ BitVec n))) ((_ extract i 0) x))))))
+
+/* FlattenAssocCommut: FLATTEN IMPLICIT */
+
+/* PlusCombineLikeTerms: COMPLEX */
+
+/* MultSimplify */
+
+/* MultDistribConst */
+
+/* MultDistrib */
+
+/* ConcatToMult */
+
+/* SolveEq: COMPLEX */
+
+/* BitwiseEq */
+
+/* Note: original rewrite directly constant folds */
+(define-rule NegMult ((xs (_ Set (_ BitVec n))))
+  (bvneg (bvmul xs))
+  (bvmul (bvneg (_ bv 1)) xs))
+
+(define-rule NegSub ((x (_ BitVec n)) (y (_ BitVec n)))
+  (bvneg (bvsub x y))
+  (bvsub y x))
+
+/* NegPlus */
+
+/* AndSimplify */
+
+/* FlattenAssocCommutNoDuplicates: FLATTEN IMPLICIT */
+
+/* OrSimplify */
+
+/* XorSimplify */
+
+/* BitwiseSlicing */
+
+/* NormalizeEqPlusNeg */
