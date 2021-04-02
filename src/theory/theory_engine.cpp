@@ -727,7 +727,8 @@ void TheoryEngine::notifyRestart() {
   CVC4_FOR_EACH_THEORY;
 }
 
-void TheoryEngine::ppStaticLearn(TNode in, NodeBuilder<>& learned) {
+void TheoryEngine::ppStaticLearn(TNode in, NodeBuilder& learned)
+{
   // Reset the interrupt flag
   d_interrupted = false;
 
@@ -1638,7 +1639,7 @@ theory::TrustNode TheoryEngine::getExplanation(
   }
   else
   {
-    NodeBuilder<> conjunction(kind::AND);
+    NodeBuilder conjunction(kind::AND);
     std::set<TNode>::const_iterator it = exp.begin();
     std::set<TNode>::const_iterator it_end = exp.end();
     while (it != it_end)

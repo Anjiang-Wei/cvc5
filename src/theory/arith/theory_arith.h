@@ -120,7 +120,7 @@ class TheoryArith : public Theory {
    * symbols.
    */
   TrustNode ppRewrite(TNode atom, std::vector<SkolemLemma>& lems) override;
-  void ppStaticLearn(TNode in, NodeBuilder<>& learned) override;
+  void ppStaticLearn(TNode in, NodeBuilder& learned) override;
 
   std::string identify() const override { return std::string("TheoryArith"); }
 
