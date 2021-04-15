@@ -256,9 +256,9 @@ execute_process(COMMAND ${CMAKE_C_COMPILER}
                 -fuse-ld=gold
                 -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
 if ("${LD_VERSION}" MATCHES "GNU gold")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fuse-ld=gold")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -fuse-ld=gold")
-  string(APPEND CMAKE_MODULE_LINKER_FLAGS " -fuse-ld=gold")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -fuse-ld=gold -lpthread")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -fuse-ld=gold -lpthread")
+  string(APPEND CMAKE_MODULE_LINKER_FLAGS " -fuse-ld=gold -lpthread")
   message(STATUS "Using GNU gold linker.")
 endif ()
 
@@ -453,6 +453,9 @@ endif()
 if(ENABLE_PROFILING)
   add_definitions(-DCVC4_PROFILING)
   add_check_c_cxx_flag("-pg")
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " -pg")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -pg")
+  string(APPEND CMAKE_MODULE_LINKER_FLAGS " -pg")
 endif()
 
 if(ENABLE_PROOFS)

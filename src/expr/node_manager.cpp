@@ -610,7 +610,7 @@ std::vector<TypeNode> NodeManager::mkMutualDatatypeTypes(
     }
     AlwaysAssert(nameResolutions.find(dtc->getName()) == nameResolutions.end())
         << "cannot construct two datatypes at the same time "
-           "with the same name";
+           "with the same name (" << dtc->getName() << ")";
     nameResolutions.insert(std::make_pair(dtc->getName(), typeNode));
     dtts.push_back(typeNode);
   }

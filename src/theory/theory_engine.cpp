@@ -32,6 +32,7 @@
 #include "options/quantifiers_options.h"
 #include "options/theory_options.h"
 #include "printer/printer.h"
+#include "proof/unsat_core.h"
 #include "smt/dump.h"
 #include "smt/logic_exception.h"
 #include "smt/term_formula_removal.h"
@@ -46,6 +47,7 @@
 #include "theory/quantifiers_engine.h"
 #include "theory/relevance_manager.h"
 #include "theory/rewriter.h"
+#include "theory/smt_engine_subsolver.h"
 #include "theory/theory.h"
 #include "theory/theory_engine_proof_generator.h"
 #include "theory/theory_id.h"
@@ -560,6 +562,96 @@ void TheoryEngine::check(Theory::Effort effort) {
           // quantifiers engine must check at last call effort
           d_quantEngine->check(Theory::EFFORT_LAST_CALL);
         }
+        /*
+
+        // TODO: inefficient
+        Node confl;
+        std::vector<Node> ts;
+        theory::eq::EqualityEngine* ee = d_tc->getCoreEqualityEngine();
+        {
+          eq::EqClassesIterator eqcs_i = eq::EqClassesIterator(ee);
+          while (!eqcs_i.isFinished())
+          {
+            Node eqc = (*eqcs_i);
+            eq::EqClassIterator eqc_i = eq::EqClassIterator(eqc, ee);
+            while (!eqc_i.isFinished())
+            {
+              Node n = *eqc_i;
+              smt::IsTAttribute ta;
+              if (n.getAttribute(ta)) {
+                ts.emplace_back(n);
+
+                eq::EqClassIterator eqc_i2 = eq::EqClassIterator(eqc, ee);
+                while (!eqc_i2.isFinished())
+                {
+                  Node n2 = *eqc_i2;
+                  if (n != n2) {
+                    confl = n.eqNode(n2);
+                    break;
+                  }
+                  ++eqc_i2;
+                }
+              }
+              ++eqc_i;
+            }
+            ++eqcs_i;
+          }
+        }
+        std::cout << "ts = " << ts << std::endl;
+
+        std::vector<Node> eqs;
+        std::vector<Node> neqs;
+        eq::EqClassesIterator eqcs_i = eq::EqClassesIterator(ee);
+        while (!eqcs_i.isFinished())
+        {
+          Node eqc = (*eqcs_i);
+          eq::EqClassIterator eqc_i = eq::EqClassIterator(eqc, ee);
+          while (!eqc_i.isFinished())
+          {
+            Node n = *eqc_i;
+            smt::IsTAttribute ta;
+            if (n.getType().isBoolean() && ee->getRepresentative(n).isConst()) {
+              eqs.emplace_back(ee->getRepresentative(n).getConst<bool>() ? n : n.notNode());
+            } else {
+              eqs.emplace_back(n.eqNode(ee->getRepresentative(n)));
+            }
+            if (!n.getAttribute(ta)) {
+              for (const Node& t : ts) {
+                if (t.getType().isComparableTo(n.getType())) {
+                  neqs.emplace_back(n.eqNode(t).notNode());
+                }
+              }
+            }
+            ++eqc_i;
+          }
+          ++eqcs_i;
+        }
+
+        NodeManager* nm = NodeManager::currentNM();
+        std::unique_ptr<SmtEngine> deqChecker;
+        theory::initializeSubsolver(deqChecker);
+        deqChecker->getOptions().set(options::unsatCores, true);
+        for (const Node& eq : eqs) {
+          deqChecker->assertFormula(eq);
+        }
+        Node disneqs = nm->mkNode(kind::OR, neqs).notNode();
+        deqChecker->assertFormula(disneqs);
+        Result r = deqChecker->checkSat();
+        if (r.isSat() == Result::UNSAT)
+        {
+          std::vector<Node> uc;
+          for (const Node& c : deqChecker->getUnsatCore()) {
+            if (c != disneqs) {
+              uc.emplace_back(c.notNode());
+            }
+          }
+          lemma(TrustNode::mkTrustLemma(nm->mkNode(kind::OR, uc)), LemmaProperty::NONE);
+        }
+
+        std::cout << "eqs = " << eqs << std::endl;
+        std::cout << "neqs = " << neqs << std::endl;
+        */
+
       }
       if (!d_inConflict && !needCheck())
       {
@@ -1138,6 +1230,10 @@ void TheoryEngine::declareSepHeap(TypeNode locT, TypeNode dataT)
 theory::EqualityStatus TheoryEngine::getEqualityStatus(TNode a, TNode b) {
   Assert(a.getType().isComparableTo(b.getType()));
   return d_sharedSolver->getEqualityStatus(a, b);
+}
+
+theory::eq::EqualityEngine* TheoryEngine::getEqualityEngine() {
+  return d_tc->getCoreEqualityEngine();
 }
 
 Node TheoryEngine::getModelValue(TNode var) {

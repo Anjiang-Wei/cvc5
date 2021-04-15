@@ -176,10 +176,10 @@ bool Instantiate::addInstantiation(
     // this assertion is critical to soundness
     if (bad_inst)
     {
-      Trace("inst") << "***& Bad Instantiate " << q << " with " << std::endl;
+      std::cout << "***& Bad Instantiate " << q << " with " << std::endl;
       for (unsigned j = 0; j < terms.size(); j++)
       {
-        Trace("inst") << "   " << terms[j] << std::endl;
+        std::cout << "   " << terms[j] << std::endl;
       }
       Assert(false);
     }

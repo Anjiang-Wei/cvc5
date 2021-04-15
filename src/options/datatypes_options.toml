@@ -178,5 +178,4 @@ header = "options/datatypes_options.h"
   long       = "sygus-abort-size=N"
   type       = "int"
   default    = "-1"
-  read_only  = true
   help       = "tells enumerative sygus to only consider solutions up to term size N (-1 == no limit, default)"

@@ -802,6 +802,22 @@ header = "options/smt_options.h"
   help       = "support the get-abduct command"
 
 [[option]]
+  name       = "eSolver"
+  category   = "undocumented"
+  long       = "e-solver"
+  type       = "bool"
+  default    = "false"
+  help       = "Use CEGAR solver for quantifiers"
+
+[[option]]
+  name       = "numThreads"
+  category   = "undocumented"
+  long       = "num-threads=N"
+  type       = "int"
+  default    = "1"
+  help       = "Number of threads"
+
+[[option]]
   name       = "checkInterpols"
   category   = "regular"
   long       = "check-interpols"

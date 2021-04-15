@@ -24,6 +24,7 @@
 #include <sys/time.h>
 
 #include <chrono>
+#include <functional>
 #include <memory>
 
 #include "base/exception.h"
@@ -114,6 +115,11 @@ class CVC4_PUBLIC ResourceManager
   /** Can not be moved. */
   ResourceManager& operator=(ResourceManager&&) = delete;
 
+  void setCallback(std::function<bool()>&& f) { 
+    d_on = true;
+    d_callback = f;
+  }
+
   /** Checks whether any limit is active. */
   bool limitOn() const { return cumulativeLimitOn() || perCallLimitOn(); }
   /** Checks whether any cumulative limit is active. */
@@ -126,7 +132,7 @@ class CVC4_PUBLIC ResourceManager
   /** Checks whether time has been exhausted. */
   bool outOfTime() const;
   /** Checks whether any limit has been exhausted. */
-  bool out() const { return d_on && (outOfResources() || outOfTime()); }
+  bool out() const { return d_on && (d_callback() || outOfResources() || outOfTime()); }
 
   /** Retrieves amount of resources used overall. */
   uint64_t getResourceUsage() const;
@@ -207,6 +213,7 @@ class CVC4_PUBLIC ResourceManager
 
   Options& d_options;
 
+  std::function<bool()> d_callback = [](){ return false; };
 }; /* class ResourceManager */
 
 }  // namespace CVC4

@@ -30,6 +30,12 @@ ${includes}
 
 namespace CVC4 {
 
+namespace smt {
+struct Instantiator;
+struct VarMap;
+struct Worker;
+}
+
 namespace api {
 class Solver;
 }
@@ -45,6 +51,9 @@ class ResourceManager;
 class CVC4_PUBLIC ExprManager {
  private:
   friend api::Solver;
+  friend smt::Instantiator;
+  friend smt::VarMap;
+  friend smt::Worker;
   /** The internal node manager */
   NodeManager* d_nodeManager;
 

@@ -267,7 +267,7 @@ class Theory {
   /**
    * The theory that owns the uninterpreted sort.
    */
-  static TheoryId s_uninterpretedSortOwner;
+  static thread_local TheoryId s_uninterpretedSortOwner;
 
   void printFacts(std::ostream& os) const;
   void debugPrintFacts() const;

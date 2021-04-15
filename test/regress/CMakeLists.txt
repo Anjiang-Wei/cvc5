@@ -536,6 +536,17 @@ set(regress_0_tests
   regress0/eqrange1.smt2
   regress0/eqrange2.smt2
   regress0/eqrange3.smt2
+  regress0/e_solver/byron.smt2
+  regress0/e_solver/ex6.smt2
+  regress0/e_solver/min_7.smt2
+  regress0/e_solver/min_perf.smt2
+  regress0/e_solver/min_perf2.smt2
+  regress0/e_solver/min_perf3.smt2
+  regress0/e_solver/min_perf4.smt2
+  regress0/e_solver/min_perf5.min.smt2
+  regress0/e_solver/min_perf5.smt2
+  regress0/e_solver/min_perf6.smt2
+  regress0/e_solver/real.smt2
   regress0/expect/scrub.01.smtv1.smt2
   regress0/expect/scrub.03.smt2
   regress0/expect/scrub.06.cvc

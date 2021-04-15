@@ -1,4 +1,4 @@
-(set-logic LRA)
+(set-logic UFLRA)
 (set-info :status sat)
-(assert (forall ((x Real)) (or (exists ((y Real)) (and (< y 0) (< y x))) (<= x 0))))
+(assert (forall ((x Real)) (exists ((y Real)) (< y x))))
 (check-sat)

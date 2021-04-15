@@ -104,6 +104,7 @@ class CheckModels;
 class SmtSolver;
 class SygusSolver;
 class AbductionSolver;
+class ESolver;
 class InterpolationSolver;
 class QuantElimSolver;
 /**
@@ -794,6 +795,8 @@ class CVC4_PUBLIC SmtEngine
    */
   void setTimeLimit(unsigned long millis);
 
+  void setOutOfResourcesCallback(std::function<bool()>&& f);
+
   /**
    * Get the current resource usage count for this SmtEngine.  This
    * function can be used to ascertain reasonable values to pass as
@@ -1122,6 +1125,7 @@ class CVC4_PUBLIC SmtEngine
 
   /** The solver for abduction queries */
   std::unique_ptr<smt::AbductionSolver> d_abductSolver;
+  std::unique_ptr<smt::ESolver> d_eSolver;
   /** The solver for interpolation queries */
   std::unique_ptr<smt::InterpolationSolver> d_interpolSolver;
   /** The solver for quantifier elimination queries */

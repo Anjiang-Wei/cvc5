@@ -223,6 +223,12 @@ libcvc4_add_sources(
   smt/dump.h
   smt/dump_manager.cpp
   smt/dump_manager.h
+  smt/e_solver/e_solver.cpp
+  smt/e_solver/e_solver.h
+  smt/e_solver/thread_pool.h
+  smt/e_solver/var_map.h
+  smt/e_solver/worker.cpp
+  smt/e_solver/worker.h
   smt/expand_definitions.cpp
   smt/expand_definitions.h
   smt/listeners.cpp

@@ -67,7 +67,6 @@ header = "options/quantifiers_options.h"
   long       = "var-elim-quant"
   type       = "bool"
   default    = "true"
-  read_only  = true
   help       = "enable simple variable elimination for quantified formulas"
 
 [[option]]
@@ -76,7 +75,6 @@ header = "options/quantifiers_options.h"
   long       = "var-ineq-elim-quant"
   type       = "bool"
   default    = "true"
-  read_only  = true
   help       = "enable variable elimination based on infinite projection of unbound arithmetic variables"
 
 [[option]]
@@ -112,7 +110,6 @@ header = "options/quantifiers_options.h"
   long       = "cond-var-split-quant"
   type       = "bool"
   default    = "true"
-  read_only  = true
   help       = "split quantified formulas that lead to variable eliminations"
 
 [[option]]
@@ -121,7 +118,6 @@ header = "options/quantifiers_options.h"
   long       = "cond-var-split-agg-quant"
   type       = "bool"
   default    = "false"
-  read_only  = true
   help       = "aggressive split quantified formulas that lead to variable eliminations"
 
 [[option]]
@@ -174,7 +170,6 @@ header = "options/quantifiers_options.h"
   long       = "elim-taut-quant"
   type       = "bool"
   default    = "true"
-  read_only  = true
   help       = "eliminate tautological disjuncts of quantified formulas"
 
 [[option]]
@@ -517,7 +512,6 @@ header = "options/quantifiers_options.h"
   long       = "full-saturate-quant-rd"
   type       = "bool"
   default    = "true"
-  read_only  = true
   help       = "whether to use relevant domain first for enumerative instantiation strategy"
 
 [[option]]
@@ -526,7 +520,6 @@ header = "options/quantifiers_options.h"
   long       = "full-saturate-quant-limit=N"
   type       = "int"
   default    = "-1"
-  read_only  = true
   help       = "maximum number of rounds of enumerative instantiation to apply (-1 means no limit)"
   
 [[option]]
@@ -1116,7 +1109,6 @@ header = "options/quantifiers_options.h"
   long       = "sygus-active-gen=MODE"
   type       = "SygusActiveGenMode"
   default    = "AUTO"
-  read_only  = true
   help       = "mode for actively-generated sygus enumerators"
   help_mode  = "Modes for actively-generated sygus enumerators."
 [[option.mode.NONE]]

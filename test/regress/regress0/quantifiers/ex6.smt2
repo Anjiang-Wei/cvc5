@@ -6,6 +6,9 @@
 (declare-fun a () U)
 (declare-fun S (U) U)
 (declare-fun G (U U) Bool)
-(assert (and (forall ((x U)) (G (S x) x)) (forall ((x U) (y U) (z U)) (=> (and (G x y) (G y z)) (G x z))) (not (G (S (S a)) a))))
+(assert (and
+  (forall ((x U)) (G (S x) x))
+  (forall ((x U) (y U) (z U)) (=> (and (G x y) (G y z)) (G x z)))
+  (not (G (S (S a)) a))))
 (check-sat)
 (exit)

@@ -37,7 +37,7 @@ namespace CVC4 {
 namespace theory {
 
 /** Default value for the uninterpreted sorts is the UF theory */
-TheoryId Theory::s_uninterpretedSortOwner = THEORY_UF;
+thread_local TheoryId Theory::s_uninterpretedSortOwner = THEORY_UF;
 
 std::ostream& operator<<(std::ostream& os, Theory::Effort level){
   switch(level){

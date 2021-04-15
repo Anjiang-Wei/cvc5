@@ -38,6 +38,7 @@
 #include "smt/check_models.h"
 #include "smt/defined_function.h"
 #include "smt/dump_manager.h"
+#include "smt/e_solver/e_solver.h"
 #include "smt/interpolation_solver.h"
 #include "smt/listeners.h"
 #include "smt/logic_request.h"
@@ -289,6 +290,11 @@ void SmtEngine::finishInit()
     d_interpolSolver.reset(new InterpolationSolver(this));
   }
 
+  if (options::eSolver())
+  {
+    d_eSolver.reset(new ESolver(this, d_state.get()));
+  }
+
   d_pp->finishInit();
 
   AlwaysAssert(getPropEngine()->getAssertionLevel() == 0)
@@ -344,6 +350,7 @@ SmtEngine::~SmtEngine()
     d_model.reset(nullptr);
 
     d_sygusSolver.reset(nullptr);
+    d_eSolver.reset(nullptr);
 
     d_smtSolver.reset(nullptr);
 
@@ -965,8 +972,19 @@ Result SmtEngine::checkSatInternal(const std::vector<Node>& assumptions,
                  << (isEntailmentCheck ? "checkEntailed" : "checkSat") << "("
                  << assumptions << ")" << endl;
     // check the satisfiability with the solver object
-    Result r = d_smtSolver->checkSatisfiability(
-        *d_asserts.get(), assumptions, inUnsatCore, isEntailmentCheck);
+    Result r;
+
+    if (d_eSolver == nullptr)
+    {
+      r = d_smtSolver->checkSatisfiability(
+          *d_asserts.get(), assumptions, inUnsatCore, isEntailmentCheck);
+    }
+    else
+    {
+      AlwaysAssert(assumptions.size() == 0);
+      AlwaysAssert(!isEntailmentCheck);
+      r = d_eSolver->checkSatisfiability(*d_asserts.get());
+    }
 
     Trace("smt") << "SmtEngine::" << (isEntailmentCheck ? "query" : "checkSat")
                  << "(" << assumptions << ") => " << r << endl;
@@ -1854,6 +1872,11 @@ void SmtEngine::setResourceLimit(unsigned long units, bool cumulative) {
 void SmtEngine::setTimeLimit(unsigned long milis)
 {
   d_resourceManager->setTimeLimit(milis);
+}
+
+void SmtEngine::setOutOfResourcesCallback(std::function<bool()>&& f)
+{
+  d_resourceManager->setCallback(std::move(f));
 }
 
 unsigned long SmtEngine::getResourceUsage() const {

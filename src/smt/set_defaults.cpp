@@ -214,6 +214,13 @@ void setDefaults(LogicInfo& logic, bool isInternalSubsolver)
     }
   }
 
+  if (options::eSolver())
+  {
+    logic = logic.getUnlockedCopy();
+    logic.enableTheory(THEORY_UF);
+    logic.lock();
+  }
+
   // --ite-simp is an experimental option designed for QF_LIA/nec. This
   // technique is experimental. This benchmark set also requires removing ITEs
   // during preprocessing, before repeating simplification. Hence, we enable

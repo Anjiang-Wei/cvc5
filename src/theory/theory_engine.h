@@ -625,6 +625,8 @@ class TheoryEngine {
    */
   theory::EqualityStatus getEqualityStatus(TNode a, TNode b);
 
+  theory::eq::EqualityEngine* getEqualityEngine();
+
   /**
    * Returns the value that a theory that owns the type of var currently
    * has (or null if none);
