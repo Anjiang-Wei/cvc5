@@ -22,6 +22,7 @@
 #include "theory/bv/theory_bv_rewrite_rules.h"
 #include "theory/bv/theory_bv_utils.h"
 #include "theory/rewriter.h"
+#include "theory/rewriter/rules_implementation.h"
 
 namespace CVC4 {
 namespace theory {
@@ -59,15 +60,13 @@ inline Node RewriteRule<BvIteConstCond>::apply(TNode node)
 template <>
 inline bool RewriteRule<BvIteEqualChildren>::applies(TNode node)
 {
-  return (node.getKind() == kind::BITVECTOR_ITE && node[1] == node[2]);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<BvIteEqualChildren>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<BvIteEqualChildren>(" << node << ")"
-                      << std::endl;
-  return node[1];
+  return rules::BvIteEqualChildren(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -755,35 +754,13 @@ inline Node RewriteRule<XorOne>::apply(TNode node)
 
 template<> inline
 bool RewriteRule<XorZero>::applies(TNode node) {
-  if (node.getKind() != kind::BITVECTOR_XOR) {
-    return false; 
-  }
-  Node zero = utils::mkConst(utils::getSize(node), 0);
-  for (unsigned i = 0; i < node.getNumChildren(); ++i) {
-    if (node[i] == zero) {
-      return true; 
-    }
-  }
-  return false; 
+  return true;
 }
 
 template <>
 inline Node RewriteRule<XorZero>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<XorZero>(" << node << ")" << std::endl;
-  std::vector<Node> children;
-  Node zero = utils::mkConst(utils::getSize(node), 0);
-
-  // XorSimplify should have been called before
-  for (unsigned i = 0; i < node.getNumChildren(); ++i)
-  {
-    if (node[i] != zero)
-    {
-      children.push_back(node[i]);
-    }
-  }
-  Node res = utils::mkNaryNode(kind::BITVECTOR_XOR, children);
-  return res;
+  return rules::XorZero(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -868,23 +845,13 @@ inline Node RewriteRule<XorNot>::apply(TNode node)
 
 template<> inline
 bool RewriteRule<NotXor>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_NOT &&
-          node[0].getKind() == kind::BITVECTOR_XOR); 
+  return true;
 }
 
 template <>
 inline Node RewriteRule<NotXor>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<NotXor>(" << node << ")" << std::endl;
-  std::vector<Node> children;
-  TNode::iterator child_it = node[0].begin();
-  children.push_back(
-      NodeManager::currentNM()->mkNode(kind::BITVECTOR_NOT, *child_it));
-  for (++child_it; child_it != node[0].end(); ++child_it)
-  {
-    children.push_back(*child_it);
-  }
-  return utils::mkSortedNode(kind::BITVECTOR_XOR, children);
+  return rules::NotXor(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */

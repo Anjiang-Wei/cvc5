@@ -436,13 +436,17 @@ RewriteResponse TheoryBVRewriter::RewriteNeg(TNode node, bool prerewrite) {
   
   if (RewriteRule<NegPlus>::applies(node)) {
     resultNode = RewriteRule<NegPlus>::run<false>(node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
   
   if(!prerewrite) {
     if (RewriteRule<NegMult>::applies(node)) {
       resultNode = RewriteRule<NegMult>::run<false>(node);
-      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+      if (resultNode != node) {
+        return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+      }
     }
   }
 

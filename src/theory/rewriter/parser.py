@@ -149,7 +149,6 @@ def process_var_decl(name, sort, attrs):
         sort.const = True
     elif ':list' in attrs:
         sort = Sort(BaseSort.List, [sort])
-    print(sort)
     return (name, sort)
 
 

@@ -21,6 +21,7 @@
 
 #include "theory/bv/theory_bv_rewrite_rules.h"
 #include "theory/bv/theory_bv_utils.h"
+#include "theory/rewriter/rules_implementation.h"
 
 namespace CVC4 {
 namespace theory {
@@ -276,14 +277,12 @@ Node RewriteRule<FailEq>::apply(TNode node) {
 
 template<> inline
 bool RewriteRule<SimplifyEq>::applies(TNode node) {
-  if (node.getKind() != kind::EQUAL) return false;
-  return node[0] == node[1];
+  return true;
 }
 
 template<> inline
 Node RewriteRule<SimplifyEq>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<SimplifyEq>(" << node << ")" << std::endl;
-  return utils::mkTrue();
+  return rules::SimplifyEq(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */

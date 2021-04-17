@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from node import collect_vars, count_vars, subst, BoolConst, Var
+from node import collect_vars, count_vars, subst, BoolConst, Var, Node, Fn
 
 
 class CFGEdge:
@@ -14,6 +14,26 @@ class CFGEdge:
 
 class BaseNode:
     pass
+
+class CFGSeq(BaseNode):
+    def __init__(self, instrs):
+        self.instrs = instrs
+
+    def __repr__(self):
+        result = ''
+        for instr in self.instrs:
+            result += '{}\n'.format(instr)
+        return result
+
+class CFGCond(BaseNode):
+    def __init__(self, cases):
+        self.cases = cases
+
+    def __repr__(self):
+        result = ''
+        for case in self.cases:
+            result += f'{case[0]} => {case[1]}\n'
+        return result
 
 class CFGNode(BaseNode):
     def __init__(self, instrs, edges):
@@ -33,13 +53,14 @@ class CFGNode(BaseNode):
 
 class CFGLoop(BaseNode):
     def __init__(self, loop_var, domain, body):
+        assert isinstance(loop_var, Var)
         self.loop_var = loop_var
         self.domain = domain
         self.body = body
 
     def __repr__(self):
         result = 'for {} in {}:\n'.format(self.loop_var, self.domain)
-        result += self.body
+        result += str(self.body)
         result += 'end'
         return result
 
@@ -156,17 +177,109 @@ def optimize_cfg(out_var, entry, cfg):
             edge.cond = subst(edge.cond, substs)
 
 
-def cfg_collect_vars(cfg):
+def cfg_collect_vars(node):
     cfg_vars = set()
-    for label, node in cfg.items():
-        if isinstance(node, CFGLoop):
-            cfg_vars.add(node.loop_var)
-        else:
-            for instr in node.instrs:
-                if isinstance(instr, Assign):
-                    cfg_vars.add(instr.name)
+    if isinstance(node, CFGLoop):
+        cfg_vars.add(node.loop_var)
+        cfg_vars.update(cfg_collect_vars(node.domain))
+        cfg_vars.update(cfg_collect_vars(node.body))
+    elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
+        for instr in node.instrs:
+            cfg_vars.update(cfg_collect_vars(instr))
+    elif isinstance(node, CFGCond):
+        for case in node.cases:
+            cfg_vars.update(cfg_collect_vars(case[0]))
+            cfg_vars.update(cfg_collect_vars(case[1]))
+    elif isinstance(node, Assign):
+        cfg_vars.add(node.name)
+        cfg_vars.update(cfg_collect_vars(node.expr))
     return cfg_vars
 
+def cfg_count_vars(var_counts, node):
+    if isinstance(node, CFGLoop):
+        var_counts[node.loop_var.name] += 1
+    elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
+        for instr in node.instrs:
+            cfg_count_vars(var_counts, instr)
+    elif isinstance(node, CFGCond):
+        for case in node.cases:
+            cfg_count_vars(var_counts, case[0])
+            cfg_count_vars(var_counts, case[1])
+    elif isinstance(node, Assign):
+        cfg_count_vars(var_counts, node.expr)
+    elif isinstance(node, Assert):
+        cfg_count_vars(var_counts, node.expr)
+    elif isinstance(node, Node):
+        if isinstance(node, Var):
+            var_counts[node.name] += 1
+        else:
+            for child in node.children:
+                cfg_count_vars(var_counts, child)
+
+def cfg_optimize(var_counts, node):
+    def remove_unused_vars(node):
+        if isinstance(node, CFGLoop):
+            node
+        elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
+            new_instrs = []
+            for instr in node.instrs:
+                new_instr = remove_unused_vars(instr)
+                if new_instr:
+                    new_instrs.append(new_instr)
+            return CFGSeq(new_instrs)
+        elif isinstance(node, CFGCond):
+            new_cases = []
+            for case in node.cases:
+                new_cases.append((remove_unused_vars(case[0]), remove_unused_vars(case[1])))
+            return CFGCond(new_cases)
+        elif isinstance(node, Assign):
+            res = None if node.name.name not in var_counts else node
+            return res
+        else:
+            return node
+
+    substs = dict()
+    def elim_single_use_vars(node):
+        if isinstance(node, CFGLoop):
+            node
+        elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
+            new_instrs = []
+            for instr in node.instrs:
+                new_instr = elim_single_use_vars(instr)
+                if new_instr:
+                    new_instrs.append(new_instr)
+            return CFGSeq(new_instrs)
+        elif isinstance(node, CFGCond):
+            new_cases = []
+            for case in node.cases:
+                new_cases.append((elim_single_use_vars(case[0]), elim_single_use_vars(case[1])))
+            return CFGCond(new_cases)
+        elif isinstance(node, Assign):
+            res = None
+            new_expr = elim_single_use_vars(node.expr)
+            if var_counts[node.name.name] == 1:
+                substs[node.name.name] = new_expr
+            else:
+                res = Assign(node.name, new_expr)
+            return res
+        elif isinstance(node, Assert):
+            return Assert(elim_single_use_vars(node.expr), node.in_loop)
+        elif isinstance(node, Node):
+            if isinstance(node, Var) and node.name in substs:
+                return substs[node.name]
+            elif isinstance(node, Fn):
+                new_children = []
+                for child in node.children:
+                    new_children.append(elim_single_use_vars(child))
+                new_node = Fn(node.op, new_children)
+                new_node.sort = node.sort
+                return new_node
+            else:
+                return node
+        else:
+            return node
+
+    return elim_single_use_vars(remove_unused_vars(node))
 
 def cfg_to_str(cfg):
     result = ''

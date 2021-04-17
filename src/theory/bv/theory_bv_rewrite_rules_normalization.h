@@ -26,6 +26,7 @@
 #include "theory/bv/theory_bv_rewrite_rules.h"
 #include "theory/bv/theory_bv_utils.h"
 #include "theory/rewriter.h"
+#include "theory/rewriter/rules_implementation.h"
 
 namespace CVC4 {
 namespace theory {
@@ -955,41 +956,23 @@ Node RewriteRule<BitwiseEq>::apply(TNode node) {
  */
 template<> inline
 bool RewriteRule<NegMult>::applies(TNode node) {
-  if(node.getKind()!= kind::BITVECTOR_NEG ||
-     node[0].getKind() != kind::BITVECTOR_MULT) {                                
-    return false;
-  }
-  return node[node.getNumChildren()-1].isConst();
+  return true;
 }
 
 template<> inline
 Node RewriteRule<NegMult>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<NegMult>(" << node << ")" << std::endl;
-  TNode mult = node[0];
-  NodeBuilder<> nb(kind::BITVECTOR_MULT);
-  BitVector bv(utils::getSize(node), (unsigned)1);
-  TNode::iterator child_it = mult.begin();
-  for(; (child_it+1) != mult.end(); ++child_it) {
-    nb << (*child_it);
-  }
-  Assert((*child_it).isConst());
-  bv = (*child_it).getConst<BitVector>();
-  nb << utils::mkConst(-bv);
-  return Node(nb);
+  return rules::NegMult(node).d_node;
 }
 
 template<> inline
 bool RewriteRule<NegSub>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_NEG &&
-          node[0].getKind() == kind::BITVECTOR_SUB);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<NegSub>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<NegSub>(" << node << ")" << std::endl;
-  return NodeManager::currentNM()->mkNode(
-      kind::BITVECTOR_SUB, node[0][1], node[0][0]);
+  return rules::NegSub(node).d_node;
 }
 
 template<> inline
@@ -1036,85 +1019,17 @@ inline static void insert(std::unordered_map<TNode, Count, TNodeHashFunction>& m
 
 template<> inline
 bool RewriteRule<AndSimplify>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_AND);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<AndSimplify>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<AndSimplify>(" << node << ")"
-                      << std::endl;
-
-  NodeManager *nm = NodeManager::currentNM();
-  // this will remove duplicates
-  std::unordered_map<TNode, Count, TNodeHashFunction> subterms;
-  unsigned size = utils::getSize(node);
-  BitVector constant = BitVector::mkOnes(size);
-  for (unsigned i = 0; i < node.getNumChildren(); ++i)
-  {
-    TNode current = node[i];
-    // simplify constants
-    if (current.getKind() == kind::CONST_BITVECTOR)
-    {
-      BitVector bv = current.getConst<BitVector>();
-      constant = constant & bv;
-    }
-    else
-    {
-      if (current.getKind() == kind::BITVECTOR_NOT)
-      {
-        insert(subterms, current[0], true);
-      }
-      else
-      {
-        insert(subterms, current, false);
-      }
-    }
-  }
-
-  std::vector<Node> children;
-
-  if (constant == BitVector(size, (unsigned)0))
-  {
-    return utils::mkZero(size);
-  }
-
-  if (constant != BitVector::mkOnes(size))
-  {
-    children.push_back(utils::mkConst(constant)); 
-  }
-
-  std::unordered_map<TNode, Count, TNodeHashFunction>::const_iterator it =
-      subterms.begin();
-
-  for (; it != subterms.end(); ++it)
-  {
-    if (it->second.pos > 0 && it->second.neg > 0)
-    {
-      // if we have a and ~a
-      return utils::mkZero(size);
-    }
-    else
-    {
-      // idempotence
-      if (it->second.neg > 0)
-      {
-        // if it only occured negated
-        children.push_back(nm->mkNode(kind::BITVECTOR_NOT, it->first));
-      }
-      else
-      {
-        // if it only occured positive
-        children.push_back(it->first);
-      }
-    }
-  }
-  if (children.size() == 0)
-  {
-    return utils::mkOnes(size);
-  }
-
-  return utils::mkSortedNode(kind::BITVECTOR_AND, children);
+  Node n1 = rules::AndSimplifyRmDups(node).d_node;
+  Node n2 = rules::AndSimplifySimpConsts(n1).d_node;
+  Node n3 = rules::AndSimplifyZero(n2).d_node;
+  Node n4 = rules::AndSimplifyRmOnes(n3).d_node;
+  return rules::AndSimplifyCancel(n4).d_node;
 }
 
 template<> inline

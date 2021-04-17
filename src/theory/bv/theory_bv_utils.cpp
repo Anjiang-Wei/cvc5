@@ -165,6 +165,22 @@ unsigned isPow2Const(TNode node, bool& isNeg)
   return false;
 }
 
+unsigned isPow2Const(const BitVector& bv)
+{
+  unsigned p = bv.isPow2();
+  if (p != 0)
+  {
+    return p;
+  }
+  BitVector nbv = -bv;
+  p = nbv.isPow2();
+  if (p != 0)
+  {
+    return p;
+  }
+  return false;
+}
+
 bool isBvConstTerm(TNode node)
 {
   if (node.getNumChildren() == 0)

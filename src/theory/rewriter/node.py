@@ -1,5 +1,11 @@
 from enum import Enum, auto
 
+name_id = 0
+
+def fresh_name(prefix):
+    global name_id
+    name_id += 1
+    return prefix + str(name_id)
 
 class Op(Enum):
 
@@ -91,8 +97,10 @@ class Op(Enum):
     GET_CHILD = auto()
     GET_CHILDREN = auto()
     GET_INDEX = auto()
+    GET_CONST = auto()
     MK_NODE = auto()
     MK_CONST = auto()
+    IS_NULL = auto()
     BV_SIZE = auto()
     APPEND = auto()
     POW2 = auto()
@@ -130,8 +138,10 @@ class BaseSort(Enum):
 
 class Node:
     def __init__(self, children, sort=None):
+        assert all(isinstance(child, Node) for child in children)
         self.children = children
         self.sort = sort
+        self.name = None
 
     def __eq__(self, other):
         if len(self.children) != len(other.children):
@@ -150,6 +160,10 @@ class Var(Node):
         self.name = name
 
     def __eq__(self, other):
+        print(self.name)
+        print(self.name.__class__)
+        print(other)
+        print(other.__class__)
         return self.name == other.name
 
     def __hash__(self):
@@ -318,9 +332,11 @@ def are_types_compatible(t1, t2):
 
 def infer_types(context, node):
     if node.sort:
+        # Sort has already been computed for this node, skip
         return
 
     if isinstance(node, Var):
+        # Variable sorts are declared in the context
         node.sort = context[node.name]
         return
 
@@ -490,3 +506,12 @@ def infer_types(context, node):
         sort.const = True
 
     node.sort = sort
+
+
+def assign_names(node):
+    if node.name:
+        return
+
+    node.name = fresh_name('node')
+    for child in node.children:
+        assign_names(child)
