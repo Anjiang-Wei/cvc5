@@ -284,35 +284,12 @@ inline Node RewriteRule<BvComp>::apply(TNode node)
  */
 template<> inline
 bool RewriteRule<ShlByConst>::applies(TNode node) {
-  // if the shift amount is constant
-  return (node.getKind() == kind::BITVECTOR_SHL &&
-          node[1].getKind() == kind::CONST_BITVECTOR);
+  return true;
 }
 
 template<> inline
 Node RewriteRule<ShlByConst>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<ShlByConst>(" << node << ")" << std::endl;
-  Integer amount = node[1].getConst<BitVector>().toInteger();
-  if (amount == 0) {
-    return node[0]; 
-  }  
-  Node a = node[0]; 
-  uint32_t size = utils::getSize(a);
-  
-  
-  if (amount >= Integer(size)) {
-    // if we are shifting more than the length of the bitvector return 0
-    return utils::mkZero(size);
-  }
-  
-  // make sure we do not lose information casting
-  Assert(amount < Integer(1).multiplyByPow2(32));
-
-  uint32_t uint32_amount = amount.toUnsignedInt();
-
-  Node left = utils::mkExtract(a, size - 1 - uint32_amount, 0);
-  Node right = utils::mkZero(uint32_amount);
-  return utils::mkConcat(left, right); 
+  return rules::ShlByConst(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -325,35 +302,12 @@ Node RewriteRule<ShlByConst>::apply(TNode node) {
 
 template<> inline
 bool RewriteRule<LshrByConst>::applies(TNode node) {
-  // if the shift amount is constant
-  return (node.getKind() == kind::BITVECTOR_LSHR &&
-          node[1].getKind() == kind::CONST_BITVECTOR);
+  return true;
 }
 
 template<> inline
 Node RewriteRule<LshrByConst>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<LshrByConst>(" << node << ")" << std::endl;
-  Integer amount = node[1].getConst<BitVector>().toInteger();
-  if (amount == 0) {
-    return node[0]; 
-  }  
-  
-  Node a = node[0]; 
-  uint32_t size = utils::getSize(a);
-  
-  
-  if (amount >= Integer(size)) {
-    // if we are shifting more than the length of the bitvector return 0
-    return utils::mkZero(size);
-  }
-  
-  // make sure we do not lose information casting
-  Assert(amount < Integer(1).multiplyByPow2(32));
-
-  uint32_t uint32_amount = amount.toUnsignedInt();
-  Node right = utils::mkExtract(a, size - 1, uint32_amount);
-  Node left = utils::mkZero(uint32_amount);
-  return utils::mkConcat(left, right); 
+  return rules::LshrByConst(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -366,40 +320,12 @@ Node RewriteRule<LshrByConst>::apply(TNode node) {
 
 template<> inline
 bool RewriteRule<AshrByConst>::applies(TNode node) {
-  // if the shift amount is constant
-  return (node.getKind() == kind::BITVECTOR_ASHR &&
-          node[1].getKind() == kind::CONST_BITVECTOR);
+  return true;
 }
 
 template<> inline
 Node RewriteRule<AshrByConst>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<AshrByConst>(" << node << ")" << std::endl;
-  Integer amount = node[1].getConst<BitVector>().toInteger();
-  if (amount == 0) {
-    return node[0]; 
-  }  
-
-  Node a = node[0]; 
-  uint32_t size = utils::getSize(a);
-  Node sign_bit = utils::mkExtract(a, size-1, size-1);
-  
-  if (amount >= Integer(size)) {
-    // if we are shifting more than the length of the bitvector return n repetitions
-    // of the first bit
-    return utils::mkConcat(sign_bit, size); 
-  }
-  
-  // make sure we do not lose information casting
-  Assert(amount < Integer(1).multiplyByPow2(32));
-
-  uint32_t uint32_amount = amount.toUnsignedInt();
-  if (uint32_amount == 0) {
-    return a; 
-  }
-  
-  Node left = utils::mkConcat(sign_bit, uint32_amount); 
-  Node right = utils::mkExtract(a, size - 1, uint32_amount);
-  return utils::mkConcat(left, right); 
+  return rules::AshrByConst(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */

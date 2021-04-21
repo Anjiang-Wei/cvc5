@@ -91,6 +91,15 @@ class Assert(IRNode):
         return 'assert {}'.format(self.expr)
 
 
+class Return(IRNode):
+    def __init__(self, expr):
+        super(IRNode, self).__init__()
+        self.expr = expr
+
+    def __repr__(self):
+        return f"return {self.expr}"
+
+
 def optimize_ir(out_var, instrs):
     used_vars = set([out_var])
     for instr in instrs:

@@ -96,15 +96,18 @@ class Op(Enum):
     GET_KIND = auto()
     GET_CHILD = auto()
     GET_CHILDREN = auto()
+    GET_NUM_CHILDREN = auto()
     GET_INDEX = auto()
     GET_CONST = auto()
     MK_NODE = auto()
     MK_CONST = auto()
     IS_NULL = auto()
     BV_SIZE = auto()
+    BV_VAL = auto()
     APPEND = auto()
     POW2 = auto()
     BITS = auto()
+    SLICE = auto()
 
     ###########################################################################
     # Language operators
@@ -160,10 +163,6 @@ class Var(Node):
         self.name = name
 
     def __eq__(self, other):
-        print(self.name)
-        print(self.name.__class__)
-        print(other)
-        print(other.__class__)
         return self.name == other.name
 
     def __hash__(self):
@@ -263,6 +262,7 @@ class Fn(Node):
 class Sort(Node):
     def __init__(self, base, args, const=False):
         super().__init__(args)
+        assert base != BaseSort.BitVec or all(not isinstance(arg, Sort) for arg in args)
         self.base = base
         self.const = const
 
@@ -384,7 +384,10 @@ def infer_types(context, node):
             assert all(
                 are_types_compatible(arg_sort, child.sort)
                 for child in node.children)
-            sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
+            if arg_sort.base == BaseSort.BitVec:
+                sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
+            else:
+                sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0].children[0]])
         elif node.op in [Op.ROTATE_LEFT, Op.ROTATE_RIGHT]:
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.BitVec
@@ -423,12 +426,11 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.Int
             assert node.children[2].sort.base == BaseSort.BitVec
-            sort = Sort(BaseSort.BitVec, [
-                Fn(Op.PLUS, [
-                    Fn(Op.MINUS, [node.children[0], node.children[1]]),
-                    IntConst(1)
-                ])
-            ])
+            diff = Fn(Op.MINUS, [node.children[0], node.children[1]])
+            diff.sort = Sort(BaseSort.Int, [], True)
+            width = Fn(Op.PLUS, [diff, IntConst(1)])
+            width.sort = Sort(BaseSort.Int, [], True)
+            sort = Sort(BaseSort.BitVec, [width])
         elif node.op in [Op.BVNEG, Op.BVNOT]:
             assert node.children[0].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0]])
@@ -438,7 +440,7 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.BitVec
             assert node.children[1].sort.base == BaseSort.BitVec
             assert node.children[2].sort.base == BaseSort.BitVec
-            sort = node.children[1].sort
+            sort = Sort(node.children[1].sort.base, node.children[1].sort.children)
         elif node.op == Op.BVCOMP:
             # TODO: check that the types are the same across branches
             assert node.children[0].sort.base == BaseSort.BitVec
@@ -488,11 +490,20 @@ def infer_types(context, node):
                        for child in node.children)
             # TODO: Check that list is used correctly
             sort = Sort(BaseSort.Bool, [])
+            print("######")
+            print(node)
+            print([child.sort for child in node.children])
+            print("######")
         elif node.op == Op.FAIL:
             sort = Sort(BaseSort.Fail, [], True)
         elif node.op == Op.MAP:
             assert node.children[1].sort.base == BaseSort.List
             sort = Sort(BaseSort.List, [node.children[0].sort], True)
+        elif node.op == Op.SLICE:
+            sort = Sort(BaseSort.List, node.children[0].sort.children, True)
+        elif node.op == Op.GET_NUM_CHILDREN:
+            node.sort = Sort(BaseSort.Int, [], True)
+            return
         else:
             print('Unsupported operator: {}'.format(node.op))
             assert False

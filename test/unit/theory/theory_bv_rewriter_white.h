@@ -62,6 +62,120 @@ class TheoryBvRewriterWhite : public CxxTest::TestSuite
                         d_nm->mkConst(BitVector(1, 0u)));
   }
 
+  void testShlByConst()
+  {
+    TypeNode bvType = d_nm->mkBitVectorType(4);
+
+    Node zero = d_nm->mkConst(BitVector(4, Integer(0)));
+    Node zero_2 = d_nm->mkConst(BitVector(2, Integer(0)));
+    Node two = d_nm->mkConst(BitVector(4, Integer(2)));
+    Node six = d_nm->mkConst(BitVector(4, Integer(6)));
+    Node x = d_nm->mkVar("x", bvType);
+
+    {
+      // x << 0 ---> x
+      Node n = d_nm->mkNode(BITVECTOR_SHL, x, zero);
+      Node nr = Rewriter::rewrite(n);
+      TS_ASSERT_EQUALS(nr, x);
+    }
+
+    {
+      // x << 6 ---> 0
+      Node n = d_nm->mkNode(BITVECTOR_SHL, x, six);
+      Node nr = Rewriter::rewrite(n);
+      TS_ASSERT_EQUALS(nr, zero);
+    }
+
+    {
+      // x << 2 ---> concat(x[1:0], 0^2)
+      Node n = d_nm->mkNode(BITVECTOR_SHL, x, two);
+      Node nr = Rewriter::rewrite(n);
+      Node expected = d_nm->mkNode(BITVECTOR_CONCAT, d_nm->mkNode(d_nm->mkConst<BitVectorExtract>(BitVectorExtract(1, 0)), x), zero_2);
+      TS_ASSERT_EQUALS(nr, Rewriter::rewrite(expected));
+    }
+  }
+
+  void testLshrByConst()
+  {
+    TypeNode bvType = d_nm->mkBitVectorType(4);
+
+    Node zero = d_nm->mkConst(BitVector(4, Integer(0)));
+    Node zero_2 = d_nm->mkConst(BitVector(2, Integer(0)));
+    Node two = d_nm->mkConst(BitVector(4, Integer(2)));
+    Node six = d_nm->mkConst(BitVector(4, Integer(6)));
+    Node x = d_nm->mkVar("x", bvType);
+
+    {
+      // x >> 0 ---> x
+      Node n = d_nm->mkNode(BITVECTOR_LSHR, x, zero);
+      Node nr = Rewriter::rewrite(n);
+      TS_ASSERT_EQUALS(nr, x);
+    }
+
+    {
+      // x >> 6 ---> 0
+      Node n = d_nm->mkNode(BITVECTOR_LSHR, x, six);
+      Node nr = Rewriter::rewrite(n);
+      TS_ASSERT_EQUALS(nr, zero);
+    }
+
+    {
+      // x >> 2 ---> concat(0^2, x[1:0])
+      Node n = d_nm->mkNode(BITVECTOR_LSHR, x, two);
+      Node nr = Rewriter::rewrite(n);
+      Node expected = d_nm->mkNode(BITVECTOR_CONCAT, zero_2, d_nm->mkNode(d_nm->mkConst<BitVectorExtract>(BitVectorExtract(3, 2)), x));
+      TS_ASSERT_EQUALS(nr, Rewriter::rewrite(expected));
+    }
+  }
+
+  void testAshrByConst()
+  {
+    TypeNode bvType = d_nm->mkBitVectorType(4);
+
+    Node zero = d_nm->mkConst(BitVector(4, Integer(0)));
+    Node zero_2 = d_nm->mkConst(BitVector(2, Integer(0)));
+    Node two = d_nm->mkConst(BitVector(4, Integer(2)));
+    Node six = d_nm->mkConst(BitVector(4, Integer(6)));
+    Node x = d_nm->mkVar("x", bvType);
+
+    {
+      // x >>_a 0 ---> x
+      Node n = d_nm->mkNode(BITVECTOR_ASHR, x, zero);
+      Node nr = Rewriter::rewrite(n);
+      TS_ASSERT_EQUALS(nr, x);
+    }
+
+    {
+      // x >>_a 6 ---> repeat_4(x[3])
+      Node n = d_nm->mkNode(BITVECTOR_ASHR, x, six);
+      Node nr = Rewriter::rewrite(n);
+      Node expected = d_nm->mkNode(d_nm->mkConst<BitVectorRepeat>(BitVectorRepeat(4)), d_nm->mkNode(d_nm->mkConst<BitVectorExtract>(BitVectorExtract(3, 3)), x));
+      TS_ASSERT_EQUALS(nr, Rewriter::rewrite(expected));
+    }
+
+    {
+      // x >>_ 2 ---> concat(repeat_2(x[3]), x[3:2]))
+      Node n = d_nm->mkNode(BITVECTOR_ASHR, x, two);
+      Node nr = Rewriter::rewrite(n);
+      Node expected = d_nm->mkNode(BITVECTOR_CONCAT, d_nm->mkNode(d_nm->mkConst<BitVectorRepeat>(BitVectorRepeat(2)), d_nm->mkNode(d_nm->mkConst<BitVectorExtract>(BitVectorExtract(3, 3)), x)), d_nm->mkNode(d_nm->mkConst<BitVectorExtract>(BitVectorExtract(3, 2)), x));
+      TS_ASSERT_EQUALS(nr, Rewriter::rewrite(expected));
+    }
+  }
+
+  void testMultDistrib()
+  {
+    TypeNode bvType = d_nm->mkBitVectorType(4);
+
+    Node zero = d_nm->mkConst(BitVector(4, Integer(0)));
+    Node zero_2 = d_nm->mkConst(BitVector(2, Integer(0)));
+    Node two = d_nm->mkConst(BitVector(4, Integer(2)));
+    Node six = d_nm->mkConst(BitVector(4, Integer(6)));
+    Node x = d_nm->mkVar("x", bvType);
+
+    {
+    }
+  }
+
   void testRewriteToFixpoint()
   {
     TypeNode boolType = d_nm->booleanType();

@@ -59,63 +59,12 @@ Node RewriteRule<ConcatFlatten>::apply(TNode node) {
 
 template<> inline
 bool RewriteRule<ConcatExtractMerge>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_CONCAT);
+  return true;
 }
 
 template<> inline
 Node RewriteRule<ConcatExtractMerge>::apply(TNode node) {
-
-  Debug("bv-rewrite") << "RewriteRule<ConcatExtractMerge>(" << node << ")" << std::endl;
-
-  std::vector<Node> mergedExtracts;
-
-  Node current = node[0];
-  bool mergeStarted = false;
-  unsigned currentHigh = 0;
-  unsigned currentLow  = 0;
-
-  for(size_t i = 1, end = node.getNumChildren(); i < end; ++ i) {
-    // The next candidate for merging
-    Node next = node[i];
-    // If the current is not an extract we just go to the next
-    if (current.getKind() != kind::BITVECTOR_EXTRACT) {
-      mergedExtracts.push_back(current);
-      current = next;
-      continue;
-    }
-    // If it is an extract and the first one, get the extract parameters
-    else if (!mergeStarted) {
-      currentHigh = utils::getExtractHigh(current);
-      currentLow = utils::getExtractLow(current);
-    }
-
-    // If the next one can be merged, try to merge
-    bool merged = false;
-    if (next.getKind() == kind::BITVECTOR_EXTRACT && current[0] == next[0]) {
-      //x[i : j] @ x[j − 1 : k] -> c x[i : k]
-      unsigned nextHigh = utils::getExtractHigh(next);
-      unsigned nextLow  = utils::getExtractLow(next);
-      if(nextHigh + 1 == currentLow) {
-        currentLow = nextLow;
-        mergeStarted = true;
-        merged = true;
-      }
-    }
-    // If we haven't merged anything, add the previous merge and continue with the next
-    if (!merged) {
-      if (!mergeStarted) mergedExtracts.push_back(current);
-      else mergedExtracts.push_back(utils::mkExtract(current[0], currentHigh, currentLow));
-      current = next;
-      mergeStarted = false;
-    }
-  }
-
-  // Add the last child
-  if (!mergeStarted) mergedExtracts.push_back(current);
-  else mergedExtracts.push_back(utils::mkExtract(current[0], currentHigh, currentLow));
-
-  // Return the result
-  return utils::mkConcat(mergedExtracts);
+  return rules::ConcatExtractMerge(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */

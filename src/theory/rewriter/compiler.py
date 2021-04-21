@@ -66,7 +66,7 @@ op_to_const_eval = {
     Op.EXTRACT: lambda args: "({2}.extract({0}, {1}))".format(*args),
     Op.BVNOT: lambda args: "(~{})".format(args[0]),
     Op.BVAND: lambda args: "({} & {})".format(args[0], args[1]),
-    Op.BVOR: lambda args: "({} || {})".format(args[0], args[1]),
+    Op.BVOR: lambda args: "({} | {})".format(args[0], args[1]),
     Op.BVXOR: lambda args: "({} ^ {})".format(args[0], args[1]),
     Op.CONCAT: lambda args: "({}.concat({}))".format(args[0], args[1]),
     Op.PLUS: lambda args: "({} + {})".format(args[0], args[1]),
@@ -192,7 +192,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
 
                 if (
                     isinstance(expr.children[0], Var)
-                    and expr.children[0] not in vars_seen
+                    and expr.children[0].name not in vars_seen
                 ):
                     next_block = mk_simple_block(
                         cfg,
@@ -465,8 +465,15 @@ def rule_to_out_expr(cfg, next_block, res, expr):
     def expr_to_out_expr(expr):
         if isinstance(expr, Fn):
             new_args = []
-            for child in expr.children:
-                new_args.append(expr_to_out_expr(child))
+            for i, child in enumerate(expr.children):
+                child_expr = expr_to_out_expr(child)
+                if (
+                    i >= op_to_nindex[expr.op]
+                    and not expr.sort.const
+                    and child.sort.const
+                ):
+                    child_expr = Fn(Op.MK_CONST, [child_expr])
+                new_args.append(child_expr)
             return Fn(Op.MK_NODE, [KindConst(expr.op)] + new_args)
         else:
             return expr
@@ -487,19 +494,18 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                 body = rule_to_out_expr(cfg, None, res, expr.children[2])
                 return CFGSeq([assign, body])
             elif expr.op == Op.MAP:
-                lambda_var = expr.children[0].children[0]
-                new_body = expr_to_out_expr(expr.children[0].children[1])
-                return mk_simple_block(
-                    cfg,
-                    next_block,
-                    Assign(
-                        res,
-                        Fn(
-                            Op.MAP,
-                            [Fn(Op.LAMBDA, [lambda_var, new_body]), expr.children[1]],
-                        ),
+                body = expr_to_out_expr(expr.children[0].children[1])
+                assign = Assign(
+                    res,
+                    Fn(
+                        Op.MAP,
+                        [
+                            Fn(Op.LAMBDA, [expr.children[0].children[0], body]),
+                            expr.children[1],
+                        ],
                     ),
                 )
+                return CFGSeq([assign])
             elif expr.op == Op.BVCONST:
                 new_vars = [
                     Var(fresh_name("__v"), child.sort) for child in expr.children
@@ -598,25 +604,43 @@ def rule_to_out_expr(cfg, next_block, res, expr):
 
     return rule_to_out_expr_rec(cfg, next_block, res, expr)
 
+
 def default_val(kind, sort):
-    if kind in [Op.BVOR, Op.BVXOR]:
-        n = sort.children[0].children[0] if sort.base == BaseSort.List else sort.children[0]
+    if kind in [Op.BVADD, Op.BVOR, Op.BVXOR]:
+        n = (
+            sort.children[0].children[0]
+            if sort.base == BaseSort.List
+            else sort.children[0]
+        )
         ret = Fn(Op.MK_CONST, [BVConst(0, n)])
         ret.sort = Sort(BaseSort.BitVec, [n], True)
         return ret
     elif kind == Op.BVMUL:
-        n = sort.children[0].children[0] if sort.base == BaseSort.List else sort.children[0]
+        n = (
+            sort.children[0].children[0]
+            if sort.base == BaseSort.List
+            else sort.children[0]
+        )
         ret = Fn(Op.MK_CONST, [BVConst(1, n)])
         ret.sort = Sort(BaseSort.BitVec, [n], True)
         return ret
     elif kind == Op.BVAND:
-        n = sort.children[0].children[0] if sort.base == BaseSort.List else sort.children[0]
+        n = (
+            sort.children[0].children[0]
+            if sort.base == BaseSort.List
+            else sort.children[0]
+        )
         not_zero = Fn(Op.BVNOT, [BVConst(0, n)])
         not_zero.sort = Sort(BaseSort.BitVec, [n], True)
         ret = Fn(Op.MK_CONST, [not_zero])
         ret.sort = Sort(BaseSort.BitVec, [n], True)
         return ret
-    
+    elif kind in [Op.CONCAT]:
+        ret = Fn(Op.MK_CONST, [BVConst(0, IntConst(0))])
+        ret.sort = Sort(BaseSort.BitVec, [IntConst(0)], True)
+        return ret
+
+    print(f"Missing default case (kind = {kind}, sort = {sort})")
     assert False
 
 
@@ -628,8 +652,13 @@ def expr_to_code(expr):
             return "({} == {})".format(args[0], args[1])
         elif expr.op == Op.GET_KIND:
             return f"{args[0]}.getKind()"
+        elif expr.op == Op.GET_NUM_CHILDREN:
+            return f"{args[0]}.getNumChildren()"
         elif expr.op == Op.BV_SIZE:
             return "bv::utils::getSize({})".format(args[0])
+        elif expr.op == Op.BV_VAL:
+            # TODO: TEMPORARY
+            return f"({args[0]}).getValue().getUnsignedInt()"
         elif expr.op == Op.BVCONST:
             return f"BitVector({args[1]}, Integer({args[0]}))"
         elif expr.op == Op.GET_CONST:
@@ -651,7 +680,9 @@ def expr_to_code(expr):
             if list_arg:
                 vec = fresh_name("__vec")
                 print(expr)
-                default = expr_to_code(default_val(expr.children[0].val, expr.children[1].sort))
+                default = expr_to_code(
+                    default_val(expr.children[0].val, expr.children[1].sort)
+                )
                 ret = f"{vec}.size() == 0 ? {default} : ({vec}.size() == 1 ? {vec}[0] : nm->mkNode({args[0]}, {vec}))"
                 return "[&](){{ std::vector<Node> {0}; {1}; return {2}; }}()".format(
                     vec,
@@ -665,7 +696,7 @@ def expr_to_code(expr):
                         )
                         for arg, child in zip(args[1:], expr.children[1:])
                     ),
-                    ret
+                    ret,
                 )
 
             if op_to_nindex[kind] != 0:
@@ -686,6 +717,13 @@ def expr_to_code(expr):
                 return "std::vector<Node>({0}.begin(), {0}.end())".format(args[0])
             else:
                 return f"bv::utils::getChildren({args[0]}, [&](size_t {args[1]}) {{ return {args[2]}; }})"
+        elif expr.op == Op.SLICE:
+            if len(args) == 2:
+                return (
+                    f"std::vector<Node>({args[0]}.begin() + {args[1]}, {args[0]}.end())"
+                )
+            else:
+                return f"std::vector<Node>({args[0]}.begin() + {args[1]}, {args[0]}.begin() + {args[2]} + 1)"
         elif expr.op == Op.GET_INDEX:
             return "bv::utils::getIndex({}, {})".format(args[0], args[1])
         elif expr.sort and expr.sort.const:
@@ -697,7 +735,11 @@ def expr_to_code(expr):
                 sort_to_code(expr.children[0].sort), args[0], args[1]
             )
         else:
-            print("No code generation for op {} in {}".format(expr.op, expr))
+            print(
+                "No code generation for op {} in {} (sort {})".format(
+                    expr.op, expr, expr.sort
+                )
+            )
             assert False
     elif isinstance(expr, BoolConst):
         return "true" if expr.val else "false"
@@ -725,7 +767,7 @@ def sort_to_code(sort):
         return "BitVector"
 
 
-def ir_to_code(match_instrs):
+def ir_to_code(name, match_instrs):
     code = []
     for instr in match_instrs:
         if isinstance(instr, Assign):
@@ -742,8 +784,12 @@ def ir_to_code(match_instrs):
             }}
             """.strip()
             code.append(code_str)
+        elif isinstance(instr, Return):
+            code.append(
+                f"return RewriteResponse(REWRITE_AGAIN, {expr_to_code(instr.expr)}, RewriteRule::{name});"
+            )
         elif isinstance(instr, CFGSeq):
-            code.append(ir_to_code(instr.instrs))
+            code.append(ir_to_code(name, instr.instrs))
         elif isinstance(instr, CFGCond):
             first = True
             for case in instr.cases:
@@ -751,19 +797,22 @@ def ir_to_code(match_instrs):
                 first = False
                 code_str = f"""
                 {keyword} ({expr_to_code(case[0])}) {{
-                  {ir_to_code([case[1]])}
+                  {ir_to_code(name, [case[1]])}
                 }}
                 """.strip()
                 code.append(code_str)
         elif isinstance(instr, CFGLoop):
-            code.append(cfg_to_code(instr, None))
+            code.append(cfg_to_code(name, instr, None))
+        else:
+            print(f"No code generation for {instr}")
+            assert False
 
     return "\n".join(code)
 
 
-def cfg_to_code(block, cfg):
+def cfg_to_code(name, block, cfg):
     if isinstance(block, CFGLoop):
-        body = cfg_to_code(block.body, cfg)
+        body = cfg_to_code(name, block.body, cfg)
         return """
         for ({} = 0; {} < {}.getNumChildren(); {}++) {{
          {}
@@ -775,7 +824,7 @@ def cfg_to_code(block, cfg):
             body,
         )
     else:
-        result = ir_to_code(block.instrs)
+        result = ir_to_code(name, block.instrs)
         # first_edge = True
         # for edge in block.edges:
         #     branch_code = cfg_to_code(edge.target, cfg)
@@ -830,7 +879,7 @@ def gen_rule_old(rule):
     for var in cfg_vars:
         var_decls += "{} {};\n".format(sort_to_code(var.sort), var.name)
 
-    body = cfg_to_code(match_block, cfg)
+    body = cfg_to_code(rule.name, match_block, cfg)
 
     result = f"""
     inline RewriteResponse {rule.name}(TNode __node) {{
@@ -862,9 +911,9 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
 
         if isinstance(expr, Var):
             node_val = node
-            print(expr)
-            print(node)
-            if expr.sort.const and (not isinstance(node, Fn) or node.op != Op.GET_INDEX):
+            if expr.sort.const and (
+                not isinstance(node, Fn) or node.op != Op.GET_INDEX
+            ):
                 match_instrs.append(
                     Assert(
                         Fn(Op.EQ, [Fn(Op.GET_KIND, [node]), KindConst(Op.BVCONST)]),
@@ -873,7 +922,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                 )
                 node_val = Fn(Op.GET_CONST, [node])
 
-            if expr in vars_seen:
+            if expr.name in vars_seen:
                 match_instrs.append(Assert(Fn(Op.EQ, [node_val, expr]), in_loop))
             else:
                 if expr.sort is not None and expr.sort.base == BaseSort.BitVec:
@@ -887,7 +936,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                         vars_seen.add(width.name)
 
                 match_instrs.append(Assign(expr, node_val))
-                vars_seen.add(expr)
+                vars_seen.add(expr.name)
         else:
             expr_var = Var(expr.name, expr.sort)
             if expr.sort.const:
@@ -908,10 +957,12 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                 #         #                           [node]), vars_seen, in_loop)
                 #         return
                 # else:
-                if isinstance(node, Fn) and node.op == Op.GET_INDEX:
-                    match_instrs.append(Assign(expr_var, node))
-                else:
-                    assert expr.sort.base == BaseSort.BitVec
+                if (
+                    isinstance(expr, Fn)
+                    and expr.op == Op.BVCONST
+                    and isinstance(expr.children[0], Var)
+                    and expr.children[0].name not in vars_seen
+                ):
                     kind_const = KindConst(Op.BVCONST)
                     match_instrs.append(
                         Assert(
@@ -920,7 +971,26 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                         )
                     )
                     match_instrs.append(Assign(expr_var, Fn(Op.GET_CONST, [node])))
-                const_match_instrs.append(Assert(Fn(Op.EQ, [expr_var, expr]), in_loop))
+                    match_instrs.append(
+                        Assign(expr.children[0], Fn(Op.BV_VAL, [expr_var]))
+                    )
+                    vars_seen.add(expr.children[0].name)
+                else:
+                    if isinstance(node, Fn) and node.op == Op.GET_INDEX:
+                        match_instrs.append(Assign(expr_var, node))
+                    else:
+                        assert expr.sort.base == BaseSort.BitVec
+                        kind_const = KindConst(Op.BVCONST)
+                        match_instrs.append(
+                            Assert(
+                                Fn(Op.EQ, [Fn(Op.GET_KIND, [node]), kind_const]),
+                                in_loop,
+                            )
+                        )
+                        match_instrs.append(Assign(expr_var, Fn(Op.GET_CONST, [node])))
+                    const_match_instrs.append(
+                        Assert(Fn(Op.EQ, [expr_var, expr]), in_loop)
+                    )
             else:
                 match_instrs.append(Assign(expr_var, node))
                 if isinstance(expr, Fn):
@@ -937,6 +1007,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                         )
                     )
 
+                    # Commutative and associative ops
                     if expr.op in commutative_ops and expr.op in associative_ops:
                         nlist_children = [
                             child
@@ -948,7 +1019,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                             for _ in nlist_children
                         ]
 
-                        # Assign the remainder of the list
+                        # Expression for assigning the remainder of the list
                         remainder_expr = None
                         if len(nlist_children) != len(expr.children):
                             var = Var("i", Sort(BaseSort.Int, [], True))
@@ -975,8 +1046,25 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                 list_child, Fn(Op.GET_CHILDREN, [node, var, cond])
                             )
 
-                        last = False
+                        has_non_remainder = len(nlist_children) != 0
+                        last = last and (not has_non_remainder)
                         curr_block = match_instrs
+
+                        if expr.op in nary_ops and has_non_remainder:
+                            curr_block.append(
+                                Assert(
+                                    Fn(
+                                        Op.EQ,
+                                        [
+                                            Fn(Op.GET_NUM_CHILDREN, [node]),
+                                            IntConst(len(nlist_children)),
+                                        ],
+                                    ),
+                                    in_loop,
+                                )
+                            )
+
+                        prev_in_loop = in_loop
                         for i, child in list(enumerate(nlist_children)):
                             loop_idx = loop_idxs[i]
                             loop_var_sort = Sort(child.sort.base, child.sort.children)
@@ -1020,9 +1108,102 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                     Assert(Fn(Op.EQ, [node_var, out_var]), True)
                                 )
                             curr_block = loop_body
-                        curr_block.append(Assert(Fn(Op.EQ, [node_var, out_var]), True))
-                    else:
+
+                        if has_non_remainder:
+                            curr_block.append(
+                                Assert(Fn(Op.EQ, [node_var, out_var]), True)
+                            )
+                        else:
+                            # If we only have a list argument, e.g. (bvadd xs)
+                            curr_block.append(remainder_expr)
+
+                        if not prev_in_loop:
+                            match_instrs.append(Assert(BoolConst(False), False))
+                    elif expr.op in associative_ops:
+                        nlist_children = [
+                            child
+                            for child in expr.children
+                            if child.sort.base != BaseSort.List
+                        ]
+
+                        curr_idx = None
+                        curr_block = match_instrs
+                        prev_in_loop = in_loop
+                        for i, child in list(enumerate(expr.children)):
+                            last_child = i == len(expr.children) - 1
+                            if child.sort.base == BaseSort.List:
+                                if last_child:
+                                    continue
+
+                                in_loop = True
+                                var_i = Var(
+                                    fresh_name("loopi"), Sort(BaseSort.Int, [], True)
+                                )
+                                conds = []
+                                loop_body = []
+                                if curr_idx:
+                                    cond = Fn(Op.LT, [curr_idx, var_i])
+                                    infer_types(None, cond)
+                                    loop_body.append(Assert(cond, in_loop))
+                                else:
+                                    curr_idx = IntConst(0)
+
+                                loop_body.append(
+                                    Assign(child, Fn(Op.SLICE, [node, curr_idx, var_i]))
+                                )
+
+                                curr_idx = var_i
+                                curr_block.append(
+                                    CFGLoop(var_i, node, CFGSeq(loop_body))
+                                )
+                                curr_block = loop_body
+                            else:
+                                curr_idx = Fn(Op.PLUS, [curr_idx, IntConst(1)])
+                                infer_types(None, curr_idx)
+
+                                cond = Fn(
+                                    Op.LT, [curr_idx, Fn(Op.GET_NUM_CHILDREN, [node])]
+                                )
+                                infer_types(None, cond)
+
+                                # Make sure that we are not out-of-bounds
+                                curr_block.append(Assert(cond, in_loop))
+
+                                loop_var_sort = Sort(
+                                    child.sort.base, child.sort.children
+                                )
+                                loop_var = Var(fresh_name("loopv"), loop_var_sort)
+
+                                # Get child node for loop index
+                                curr_block.append(
+                                    Assign(loop_var, Fn(Op.GET_CHILD, [node, curr_idx]))
+                                )
+
+                                last_non_list_child = (
+                                    i == len(expr.children) - 2
+                                    and expr.children[-1].sort.base == BaseSort.List
+                                )
+                                if last_non_list_child:
+                                    rhs = Fn(
+                                        Op.SLICE,
+                                        [node, Fn(Op.PLUS, [curr_idx, IntConst(1)])],
+                                    )
+                                    infer_types(None, rhs)
+                                    curr_block.append(Assign(expr.children[-1], rhs))
+                                expr_to_ir(
+                                    child,
+                                    loop_var,
+                                    loop_body,
+                                    const_match_instrs,
+                                    vars_seen,
+                                    True,
+                                    last=last and (last_child or last_non_list_child),
+                                )
+                        if not prev_in_loop:
+                            match_instrs.append(Assert(BoolConst(False), False))
                         last = False
+                    # Remaining ops
+                    else:
                         for i, child in list(enumerate(expr.children)):
                             child_node = None
                             if i < op_to_nindex[expr.op]:
@@ -1041,8 +1222,9 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                 const_match_instrs,
                                 vars_seen,
                                 in_loop=in_loop,
-                                last=(i == len(expr.children) - 1),
+                                last=last and (i == len(expr.children) - 1),
                             )
+                        last = False
                 else:
                     print(f"No support for {expr}")
                     assert False
@@ -1050,6 +1232,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
         if last:
             match_instrs.extend(const_match_instrs)
             match_instrs.append(out_block)
+            match_instrs.append(Return(out_var))
 
     vars_seen = set()
     match_instrs = [Assign(out_var, node_var)]
@@ -1073,13 +1256,8 @@ def gen_rule(rule):
 
     cfg = {}
     entry = rule_to_out_expr(cfg, None, out_var, rule.rhs)
-    print("entryyyyy", entry)
     match_block = rule_to_match_ir(cfg, entry, node_var, out_var, rule.lhs)
 
-    print("-------------------------------------")
-    for name, block in cfg.items():
-        print(name)
-        print(block)
     print("-------------------------------------")
     print(match_block)
     print("-------------------------------------")
@@ -1100,14 +1278,13 @@ def gen_rule(rule):
     for var in cfg_vars:
         var_decls += "{} {};\n".format(sort_to_code(var.sort), var.name)
 
-    body = cfg_to_code(match_block, cfg)
+    body = cfg_to_code(name_to_enum(rule.name), match_block, cfg)
 
     result = f"""
     inline RewriteResponse {rule.name}(TNode __node) {{
       NodeManager* nm = NodeManager::currentNM();
       {var_decls}
       {body}
-      return RewriteResponse(REWRITE_AGAIN, {out_var}, RewriteRule::{name_to_enum(rule.name)});
     }}"""
     return result
 

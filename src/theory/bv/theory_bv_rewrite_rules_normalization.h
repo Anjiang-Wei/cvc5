@@ -146,27 +146,14 @@ inline Node RewriteRule<ExtractSignExtend>::apply(TNode node)
 
 template<> inline
 bool RewriteRule<ExtractArith>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_EXTRACT &&
-          utils::getExtractLow(node) == 0 &&
-          (node[0].getKind() == kind::BITVECTOR_PLUS ||
-           node[0].getKind() == kind::BITVECTOR_MULT));
+  return true;
 }
 
 template <>
 inline Node RewriteRule<ExtractArith>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<ExtractArith>(" << node << ")"
-                      << std::endl;
-  unsigned low = utils::getExtractLow(node);
-  Assert(low == 0);
-  unsigned high = utils::getExtractHigh(node);
-  std::vector<Node> children;
-  for (unsigned i = 0; i < node[0].getNumChildren(); ++i)
-  {
-    children.push_back(utils::mkExtract(node[0][i], high, low));
-  }
-  Kind kind = node[0].getKind();
-  return utils::mkNaryNode(kind, children);
+  Node n1 = rules::ExtractArithAdd(node).d_node;
+  return rules::ExtractArithMul(n1).d_node;
 }
 
 /**
@@ -488,46 +475,15 @@ inline Node RewriteRule<MultSimplify>::apply(TNode node)
 
 template<> inline
 bool RewriteRule<MultDistribConst>::applies(TNode node) {
-  if (node.getKind() != kind::BITVECTOR_MULT ||
-      node.getNumChildren() != 2) {
-    return false;
-  }
-  Assert(!node[0].isConst());
-  if (!node[1].isConst()) {
-    return false;
-  }
-  TNode factor = node[0];
-  return (factor.getKind() == kind::BITVECTOR_PLUS ||
-          factor.getKind() == kind::BITVECTOR_SUB ||
-          factor.getKind() == kind::BITVECTOR_NEG); 
+  return true;
 }
 
 template <>
 inline Node RewriteRule<MultDistribConst>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<MultDistribConst>(" << node << ")"
-                      << std::endl;
-
-  NodeManager *nm = NodeManager::currentNM();
-  TNode constant = node[1];
-  TNode factor = node[0];
-  Assert(constant.getKind() == kind::CONST_BITVECTOR);
-
-  if (factor.getKind() == kind::BITVECTOR_NEG)
-  {
-    // push negation on the constant part
-    BitVector const_bv = constant.getConst<BitVector>();
-    return nm->mkNode(
-        kind::BITVECTOR_MULT, factor[0], utils::mkConst(-const_bv));
-  }
-
-  std::vector<Node> children;
-  for (unsigned i = 0; i < factor.getNumChildren(); ++i)
-  {
-    children.push_back(nm->mkNode(kind::BITVECTOR_MULT, factor[i], constant));
-  }
-
-  return utils::mkNaryNode(factor.getKind(), children);
+  Node n1 = rules::MultDistribConstAdd(node).d_node;
+  Node n2 = rules::MultDistribConstSub(n1).d_node;
+  return rules::MultDistribConstNeg(n2).d_node;
 }
 
 template<> inline
@@ -977,21 +933,13 @@ inline Node RewriteRule<NegSub>::apply(TNode node)
 
 template<> inline
 bool RewriteRule<NegPlus>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_NEG &&
-          node[0].getKind() == kind::BITVECTOR_PLUS);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<NegPlus>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<NegPlus>(" << node << ")" << std::endl;
-  NodeManager *nm = NodeManager::currentNM();
-  std::vector<Node> children;
-  for (unsigned i = 0; i < node[0].getNumChildren(); ++i)
-  {
-    children.push_back(nm->mkNode(kind::BITVECTOR_NEG, node[0][i]));
-  }
-  return utils::mkNaryNode(kind::BITVECTOR_PLUS, children);
+  return rules::NegPlus(node).d_node;
 }
 
 struct Count {

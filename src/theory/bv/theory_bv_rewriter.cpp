@@ -233,7 +233,10 @@ RewriteResponse TheoryBVRewriter::RewriteExtract(TNode node, bool prerewrite) {
   if (options::bvExtractArithRewrite()) {
     if (RewriteRule<ExtractArith>::applies(node)) {
       resultNode = RewriteRule<ExtractArith>::run<false>(node);
-      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+      if (resultNode != node)
+      {
+        return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+      }
     }
   }
 
@@ -561,7 +564,9 @@ RewriteResponse TheoryBVRewriter::RewriteAshr(TNode node, bool prerewrite) {
   Node resultNode = node; 
   if(RewriteRule<AshrByConst>::applies(node)) {
     resultNode = RewriteRule<AshrByConst>::run <false> (node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   resultNode = LinearRewriteStrategy
@@ -669,14 +674,6 @@ RewriteResponse TheoryBVRewriter::RewriteIntToBV(TNode node, bool prerewrite) {
 }
 
 RewriteResponse TheoryBVRewriter::RewriteEqual(TNode node, bool prerewrite) {
-  /*
-  RewriteResponse response = rules::ReflexivityEq(node);
-  if (response.d_node != node)
-  {
-    return response;
-  }
-  */
-
   if (prerewrite) {
     Node resultNode = LinearRewriteStrategy
       < RewriteRule<FailEq>,
@@ -691,10 +688,6 @@ RewriteResponse TheoryBVRewriter::RewriteEqual(TNode node, bool prerewrite) {
         RewriteRule<SimplifyEq>,
         RewriteRule<ReflexivityEq>
         >::apply(node);
-    if (resultNode != node)
-    {
-      return RewriteResponse(REWRITE_DONE, resultNode);
-    }
 
     if(RewriteRule<SolveEq>::applies(resultNode)) {
       resultNode = RewriteRule<SolveEq>::run<false>(resultNode);
