@@ -620,4 +620,4 @@
 
 (define-rule UltPlusOne ( (n Int :const) (x (_ BitVec n)) (y (_ BitVec n)))
   (bvult x (bvadd y (_ bv 1 n)))
-  (and (bvult (bvnot y) x) (not (= y (bvnot (_ bv 0 n))))))
+  (and (not (bvult (bvnot y) x)) (not (= y (bvnot (_ bv 0 n))))))
