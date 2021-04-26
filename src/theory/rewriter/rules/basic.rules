@@ -504,7 +504,7 @@
 (define-rule ExtractMultLeadingBit ((n1 Int :const) (n2 Int :const) (n3 Int :const) (n4 Int :const) (i Int :const) (j Int :const) (c1 (_ BitVec n1) :const) (c2 (_ BitVec n1) :const) (xs (_ BitVec n3) :list) (ys (_ BitVec n4) :list))
   ((_ extract i j) (bvmul (concat c1 xs) (concat c2 ys)))
   (cond
-    ((< (- (* 2 (+ (- i j) 1)) (+ (zeroes c1) (zeroes c2))) j) (_ bv 0 (+ (- i j) 1)))))
+    ((and (< 64 (+ n1 n3)) (>= j (- (* 2 (+ n1 n3)) (+ (zeroes c1) (zeroes c2))))) (_ bv 0 (+ (- i j) 1)))))
 
 (define-rule NegIdemp ((n Int :const) (x (_ BitVec n)))
     (bvneg (bvneg x))
