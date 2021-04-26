@@ -254,7 +254,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                     child for child in expr.children if child.sort.base != BaseSort.List
                 ]
                 loop_idxs = [
-                    Var(fresh_name("loopi"), Sort(BaseSort.Int, [], True))
+                    Var(fresh_name("loopi"), Sort(BaseSort.Int32, [], True))
                     for _ in nlist_children
                 ]
 
@@ -274,7 +274,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                                 [
                                     Fn(
                                         Op.EQ,
-                                        [Var("i", Sort(BaseSort.Int, [], True)), idx],
+                                        [Var("i", Sort(BaseSort.Int32, [], True)), idx],
                                     )
                                 ],
                             )
@@ -334,7 +334,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                 ]
                 loop_idxs = [
                     (
-                        Var(fresh_name("loopi"), Sort(BaseSort.Int, [], True))
+                        Var(fresh_name("loopi"), Sort(BaseSort.Int32, [], True))
                         if child.sort.base != BaseSort.List
                         else None
                     )
@@ -347,7 +347,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                         if child.sort.base != BaseSort.List:
                             continue
 
-                        var_i = Var("i", Sort(BaseSort.Int, [], True))
+                        var_i = Var("i", Sort(BaseSort.Int32, [], True))
                         conds = []
                         if i != 0:
                             conds.append(Fn(Op.LT, [loop_idxs[i - 1], var_i]))
@@ -414,7 +414,7 @@ def rule_to_in_ir(cfg, out_block, node_var, rvars, lhs):
                     child_node = None
                     if i < op_to_nindex[expr.op]:
                         child_node = Fn(Op.GET_INDEX, [node, IntConst(i)])
-                        child_node.sort = Sort(BaseSort.Int, [], True)
+                        child_node.sort = Sort(BaseSort.Int32, [], True)
                     else:
                         child_node = Fn(
                             Op.GET_CHILD, [node, IntConst(i - op_to_nindex[expr.op])]
@@ -516,6 +516,7 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                 new_vars = [
                     Var(fresh_name("__v"), child.sort) for child in expr.children
                 ]
+                print(expr, new_vars, [c.sort for c in new_vars])
                 bvc = Fn(Op.BVCONST, new_vars)
                 bvc.sort = expr.sort
                 assign = None
@@ -529,6 +530,7 @@ def rule_to_out_expr(cfg, next_block, res, expr):
                 args = []
                 for var, child in zip(new_vars, expr.children):
                     args.append(rule_to_out_expr(cfg, None, var, child))
+                print(expr, new_vars, [c.sort for c in new_vars])
                 # assign_block = fresh_name('block')
                 # if next_block:
                 #     cfg[assign_block] = CFGNode(
@@ -585,7 +587,7 @@ def rule_to_out_expr(cfg, next_block, res, expr):
             return CFGSeq([assign])
         elif isinstance(expr, IntConst):
             assign_block = fresh_name("block")
-            res.sort = Sort(BaseSort.Int, [], True)
+            res.sort = Sort(res.sort.base, [], True)
             assign = Assign(res, expr)
             if next_block:
                 cfg[assign_block] = CFGNode(
@@ -613,6 +615,7 @@ def rule_to_out_expr(cfg, next_block, res, expr):
 
 def default_val(kind, sort):
     if kind in [Op.BVADD, Op.BVOR, Op.BVXOR]:
+        print(kind)
         n = (
             sort.children[0].children[0]
             if sort.base == BaseSort.List
@@ -665,10 +668,11 @@ def expr_to_code(expr):
         elif expr.op == Op.BV_SIZE:
             return "bv::utils::getSize({})".format(args[0])
         elif expr.op == Op.BV_VAL:
-            # TODO: TEMPORARY
-            return f"({args[0]}).getValue().getUnsignedInt()"
+            return f"({args[0]}).getValue()"
         elif expr.op == Op.BVCONST:
-            return f"BitVector({args[1]}, Integer({args[0]}))"
+            val = f"Integer({args[0]})" if expr.children[0].sort.base == BaseSort.Int32 else args[0]
+            width = f"{args[1]}.getUnsignedInt()" if expr.children[1].sort.base == BaseSort.Int else args[1]
+            return f"BitVector({width}, {val})"
         elif expr.op == Op.GET_CONST:
             sort = expr.children[0].sort
             const_sort = Sort(sort.base, sort.children, True)
@@ -707,6 +711,11 @@ def expr_to_code(expr):
                 )
 
             if op_to_nindex[kind] != 0:
+                # Convert Integer to uint32_t for indices
+                for i, arg in enumerate(args[: op_to_nindex[kind] + 1]):
+                    if expr.children[i].sort and expr.children[i].sort.base == BaseSort.Int:
+                        args[i] = f"{arg}.getUnsignedInt()"
+
                 op = "bv::utils::mkIndexedOp({})".format(
                     ", ".join(args[: op_to_nindex[kind] + 1])
                 )
@@ -734,6 +743,10 @@ def expr_to_code(expr):
         elif expr.op == Op.GET_INDEX:
             return "bv::utils::getIndex({}, {})".format(args[0], args[1])
         elif expr.sort and expr.sort.const:
+            if expr.sort.base == BaseSort.Int:
+                for i, arg in enumerate(args):
+                    if expr.children[i].sort and expr.children[i].sort.base == BaseSort.Int32:
+                        args[i] = f"Integer({arg})"
             return op_to_const_eval[expr.op](args)
         elif expr.op == Op.MAP:
             return "bv::utils::mapVector({}, {})".format(args[1], args[0])
@@ -769,6 +782,8 @@ def sort_to_code(sort):
         else:
             return "Node"
     elif sort.base == BaseSort.Int:
+        return "Integer"
+    elif sort.base == BaseSort.Int32:
         return "uint32_t"
     elif sort.base == BaseSort.BitVec:
         return "BitVector"
@@ -907,14 +922,14 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
             width = expr.sort.children[0]
             if isinstance(width, Var) and not width.name in vars_seen:
                 bv_size_expr = Fn(Op.BV_SIZE, [node])
-                bv_size_expr.sort = Sort(BaseSort.Int, [], True)
-                width.sort = Sort(BaseSort.Int, [], True)
+                bv_size_expr.sort = Sort(BaseSort.Int32, [], True)
+                width.sort = Sort(BaseSort.Int32, [], True)
                 match_instrs.append(Assign(width, bv_size_expr))
                 vars_seen.add(width.name)
             elif isinstance(width, IntConst):
                 bv_size_expr = Fn(Op.BV_SIZE, [node])
-                bv_size_expr.sort = Sort(BaseSort.Int, [], True)
-                width.sort = Sort(BaseSort.Int, [], True)
+                bv_size_expr.sort = Sort(BaseSort.Int32, [], True)
+                width.sort = Sort(BaseSort.Int32, [], True)
                 match_instrs.append(Assert(Fn(Op.EQ, [bv_size_expr, width]), in_loop))
 
         if isinstance(expr, Var):
@@ -937,9 +952,9 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                     width = expr.sort.children[0]
                     if isinstance(width, Var) and not width.name in vars_seen:
                         bv_size_expr = Fn(Op.BV_SIZE, [node])
-                        bv_size_expr.sort = Sort(BaseSort.Int, [], True)
+                        bv_size_expr.sort = Sort(BaseSort.Int32, [], True)
                         # TODO: should resolve earlier?
-                        width.sort = Sort(BaseSort.Int, [], True)
+                        width.sort = Sort(BaseSort.Int32, [], True)
                         match_instrs.append(Assign(width, bv_size_expr))
                         vars_seen.add(width.name)
 
@@ -1023,14 +1038,14 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                             if child.sort.base != BaseSort.List
                         ]
                         loop_idxs = [
-                            Var(fresh_name("loopi"), Sort(BaseSort.Int, [], True))
+                            Var(fresh_name("loopi"), Sort(BaseSort.Int32, [], True))
                             for _ in nlist_children
                         ]
 
                         # Expression for assigning the remainder of the list
                         remainder_expr = None
                         if len(nlist_children) != len(expr.children):
-                            var = Var("i", Sort(BaseSort.Int, [], True))
+                            var = Var("i", Sort(BaseSort.Int32, [], True))
                             list_child = next(
                                 child
                                 for child in expr.children
@@ -1149,7 +1164,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
 
                                 in_loop = True
                                 var_i = Var(
-                                    fresh_name("loopi"), Sort(BaseSort.Int, [], True)
+                                    fresh_name("loopi"), Sort(BaseSort.Int32, [], True)
                                 )
                                 conds = []
                                 loop_body = []
@@ -1240,7 +1255,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                             child_node = None
                             if i < op_to_nindex[expr.op]:
                                 child_node = Fn(Op.GET_INDEX, [expr_var, IntConst(i)])
-                                child_node.sort = Sort(BaseSort.Int, [], True)
+                                child_node.sort = Sort(BaseSort.Int32, [], True)
                             else:
                                 child_node = Fn(
                                     Op.GET_CHILD,
@@ -1648,6 +1663,7 @@ def rule_to_lfsc(rule):
 def type_check(rules):
     for rule in rules:
         print(f"Type checking {rule.name}")
+        infer_int_bounds(rule.rvars, rule.lhs)
         infer_types(rule.rvars, rule.lhs)
         assign_names(rule.lhs)
         infer_types(rule.rvars, rule.rhs)

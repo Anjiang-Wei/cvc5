@@ -141,7 +141,7 @@ def sort():
                expr(False) + pp.Suppress(')')
                ).setParseAction(lambda s, l, t: Sort(BaseSort.BitVec, [t[1]]))
     int_sort = pp.Keyword('Int').setParseAction(
-        lambda s, l, t: Sort(BaseSort.Int, []))
+        lambda s, l, t: Sort(BaseSort.Int32, []))
     bool_sort = pp.Keyword('Bool').setParseAction(
         lambda s, l, t: Sort(BaseSort.Bool, []))
     return bv_sort | int_sort | bool_sort

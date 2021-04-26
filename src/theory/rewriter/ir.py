@@ -78,7 +78,7 @@ class Assign(IRNode):
         self.expr = expr
 
     def __repr__(self):
-        return '{} := {}'.format(self.name, self.expr)
+        return '{} {} := {}'.format(self.name.sort, self.name, self.expr)
 
 
 class Assert(IRNode):

@@ -128,7 +128,6 @@ class Op(Enum):
     LAMBDA = auto()
     APPLY = auto()
 
-fns = set(["pow2"])
 commutative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.AND, Op.OR, Op.XOR, Op.EQ])
 associative_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND, Op.OR, Op.XOR, Op.EQ])
 nary_ops = set([Op.BVADD, Op.BVMUL, Op.BVAND, Op.BVOR, Op.BVXOR, Op.CONCAT, Op.AND, Op.OR])
@@ -138,6 +137,7 @@ class BaseSort(Enum):
     Bool = auto()
     BitVec = auto()
     Int = auto()
+    Int32 = auto()
     Kind = auto()
     List = auto()
     Node = auto()
@@ -282,6 +282,9 @@ class Sort(Node):
             self.base, ' '.join(str(child) for child in self.children),
             ' :const' if self.const else '')
 
+    def is_int(self):
+        return self.base == BaseSort.Int or self.base == BaseSort.Int32
+
 
 def collect_vars(node):
     if isinstance(node, Var):
@@ -333,6 +336,21 @@ def are_types_compatible(t1, t2):
     elif t2.base == BaseSort.List:
         return are_types_compatible(t1, t2.children[0])
     return False
+
+def unify_int_sorts(s1, s2):
+    assert s1.is_int()
+    assert s2.is_int()
+    if s1.base == BaseSort.Int or s2.base == BaseSort.Int:
+        return Sort(BaseSort.Int, [])
+    return Sort(BaseSort.Int32, [])
+
+def infer_int_bounds(context, node):
+    if isinstance(node, Fn) and node.op == Op.BVCONST and isinstance(node.children[0], Var):
+        print(f"Widen {node.children[0]}")
+        context[node.children[0].name].base = BaseSort.Int
+
+    for child in node.children:
+        infer_int_bounds(context, child)
 
 def infer_types(context, node):
     if node.sort:
@@ -393,7 +411,7 @@ def infer_types(context, node):
             else:
                 sort = Sort(BaseSort.BitVec, [node.children[0].sort.children[0].children[0]])
         elif node.op in [Op.ROTATE_LEFT, Op.ROTATE_RIGHT]:
-            assert node.children[0].sort.base == BaseSort.Int
+            assert node.children[0].sort.is_int()
             assert node.children[1].sort.base == BaseSort.BitVec
             sort = node.children[1].sort
         elif node.op in [Op.CONCAT]:
@@ -417,7 +435,7 @@ def infer_types(context, node):
             sort = Sort(BaseSort.BitVec, [total_size])
         elif node.op in [Op.ZERO_EXTEND, Op.SIGN_EXTEND]:
             assert len(node.children) == 2
-            assert node.children[0].sort.base == BaseSort.Int
+            assert node.children[0].sort.is_int()
             assert node.children[1].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.BitVec, [
                 Fn(Op.PLUS,
@@ -425,7 +443,7 @@ def infer_types(context, node):
             ])
         elif node.op == Op.REPEAT:
             assert len(node.children) == 2
-            assert node.children[0].sort.base == BaseSort.Int
+            assert node.children[0].sort.is_int()
             assert node.children[1].sort.base == BaseSort.BitVec
             sort = Sort(BaseSort.BitVec, [
                 Fn(Op.MULT,
@@ -433,13 +451,11 @@ def infer_types(context, node):
             ])
         elif node.op in [Op.EXTRACT]:
             assert len(node.children) == 3
-            assert node.children[0].sort.base == BaseSort.Int
-            assert node.children[1].sort.base == BaseSort.Int
+            assert node.children[0].sort.is_int()
+            assert node.children[1].sort.is_int()
             assert node.children[2].sort.base == BaseSort.BitVec
-            diff = Fn(Op.MINUS, [node.children[0], node.children[1]])
-            diff.sort = Sort(BaseSort.Int, [], True)
-            width = Fn(Op.PLUS, [diff, IntConst(1)])
-            width.sort = Sort(BaseSort.Int, [], True)
+            diff = mk_node(Op.MINUS, node.children[0], node.children[1])
+            width = mk_node(Op.PLUS, diff, IntConst(1))
             sort = Sort(BaseSort.BitVec, [width])
         elif node.op in [Op.BVNEG, Op.BVNOT]:
             assert node.children[0].sort.base == BaseSort.BitVec
@@ -460,7 +476,7 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.Bool
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [Op.EQ]:
-            assert node.children[0].sort.base == node.children[1].sort.base
+            assert node.children[0].sort.base == node.children[1].sort.base or (node.children[0].sort.is_int() and node.children[1].sort.is_int())
             sort = Sort(BaseSort.Bool, [])
         elif node.op == Op.ITE:
             # TODO: check that the types are the same across branches
@@ -478,21 +494,21 @@ def infer_types(context, node):
         elif node.op in [Op.BVCONST]:
             sort = Sort(BaseSort.BitVec, [node.children[1]])
         elif node.op in [Op.PLUS, Op.MINUS, Op.MULT]:
-            assert node.children[0].sort.base == BaseSort.Int
-            assert node.children[1].sort.base == BaseSort.Int
-            sort = Sort(BaseSort.Int, [])
+            assert node.children[0].sort.is_int()
+            assert node.children[1].sort.is_int()
+            sort = unify_int_sorts(node.children[0].sort, node.children[1].sort)
         elif node.op in [Op.LEQ, Op.LT, Op.GEQ]:
-            assert node.children[0].sort.base == BaseSort.Int
-            assert node.children[1].sort.base == BaseSort.Int
+            assert node.children[0].sort.is_int()
+            assert node.children[1].sort.is_int()
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [Op.XOR]:
             assert node.children[0].sort.base == BaseSort.Bool
             assert node.children[1].sort.base == BaseSort.Bool
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [Op.ZEROES]:
-            sort = Sort(BaseSort.Int, [], True)
+            sort = Sort(BaseSort.Int32, [], True)
         elif node.op in [Op.POW2, Op.NPOW2]:
-            sort = Sort(BaseSort.Int, [], True)
+            sort = Sort(BaseSort.Int32, [], True)
         elif node.op in [Op.AND, Op.OR]:
             assert all(child.sort.base == BaseSort.Bool or (
                 child.sort.base == BaseSort.List
@@ -508,7 +524,7 @@ def infer_types(context, node):
         elif node.op == Op.SLICE:
             sort = Sort(BaseSort.List, node.children[0].sort.children, True)
         elif node.op == Op.GET_NUM_CHILDREN:
-            node.sort = Sort(BaseSort.Int, [], True)
+            node.sort = Sort(BaseSort.Int32, [], True)
             return
         elif node.op == Op.GET_CHILDREN:
             # TODO: Not always correct
@@ -520,7 +536,8 @@ def infer_types(context, node):
 
         sort.const = all(child.sort.const for child in node.children)
     elif isinstance(node, IntConst):
-        sort = Sort(BaseSort.Int, [])
+        base = BaseSort.Int32 if node.val <= 0xffffffff else BaseSort.Int
+        sort = Sort(base, [])
         sort.const = True
     elif isinstance(node, BoolConst):
         sort = Sort(BaseSort.Bool, [])
