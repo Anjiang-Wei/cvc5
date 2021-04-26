@@ -217,17 +217,23 @@ RewriteResponse TheoryBVRewriter::RewriteExtract(TNode node, bool prerewrite) {
 
   if (RewriteRule<ExtractConcat>::applies(node)) {
     resultNode = RewriteRule<ExtractConcat>::run<false>(node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   if (RewriteRule<ExtractSignExtend>::applies(node)) {
     resultNode = RewriteRule<ExtractSignExtend>::run<false>(node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   if (RewriteRule<ExtractNot>::applies(node)) {
     resultNode = RewriteRule<ExtractNot>::run<false>(node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   if (options::bvExtractArithRewrite()) {
@@ -263,7 +269,7 @@ RewriteResponse TheoryBVRewriter::RewriteConcat(TNode node, bool prerewrite)
       RewriteRule<ConcatConstantMerge>,
       // Merge the adjacent extracts on constants
       ApplyRuleToChildren<kind::BITVECTOR_CONCAT, ExtractWhole>>::apply(node);
-  return RewriteResponse(REWRITE_DONE, resultNode);
+  return RewriteResponse(resultNode != node ? REWRITE_AGAIN : REWRITE_DONE, resultNode);
 }
 
 RewriteResponse TheoryBVRewriter::RewriteAnd(TNode node, bool prerewrite)
@@ -284,7 +290,7 @@ RewriteResponse TheoryBVRewriter::RewriteAnd(TNode node, bool prerewrite)
     }
   }
 
-  return RewriteResponse(REWRITE_DONE, resultNode);
+  return RewriteResponse(resultNode != node ? REWRITE_AGAIN : REWRITE_DONE, resultNode);
 }
 
 RewriteResponse TheoryBVRewriter::RewriteOr(TNode node, bool prerewrite)
@@ -306,7 +312,7 @@ RewriteResponse TheoryBVRewriter::RewriteOr(TNode node, bool prerewrite)
     }
   }
 
-  return RewriteResponse(REWRITE_DONE, resultNode);
+  return RewriteResponse(resultNode != node ? REWRITE_AGAIN : REWRITE_DONE, resultNode);
 }
 
 RewriteResponse TheoryBVRewriter::RewriteXor(TNode node, bool prerewrite)
@@ -332,7 +338,7 @@ RewriteResponse TheoryBVRewriter::RewriteXor(TNode node, bool prerewrite)
     }
   }
 
-  return RewriteResponse(REWRITE_DONE, resultNode);
+  return RewriteResponse(resultNode != node ? REWRITE_AGAIN : REWRITE_DONE, resultNode);
 }
 
 RewriteResponse TheoryBVRewriter::RewriteXnor(TNode node, bool prerewrite) {
@@ -422,31 +428,22 @@ RewriteResponse TheoryBVRewriter::RewriteSub(TNode node, bool prerewrite){
 
 RewriteResponse TheoryBVRewriter::RewriteNeg(TNode node, bool prerewrite) {
   Node resultNode = node;
-
-  /*
-  RewriteResponse response = rules::NegIdemp(node);
-  if (response.d_node != node)
-  {
-    return response;
-  }
-  */
-
   resultNode = LinearRewriteStrategy
     < RewriteRule<EvalNeg>,
       RewriteRule<NegIdemp>,
       RewriteRule<NegSub>
       >::apply(node);
   
-  if (RewriteRule<NegPlus>::applies(node)) {
-    resultNode = RewriteRule<NegPlus>::run<false>(node);
+  if (RewriteRule<NegPlus>::applies(resultNode)) {
+    resultNode = RewriteRule<NegPlus>::run<false>(resultNode);
     if (resultNode != node) {
       return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
     }
   }
   
   if(!prerewrite) {
-    if (RewriteRule<NegMult>::applies(node)) {
-      resultNode = RewriteRule<NegMult>::run<false>(node);
+    if (RewriteRule<NegMult>::applies(resultNode)) {
+      resultNode = RewriteRule<NegMult>::run<false>(resultNode);
       if (resultNode != node) {
         return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
       }
@@ -481,7 +478,9 @@ RewriteResponse TheoryBVRewriter::RewriteUdivTotal(TNode node, bool prerewrite){
 
   if(RewriteRule<UdivPow2>::applies(node)) {
     resultNode = RewriteRule<UdivPow2>::run <false> (node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   resultNode =
@@ -496,7 +495,9 @@ RewriteResponse TheoryBVRewriter::RewriteUremTotal(TNode node, bool prerewrite) 
 
   if(RewriteRule<UremPow2>::applies(node)) {
     resultNode = RewriteRule<UremPow2>::run <false> (node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   resultNode = LinearRewriteStrategy
@@ -534,7 +535,9 @@ RewriteResponse TheoryBVRewriter::RewriteShl(TNode node, bool prerewrite) {
   Node resultNode = node; 
   if(RewriteRule<ShlByConst>::applies(node)) {
     resultNode = RewriteRule<ShlByConst>::run <false> (node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   resultNode = LinearRewriteStrategy
@@ -549,7 +552,9 @@ RewriteResponse TheoryBVRewriter::RewriteLshr(TNode node, bool prerewrite) {
   Node resultNode = node; 
   if(RewriteRule<LshrByConst>::applies(node)) {
     resultNode = RewriteRule<LshrByConst>::run <false> (node);
-    return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    if (resultNode != node) {
+      return RewriteResponse(REWRITE_AGAIN_FULL, resultNode); 
+    }
   }
 
   resultNode = LinearRewriteStrategy

@@ -63,6 +63,9 @@ op_to_kind = {
 op_to_const_eval = {
     Op.BVSHL: lambda args: "({}.leftShift({}))".format(args[0], args[1]),
     Op.BVNEG: lambda args: "(-{})".format(args[0]),
+    Op.BVULE: lambda args: f"({args[0]} <= {args[1]})",
+    Op.BVUGE: lambda args: f"({args[0]} >= {args[1]})",
+    Op.BVULT: lambda args: f"({args[0]} < {args[1]})",
     Op.EXTRACT: lambda args: "({2}.extract({0}, {1}))".format(*args),
     Op.BVNOT: lambda args: "(~{})".format(args[0]),
     Op.BVAND: lambda args: "({} & {})".format(args[0], args[1]),
@@ -71,14 +74,17 @@ op_to_const_eval = {
     Op.CONCAT: lambda args: "({}.concat({}))".format(args[0], args[1]),
     Op.PLUS: lambda args: "({} + {})".format(args[0], args[1]),
     Op.MINUS: lambda args: "({} - {})".format(args[0], args[1]),
+    Op.MULT: lambda args: "({} * {})".format(args[0], args[1]),
+    Op.LEQ: lambda args: "({} <= {})".format(args[0], args[1]),
     Op.LT: lambda args: "({} < {})".format(args[0], args[1]),
     Op.GEQ: lambda args: "({} >= {})".format(args[0], args[1]),
     Op.NOT: lambda args: "(!{})".format(args[0]),
     Op.AND: lambda args: "({})".format(" && ".join(args)) if len(args) > 0 else "true",
     Op.OR: lambda args: "({})".format(" || ".join(args)) if len(args) > 0 else "true",
     Op.EQ: lambda args: "({} == {})".format(args[0], args[1]),
-    Op.BITS: lambda args: "bv::utils::bits({})".format(args[0]),
+    Op.ZEROES: lambda args: "bv::utils::zeroes({})".format(args[0]),
     Op.POW2: lambda args: "bv::utils::isPow2Const({})".format(args[0]),
+    Op.NPOW2: lambda args: "bv::utils::isNegPow2Const({})".format(args[0]),
 }
 
 op_to_lfsc = {
@@ -652,6 +658,8 @@ def expr_to_code(expr):
             return "({} == {})".format(args[0], args[1])
         elif expr.op == Op.GET_KIND:
             return f"{args[0]}.getKind()"
+        elif expr.op == Op.IS_BITVECTOR_NODE:
+            return f"{args[0]}.getType().isBitVector()"
         elif expr.op == Op.GET_NUM_CHILDREN:
             return f"{args[0]}.getNumChildren()"
         elif expr.op == Op.BV_SIZE:
@@ -670,16 +678,15 @@ def expr_to_code(expr):
         elif expr.op == Op.MK_NODE:
             kind = expr.children[0].val
 
-            list_arg = None
+            has_list_arg = False
             for child in expr.children:
                 if child.sort and child.sort.base == BaseSort.List:
-                    list_arg = child.sort
+                    has_list_arg = True
                     break
 
             arg_str = None
-            if list_arg:
+            if has_list_arg:
                 vec = fresh_name("__vec")
-                print(expr)
                 default = expr_to_code(
                     default_val(expr.children[0].val, expr.children[1].sort)
                 )
@@ -723,7 +730,7 @@ def expr_to_code(expr):
                     f"std::vector<Node>({args[0]}.begin() + {args[1]}, {args[0]}.end())"
                 )
             else:
-                return f"std::vector<Node>({args[0]}.begin() + {args[1]}, {args[0]}.begin() + {args[2]} + 1)"
+                return f"std::vector<Node>({args[0]}.begin() + {args[1]}, {args[0]}.begin() + {args[2]})"
         elif expr.op == Op.GET_INDEX:
             return "bv::utils::getIndex({}, {})".format(args[0], args[1])
         elif expr.sort and expr.sort.const:
@@ -814,7 +821,7 @@ def cfg_to_code(name, block, cfg):
     if isinstance(block, CFGLoop):
         body = cfg_to_code(name, block.body, cfg)
         return """
-        for ({} = 0; {} < {}.getNumChildren(); {}++) {{
+        for ({} = 0; {} < {}; {}++) {{
          {}
         }}""".format(
             block.loop_var,
@@ -896,6 +903,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
         expr, node, match_instrs, const_match_instrs, vars_seen, in_loop, last
     ):
         if expr.sort.base == BaseSort.BitVec:
+            match_instrs.append(Assert(Fn(Op.IS_BITVECTOR_NODE, [node]), in_loop))
             width = expr.sort.children[0]
             if isinstance(width, Var) and not width.name in vars_seen:
                 bv_size_expr = Fn(Op.BV_SIZE, [node])
@@ -1043,14 +1051,14 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                 child.children[0].sort = Sort(BaseSort.Bool, [], True)
 
                             remainder_expr = Assign(
-                                list_child, Fn(Op.GET_CHILDREN, [node, var, cond])
+                                list_child, mk_node(Op.GET_CHILDREN, node, var, cond)
                             )
 
                         has_non_remainder = len(nlist_children) != 0
                         last = last and (not has_non_remainder)
                         curr_block = match_instrs
 
-                        if expr.op in nary_ops and has_non_remainder:
+                        if expr.op in nary_ops and len(nlist_children) == len(expr.children):
                             curr_block.append(
                                 Assert(
                                     Fn(
@@ -1101,7 +1109,11 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                             )
 
                             curr_block.append(
-                                CFGLoop(loop_idx, node, CFGSeq(loop_body))
+                                CFGLoop(
+                                    loop_idx,
+                                    mk_node(Op.GET_NUM_CHILDREN, node),
+                                    CFGSeq(loop_body),
+                                )
                             )
                             if i != 0:
                                 curr_block.append(
@@ -1117,7 +1129,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                             # If we only have a list argument, e.g. (bvadd xs)
                             curr_block.append(remainder_expr)
 
-                        if not prev_in_loop:
+                        if has_non_remainder and not prev_in_loop:
                             match_instrs.append(Assert(BoolConst(False), False))
                     elif expr.op in associative_ops:
                         nlist_children = [
@@ -1126,7 +1138,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                             if child.sort.base != BaseSort.List
                         ]
 
-                        curr_idx = None
+                        next_idx = IntConst(0)
                         curr_block = match_instrs
                         prev_in_loop = in_loop
                         for i, child in list(enumerate(expr.children)):
@@ -1141,30 +1153,38 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                 )
                                 conds = []
                                 loop_body = []
-                                if curr_idx:
-                                    cond = Fn(Op.LT, [curr_idx, var_i])
+                                if i != 0:
+                                    cond = mk_node(Op.LEQ, next_idx, var_i)
                                     infer_types(None, cond)
                                     loop_body.append(Assert(cond, in_loop))
-                                else:
-                                    curr_idx = IntConst(0)
 
                                 loop_body.append(
-                                    Assign(child, Fn(Op.SLICE, [node, curr_idx, var_i]))
+                                    Assign(child, Fn(Op.SLICE, [node, next_idx, var_i]))
                                 )
 
-                                curr_idx = var_i
+                                if Op.CONCAT and isinstance(child.sort.children[0].children[0], Var):
+                                    len_var = child.sort.children[0].children[0]
+                                    list_node = Fn(Op.MK_NODE, [KindConst(Op.CONCAT), child])
+                                    list_node.sort = Sort(BaseSort.BitVec, [len_var])
+                                    list_len = Fn(Op.BV_SIZE, [list_node])
+                                    loop_body.append(
+                                        Assign(len_var, list_len)
+                                    )
+
+                                max_val = mk_node(
+                                    Op.PLUS,
+                                    mk_node(Op.GET_NUM_CHILDREN, node),
+                                    IntConst(1),
+                                )
+                                next_idx = var_i
                                 curr_block.append(
-                                    CFGLoop(var_i, node, CFGSeq(loop_body))
+                                    CFGLoop(var_i, max_val, CFGSeq(loop_body))
                                 )
                                 curr_block = loop_body
                             else:
-                                curr_idx = Fn(Op.PLUS, [curr_idx, IntConst(1)])
-                                infer_types(None, curr_idx)
-
-                                cond = Fn(
-                                    Op.LT, [curr_idx, Fn(Op.GET_NUM_CHILDREN, [node])]
+                                cond = mk_node(
+                                    Op.LT, next_idx, mk_node(Op.GET_NUM_CHILDREN, node)
                                 )
-                                infer_types(None, cond)
 
                                 # Make sure that we are not out-of-bounds
                                 curr_block.append(Assert(cond, in_loop))
@@ -1176,7 +1196,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
 
                                 # Get child node for loop index
                                 curr_block.append(
-                                    Assign(loop_var, Fn(Op.GET_CHILD, [node, curr_idx]))
+                                    Assign(loop_var, Fn(Op.GET_CHILD, [node, next_idx]))
                                 )
 
                                 last_non_list_child = (
@@ -1186,20 +1206,32 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                 if last_non_list_child:
                                     rhs = Fn(
                                         Op.SLICE,
-                                        [node, Fn(Op.PLUS, [curr_idx, IntConst(1)])],
+                                        [node, Fn(Op.PLUS, [next_idx, IntConst(1)])],
                                     )
                                     infer_types(None, rhs)
                                     curr_block.append(Assign(expr.children[-1], rhs))
+
+                                    # TODO: merge with other case
+                                    remainder = expr.children[-1]
+                                    if Op.CONCAT and isinstance(remainder.sort.children[0].children[0], Var):
+                                        len_var = remainder.sort.children[0].children[0]
+                                        list_node = Fn(Op.MK_NODE, [KindConst(Op.CONCAT), remainder])
+                                        list_node.sort = Sort(BaseSort.BitVec, [len_var])
+                                        list_len = Fn(Op.BV_SIZE, [list_node])
+                                        curr_block.append(
+                                            Assign(len_var, list_len)
+                                        )
                                 expr_to_ir(
                                     child,
                                     loop_var,
-                                    loop_body,
+                                    curr_block,
                                     const_match_instrs,
                                     vars_seen,
                                     True,
                                     last=last and (last_child or last_non_list_child),
                                 )
-                        if not prev_in_loop:
+                                next_idx = mk_node(Op.PLUS, next_idx, IntConst(1))
+                        if in_loop and not prev_in_loop:
                             match_instrs.append(Assert(BoolConst(False), False))
                         last = False
                     # Remaining ops
@@ -1235,7 +1267,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
             match_instrs.append(Return(out_var))
 
     vars_seen = set()
-    match_instrs = [Assign(out_var, node_var)]
+    match_instrs = []
     const_match_instrs = []
     expr_to_ir(
         lhs,
@@ -1251,6 +1283,7 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
 
 
 def gen_rule(rule):
+    print(f"Compiling {rule.name}")
     node_var = Var("__node", rule.lhs.sort)
     out_var = Var("__ret", Sort(rule.rhs.sort.base, rule.rhs.sort.children))
 
@@ -1269,14 +1302,14 @@ def gen_rule(rule):
     var_counts = defaultdict(int)
     var_counts["__ret"] = 2
     cfg_count_vars(var_counts, match_block)
-    cfg_count_vars(var_counts, cfg)
-    # match_block = cfg_optimize(var_counts, match_block)
+    match_block = cfg_optimize(out_var, var_counts, match_block)
     # cfg = cfg_optimize(var_counts, cfg)
 
     cfg_vars = cfg_collect_vars(match_block)
     var_decls = ""
     for var in cfg_vars:
-        var_decls += "{} {};\n".format(sort_to_code(var.sort), var.name)
+        if var != node_var:
+            var_decls += "{} {};\n".format(sort_to_code(var.sort), var.name)
 
     body = cfg_to_code(name_to_enum(rule.name), match_block, cfg)
 
@@ -1614,6 +1647,7 @@ def rule_to_lfsc(rule):
 
 def type_check(rules):
     for rule in rules:
+        print(f"Type checking {rule.name}")
         infer_types(rule.rvars, rule.lhs)
         assign_names(rule.lhs)
         infer_types(rule.rvars, rule.rhs)

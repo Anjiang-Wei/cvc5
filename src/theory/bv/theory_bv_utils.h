@@ -76,6 +76,9 @@ bool isOne(TNode node);
 unsigned isPow2Const(TNode node, bool& isNeg);
 
 unsigned isPow2Const(const BitVector& bv);
+unsigned isNegPow2Const(const BitVector& bv);
+
+uint32_t zeroes(const BitVector& bv);
 
 /* Returns true if node or all of its children is const. */
 bool isBvConstTerm(TNode node);

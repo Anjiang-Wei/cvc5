@@ -33,7 +33,7 @@ symbol_to_op = {
     'bvor': Op.BVOR,
     'bvxor': Op.BVXOR,
     'bvnand': Op.BVNAND,
-    'bvnor': Op.BVNOT,
+    'bvnor': Op.BVNOR,
     'bvxnor': Op.BVXNOR,
     'concat': Op.CONCAT,
     'bvite': Op.BVITE,
@@ -49,13 +49,16 @@ symbol_to_op = {
     'xor': Op.XOR,
     '+': Op.PLUS,
     '-': Op.MINUS,
+    '*': Op.MULT,
     '<': Op.LT,
     '>=': Op.GEQ,
+    '<<': Op.LEFT_SHIFT,
     '=': Op.EQ,
     'ite': Op.ITE,
 
     'pow2': Op.POW2,
-    'bits': Op.BITS,
+    'npow2': Op.NPOW2,
+    'zeroes': Op.ZEROES,
 }
 
 
@@ -65,7 +68,7 @@ def bv_to_int(s):
 
 
 def symbol():
-    special_chars = '=' + '_' + '+' + '-' + '<' + '>'
+    special_chars = '=' + '_' + '+' + '-' + '<' + '>' + '*'
     return pp.Word(pp.alphas + special_chars, pp.alphanums + special_chars)
 
 

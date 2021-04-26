@@ -79,8 +79,10 @@ class Op(Enum):
     PLUS = auto()
     MINUS = auto()
     MULT = auto()
+    LEQ = auto()
     LT = auto()
     GEQ = auto()
+    LEFT_SHIFT = auto()
 
     ###########################################################################
     # Theory-independent
@@ -94,6 +96,7 @@ class Op(Enum):
     ###########################################################################
 
     GET_KIND = auto()
+    IS_BITVECTOR_NODE = auto()
     GET_CHILD = auto()
     GET_CHILDREN = auto()
     GET_NUM_CHILDREN = auto()
@@ -106,7 +109,8 @@ class Op(Enum):
     BV_VAL = auto()
     APPEND = auto()
     POW2 = auto()
-    BITS = auto()
+    NPOW2 = auto()
+    ZEROES = auto()
     SLICE = auto()
 
     ###########################################################################
@@ -136,6 +140,7 @@ class BaseSort(Enum):
     Int = auto()
     Kind = auto()
     List = auto()
+    Node = auto()
     Fail = auto()
 
 
@@ -329,7 +334,6 @@ def are_types_compatible(t1, t2):
         return are_types_compatible(t1, t2.children[0])
     return False
 
-
 def infer_types(context, node):
     if node.sort:
         # Sort has already been computed for this node, skip
@@ -367,7 +371,7 @@ def infer_types(context, node):
                 Op.BVULT, Op.BVULE
         ]:
             assert node.children[0].sort.base == BaseSort.BitVec
-            assert node.children[0].sort == node.children[1].sort
+            # assert node.children[0].sort == node.children[1].sort
             sort = Sort(BaseSort.Bool, [])
         elif node.op in [Op.BVREDAND, Op.BVREDOR]:
             assert node.children[0].sort.base == BaseSort.BitVec
@@ -400,11 +404,17 @@ def infer_types(context, node):
             assert all(
                 are_types_compatible(arg_sort, child.sort)
                 for child in node.children)
-            sort = Sort(BaseSort.BitVec, [
-                Fn(Op.PLUS, [
-                    child.sort.children[0] for child in node.children
-                ])
-            ])
+
+            sizes = []
+            for child in node.children:
+                if child.sort.base == BaseSort.BitVec:
+                    sizes.append(child.sort.children[0])
+                else:
+                    assert child.sort.base == BaseSort.List
+                    sizes.append(child.sort.children[0].children[0])
+
+            total_size = sizes[0] if len(sizes) == 1 else Fn(Op.PLUS, sizes)
+            sort = Sort(BaseSort.BitVec, [total_size])
         elif node.op in [Op.ZERO_EXTEND, Op.SIGN_EXTEND]:
             assert len(node.children) == 2
             assert node.children[0].sort.base == BaseSort.Int
@@ -467,11 +477,11 @@ def infer_types(context, node):
                         node.children[0].sort.children[:])
         elif node.op in [Op.BVCONST]:
             sort = Sort(BaseSort.BitVec, [node.children[1]])
-        elif node.op in [Op.PLUS, Op.MINUS]:
+        elif node.op in [Op.PLUS, Op.MINUS, Op.MULT]:
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.Int
             sort = Sort(BaseSort.Int, [])
-        elif node.op in [Op.LT, Op.GEQ]:
+        elif node.op in [Op.LEQ, Op.LT, Op.GEQ]:
             assert node.children[0].sort.base == BaseSort.Int
             assert node.children[1].sort.base == BaseSort.Int
             sort = Sort(BaseSort.Bool, [])
@@ -479,9 +489,9 @@ def infer_types(context, node):
             assert node.children[0].sort.base == BaseSort.Bool
             assert node.children[1].sort.base == BaseSort.Bool
             sort = Sort(BaseSort.Bool, [])
-        elif node.op in [Op.BITS]:
+        elif node.op in [Op.ZEROES]:
             sort = Sort(BaseSort.Int, [], True)
-        elif node.op in [Op.POW2]:
+        elif node.op in [Op.POW2, Op.NPOW2]:
             sort = Sort(BaseSort.Int, [], True)
         elif node.op in [Op.AND, Op.OR]:
             assert all(child.sort.base == BaseSort.Bool or (
@@ -490,10 +500,6 @@ def infer_types(context, node):
                        for child in node.children)
             # TODO: Check that list is used correctly
             sort = Sort(BaseSort.Bool, [])
-            print("######")
-            print(node)
-            print([child.sort for child in node.children])
-            print("######")
         elif node.op == Op.FAIL:
             sort = Sort(BaseSort.Fail, [], True)
         elif node.op == Op.MAP:
@@ -503,6 +509,10 @@ def infer_types(context, node):
             sort = Sort(BaseSort.List, node.children[0].sort.children, True)
         elif node.op == Op.GET_NUM_CHILDREN:
             node.sort = Sort(BaseSort.Int, [], True)
+            return
+        elif node.op == Op.GET_CHILDREN:
+            # TODO: Not always correct
+            node.sort = Sort(BaseSort.List, [node.children[0].sort], False)
             return
         else:
             print('Unsupported operator: {}'.format(node.op))
@@ -516,6 +526,9 @@ def infer_types(context, node):
         sort = Sort(BaseSort.Bool, [])
         sort.const = True
 
+    if sort:
+        for child in sort.children:
+            infer_types(context, child)
     node.sort = sort
 
 
@@ -526,3 +539,9 @@ def assign_names(node):
     node.name = fresh_name('node')
     for child in node.children:
         assign_names(child)
+
+def mk_node(op, *args):
+    n = Fn(op, list(args))
+    infer_types(None, n)
+    return n
+

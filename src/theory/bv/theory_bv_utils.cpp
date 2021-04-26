@@ -50,6 +50,10 @@ Node mkIndexedOp(Kind k, uint32_t arg)
   switch (k) {
     case kind::BITVECTOR_REPEAT:
       return nm->mkConst<BitVectorRepeat>(BitVectorRepeat(arg));
+    case kind::BITVECTOR_SIGN_EXTEND:
+      return nm->mkConst<BitVectorSignExtend>(BitVectorSignExtend(arg));
+    case kind::BITVECTOR_ZERO_EXTEND:
+      return nm->mkConst<BitVectorZeroExtend>(BitVectorZeroExtend(arg));
     default:
       return Node::null();
   }
@@ -106,7 +110,37 @@ uint32_t getIndex(TNode node, size_t index)
     }
     Unreachable();
   }
-  if (node.getKind() == kind::BITVECTOR_EXTRACT)
+  else if (node.getKind() == kind::BITVECTOR_SIGN_EXTEND)
+  {
+    if (index == 0)
+    {
+      return node.getOperator()
+          .getConst<BitVectorSignExtend>()
+          .d_signExtendAmount;
+    }
+    Unreachable();
+  }
+  else if (node.getKind() == kind::BITVECTOR_ROTATE_LEFT)
+  {
+    if (index == 0)
+    {
+      return node.getOperator()
+          .getConst<BitVectorRotateLeft>()
+          .d_rotateLeftAmount;
+    }
+    Unreachable();
+  }
+  else if (node.getKind() == kind::BITVECTOR_ROTATE_RIGHT)
+  {
+    if (index == 0)
+    {
+      return node.getOperator()
+          .getConst<BitVectorRotateRight>()
+          .d_rotateRightAmount;
+    }
+    Unreachable();
+  }
+  else if (node.getKind() == kind::BITVECTOR_EXTRACT)
   {
     if (index == 0)
     {
@@ -118,7 +152,7 @@ uint32_t getIndex(TNode node, size_t index)
     }
     Unreachable();
   }
-  Unreachable();
+  Unreachable() << node.getKind();
 }
 
 /* ------------------------------------------------------------------------- */
@@ -172,13 +206,23 @@ unsigned isPow2Const(const BitVector& bv)
   {
     return p;
   }
+  return false;
+}
+
+unsigned isNegPow2Const(const BitVector& bv)
+{
   BitVector nbv = -bv;
-  p = nbv.isPow2();
+  unsigned p = nbv.isPow2();
   if (p != 0)
   {
     return p;
   }
   return false;
+}
+
+uint32_t zeroes(const BitVector& bv) {
+  const Integer& bvVal = bv.toInteger();
+  return bvVal.isZero() ? bv.getSize() : bv.getSize() - bvVal.length();
 }
 
 bool isBvConstTerm(TNode node)

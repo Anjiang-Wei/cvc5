@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from node import collect_vars, count_vars, subst, BoolConst, Var, Node, Fn
+from node import collect_vars, count_vars, subst, BaseSort, BoolConst, Var, Node, Fn, Op
 
 
 class CFGEdge:
@@ -186,27 +186,43 @@ def optimize_cfg(out_var, entry, cfg):
             edge.cond = subst(edge.cond, substs)
 
 
-def cfg_collect_vars(node):
+def cfg_collect_vars(node, sorts=False):
     cfg_vars = set()
     if isinstance(node, CFGLoop):
         cfg_vars.add(node.loop_var)
-        cfg_vars.update(cfg_collect_vars(node.domain))
-        cfg_vars.update(cfg_collect_vars(node.body))
+        cfg_vars.update(cfg_collect_vars(node.domain, sorts))
+        cfg_vars.update(cfg_collect_vars(node.body, sorts))
     elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
         for instr in node.instrs:
-            cfg_vars.update(cfg_collect_vars(instr))
+            cfg_vars.update(cfg_collect_vars(instr, sorts))
     elif isinstance(node, CFGCond):
         for case in node.cases:
-            cfg_vars.update(cfg_collect_vars(case[0]))
-            cfg_vars.update(cfg_collect_vars(case[1]))
+            cfg_vars.update(cfg_collect_vars(case[0], sorts))
+            cfg_vars.update(cfg_collect_vars(case[1], sorts))
     elif isinstance(node, Assign):
         cfg_vars.add(node.name)
-        cfg_vars.update(cfg_collect_vars(node.expr))
+        cfg_vars.update(cfg_collect_vars(node.expr, sorts))
+    elif isinstance(node, Assert):
+        cfg_vars.update(cfg_collect_vars(node.expr, sorts))
+    elif isinstance(node, Return):
+        cfg_vars.update(cfg_collect_vars(node.expr, sorts))
+    elif isinstance(node, Return):
+        cfg_vars.update(cfg_collect_vars(node.expr, sorts))
+    elif isinstance(node, Node):
+        if isinstance(node, Var):
+            cfg_vars.add(node)
+        else:
+            for child in node.children:
+                cfg_vars.update(cfg_collect_vars(child, sorts))
+        if sorts and node.sort:
+            for child in node.sort.children:
+                cfg_vars.update(cfg_collect_vars(child, sorts))
     return cfg_vars
 
 def cfg_count_vars(var_counts, node):
     if isinstance(node, CFGLoop):
         var_counts[node.loop_var.name] += 1
+        cfg_count_vars(var_counts, node.body)
     elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
         for instr in node.instrs:
             cfg_count_vars(var_counts, instr)
@@ -218,23 +234,44 @@ def cfg_count_vars(var_counts, node):
         cfg_count_vars(var_counts, node.expr)
     elif isinstance(node, Assert):
         cfg_count_vars(var_counts, node.expr)
+    elif isinstance(node, Return):
+        cfg_count_vars(var_counts, node.expr)
     elif isinstance(node, Node):
+        # TODO: Hack-y way to avoid eliminating list variables
+        if isinstance(node, Fn):
+            if node.op == Op.SLICE:
+                cfg_count_vars(var_counts, node.children[0])
+            elif node.op == Op.MK_NODE:
+                for child in node.children:
+                    print(child)
+                    if child.sort and child.sort.base == BaseSort.List:
+                        cfg_count_vars(var_counts, child)
+
         if isinstance(node, Var):
             var_counts[node.name] += 1
         else:
             for child in node.children:
                 cfg_count_vars(var_counts, child)
+        if node.sort:
+            for child in node.sort.children:
+                cfg_count_vars(var_counts, child)
 
-def cfg_optimize(var_counts, node):
+
+def cfg_optimize(out_var, var_counts, node):
+    print(var_counts)
     def remove_unused_vars(node):
         if isinstance(node, CFGLoop):
-            node
+            new_body = remove_unused_vars(node.body)
+            return CFGLoop(node.loop_var, node.domain, new_body)
         elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
             new_instrs = []
             for instr in node.instrs:
                 new_instr = remove_unused_vars(instr)
                 if new_instr:
-                    new_instrs.append(new_instr)
+                    if isinstance(new_instr, CFGSeq):
+                        new_instrs.extend(new_instr.instrs)
+                    else:
+                        new_instrs.append(new_instr)
             return CFGSeq(new_instrs)
         elif isinstance(node, CFGCond):
             new_cases = []
@@ -250,7 +287,8 @@ def cfg_optimize(var_counts, node):
     substs = dict()
     def elim_single_use_vars(node):
         if isinstance(node, CFGLoop):
-            node
+            new_body = elim_single_use_vars(node.body)
+            return CFGLoop(node.loop_var, node.domain, new_body)
         elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
             new_instrs = []
             for instr in node.instrs:
@@ -267,6 +305,8 @@ def cfg_optimize(var_counts, node):
             res = None
             new_expr = elim_single_use_vars(node.expr)
             if var_counts[node.name.name] == 1:
+                # TODO: hack-y type inference
+                new_expr.sort = node.name.sort
                 substs[node.name.name] = new_expr
             else:
                 res = Assign(node.name, new_expr)
@@ -288,7 +328,53 @@ def cfg_optimize(var_counts, node):
         else:
             return node
 
-    return elim_single_use_vars(remove_unused_vars(node))
+    def delay_assigns(delayed_assigns, node):
+        if isinstance(node, CFGLoop):
+            new_body = delay_assigns(delayed_assigns, node.body)
+            return CFGLoop(node.loop_var, node.domain, new_body)
+        elif isinstance(node, CFGSeq) or isinstance(node, CFGNode):
+            new_instrs = []
+            for instr in node.instrs:
+                new_instr = delay_assigns(delayed_assigns, instr)
+                if new_instr:
+                    new_instrs.append(new_instr)
+            return CFGSeq(new_instrs)
+        elif isinstance(node, CFGCond):
+            instrs = []
+            new_cases = []
+            for case in node.cases:
+                cond_vars = cfg_collect_vars(case[0], True)
+
+                for delayed_assign in delayed_assigns:
+                    if delayed_assign.name in cond_vars:
+                        instrs.extend(delayed_assigns)
+                        delayed_assigns.clear()
+                        break
+
+                new_cases.append((case[0], delay_assigns(delayed_assigns, case[1])))
+            return CFGSeq(instrs + [CFGCond(new_cases)])
+        elif isinstance(node, Assign):
+            if node.name != out_var:
+                delayed_assigns.append(node)
+                return None
+            else:
+                return CFGSeq(delayed_assigns + [node])
+        elif isinstance(node, Assert):
+            expr_vars = cfg_collect_vars(node.expr, True)
+            instrs = []
+            print("DELAYED", delayed_assigns)
+            print("DELAYED", expr_vars)
+            for delayed_assign in delayed_assigns:
+                if delayed_assign.name in expr_vars:
+                    instrs.extend(delayed_assigns)
+                    delayed_assigns.clear()
+                    break
+            instrs.append(node)
+            return CFGSeq(instrs)
+        else:
+            return node
+
+    return delay_assigns([], elim_single_use_vars(remove_unused_vars(node)))
 
 def cfg_to_str(cfg):
     result = ''

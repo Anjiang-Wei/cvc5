@@ -71,63 +71,24 @@ Node RewriteRule<ConcatExtractMerge>::apply(TNode node) {
 
 template<> inline
 bool RewriteRule<ConcatConstantMerge>::applies(TNode node) {
-  return node.getKind() == kind::BITVECTOR_CONCAT;
+  return true;
 }
 
 template<> inline
 Node RewriteRule<ConcatConstantMerge>::apply(TNode node) {
-
-  Debug("bv-rewrite") << "RewriteRule<ConcatConstantMerge>(" << node << ")" << std::endl;
-
-  std::vector<Node> mergedConstants;
-  for (unsigned i = 0, end = node.getNumChildren(); i < end;) {
-    if (node[i].getKind() != kind::CONST_BITVECTOR) {
-      // If not a constant, just add it
-      mergedConstants.push_back(node[i]);
-      ++i;
-    } else {
-      // Find the longest sequence of constants
-      unsigned j = i + 1;
-      while (j < end) {
-        if (node[j].getKind() != kind::CONST_BITVECTOR) {
-          break;
-        } else {
-          ++ j;
-        }
-      }
-      // Append all the constants
-      BitVector current = node[i].getConst<BitVector>();
-      for (unsigned k = i + 1; k < j; ++ k) {
-        current = current.concat(node[k].getConst<BitVector>());
-      }
-      // Add the new merged constant
-      mergedConstants.push_back(utils::mkConst(current));
-      i = j;
-    }
-  }
-
-  Debug("bv-rewrite") << "RewriteRule<ConcatConstantMerge>(" << node << ") => " << utils::mkConcat(mergedConstants) << std::endl;
-
-  return utils::mkConcat(mergedConstants);
+  return rules::ConcatConstantMerge(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */
 
 template<> inline
 bool RewriteRule<ExtractWhole>::applies(TNode node) {
-  if (node.getKind() != kind::BITVECTOR_EXTRACT) return false;
-  unsigned length = utils::getSize(node[0]);
-  unsigned extractHigh = utils::getExtractHigh(node);
-  if (extractHigh != length - 1) return false;
-  unsigned extractLow  = utils::getExtractLow(node);
-  if (extractLow != 0) return false;
   return true;
 }
 
 template<> inline
 Node RewriteRule<ExtractWhole>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<ExtractWhole>(" << node << ")" << std::endl;
-  return node[0];
+  return rules::ExtractWhole(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -187,23 +148,12 @@ Node RewriteRule<ExtractConcat>::apply(TNode node) {
 
 template<> inline
 bool RewriteRule<ExtractExtract>::applies(TNode node) {
-  if (node.getKind() != kind::BITVECTOR_EXTRACT) return false;
-  if (node[0].getKind() != kind::BITVECTOR_EXTRACT) return false;
   return true;
 }
 
 template<> inline
 Node RewriteRule<ExtractExtract>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<ExtractExtract>(" << node << ")" << std::endl;
-
-  // x[i:j][k:l] ~>  x[k+j:l+j]
-  Node child = node[0];
-  unsigned k = utils::getExtractHigh(node);
-  unsigned l = utils::getExtractLow(node);
-  unsigned j = utils::getExtractLow(child);
-
-  Node result = utils::mkExtract(child[0], k + j, l + j);
-  return result;
+  return rules::ExtractExtract(node).d_node;
 }
 
 /* -------------------------------------------------------------------------- */

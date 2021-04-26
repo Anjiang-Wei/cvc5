@@ -39,23 +39,14 @@ namespace bv {
  */
 template<> inline
 bool RewriteRule<ExtractBitwise>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_EXTRACT &&
-          (node[0].getKind() == kind::BITVECTOR_AND ||
-           node[0].getKind() == kind::BITVECTOR_OR ||
-           node[0].getKind() == kind::BITVECTOR_XOR ));
+  return true;
 }
 
 template<> inline
 Node RewriteRule<ExtractBitwise>::apply(TNode node) {
-  Debug("bv-rewrite") << "RewriteRule<ExtractBitwise>(" << node << ")" << std::endl;
-  unsigned high = utils::getExtractHigh(node);
-  unsigned low = utils::getExtractLow(node);
-  std::vector<Node> children; 
-  for (unsigned i = 0; i < node[0].getNumChildren(); ++i) {
-    children.push_back(utils::mkExtract(node[0][i], high, low)); 
-  }
-  Kind kind = node[0].getKind(); 
-  return utils::mkSortedNode(kind, children);
+  Node n1 = rules::ExtractBitwiseAnd(node).d_node;
+  Node n2 = rules::ExtractBitwiseOr(n1).d_node;
+  return rules::ExtractBitwiseXor(n2).d_node;
 }
 
 /**
@@ -65,18 +56,13 @@ Node RewriteRule<ExtractBitwise>::apply(TNode node) {
  */
 template<> inline
 bool RewriteRule<ExtractNot>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_EXTRACT &&
-          node[0].getKind() == kind::BITVECTOR_NOT);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<ExtractNot>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<ExtractNot>(" << node << ")" << std::endl;
-  unsigned low = utils::getExtractLow(node);
-  unsigned high = utils::getExtractHigh(node);
-  Node a = utils::mkExtract(node[0][0], high, low);
-  return NodeManager::currentNM()->mkNode(kind::BITVECTOR_NOT, a);
+  return rules::ExtractNot(node).d_node;
 }
 
 /** 
@@ -89,53 +75,13 @@ inline Node RewriteRule<ExtractNot>::apply(TNode node)
 
 template<> inline
 bool RewriteRule<ExtractSignExtend>::applies(TNode node) {
-  if (node.getKind() == kind::BITVECTOR_EXTRACT &&
-      node[0].getKind() == kind::BITVECTOR_SIGN_EXTEND) {
-    return true; 
-  }
-  return false; 
+  return true;
 }
 
 template <>
 inline Node RewriteRule<ExtractSignExtend>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<ExtractSignExtend>(" << node << ")"
-                      << std::endl;
-  TNode extendee = node[0][0];
-  unsigned extendee_size = utils::getSize(extendee);
-
-  unsigned high = utils::getExtractHigh(node);
-  unsigned low = utils::getExtractLow(node);
-
-  Node resultNode;
-  // extract falls on extendee
-  if (high < extendee_size)
-  {
-    resultNode = utils::mkExtract(extendee, high, low);
-  }
-  else if (low < extendee_size && high >= extendee_size)
-  {
-    // if extract overlaps sign extend and extendee
-    Node low_extract = utils::mkExtract(extendee, extendee_size - 1, low);
-    unsigned new_amount = high - extendee_size + 1;
-    resultNode = utils::mkSignExtend(low_extract, new_amount);
-  }
-  else
-  {
-    // extract only over sign extend
-    Assert(low >= extendee_size);
-    unsigned top = utils::getSize(extendee) - 1;
-    Node most_significant_bit = utils::mkExtract(extendee, top, top);
-    std::vector<Node> bits;
-    for (unsigned i = 0; i < high - low + 1; ++i)
-    {
-      bits.push_back(most_significant_bit);
-    }
-    resultNode = utils::mkConcat(bits);
-  }
-  Debug("bv-rewrite") << "                           =>" << resultNode
-                      << std::endl;
-  return resultNode;
+  return rules::ExtractSignExtend(node).d_node;
 }
 
 /**
@@ -1027,201 +973,30 @@ Node RewriteRule<FlattenAssocCommutNoDuplicates>::apply(TNode node) {
   
 template<> inline
 bool RewriteRule<OrSimplify>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_OR);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<OrSimplify>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<OrSimplify>(" << node << ")" << std::endl;
-
-  NodeManager *nm = NodeManager::currentNM();
-  // this will remove duplicates
-  std::unordered_map<TNode, Count, TNodeHashFunction> subterms;
-  unsigned size = utils::getSize(node);
-  BitVector constant(size, (unsigned)0);
-
-  for (unsigned i = 0; i < node.getNumChildren(); ++i)
-  {
-    TNode current = node[i];
-    // simplify constants
-    if (current.getKind() == kind::CONST_BITVECTOR)
-    {
-      BitVector bv = current.getConst<BitVector>();
-      constant = constant | bv;
-    }
-    else
-    {
-      if (current.getKind() == kind::BITVECTOR_NOT)
-      {
-        insert(subterms, current[0], true);
-      }
-      else
-      {
-        insert(subterms, current, false);
-      }
-    }
-  }
-
-  std::vector<Node> children;
-
-  if (constant == BitVector::mkOnes(size))
-  {
-    return utils::mkOnes(size); 
-  }
-
-  if (constant != BitVector(size, (unsigned)0))
-  {
-    children.push_back(utils::mkConst(constant));
-  }
-
-  std::unordered_map<TNode, Count, TNodeHashFunction>::const_iterator it =
-      subterms.begin();
-
-  for (; it != subterms.end(); ++it)
-  {
-    if (it->second.pos > 0 && it->second.neg > 0)
-    {
-      // if we have a or ~a
-      return utils::mkOnes(size);
-    }
-    else
-    {
-      // idempotence
-      if (it->second.neg > 0)
-      {
-        // if it only occured negated
-        children.push_back(nm->mkNode(kind::BITVECTOR_NOT, it->first));
-      }
-      else
-      {
-        // if it only occured positive
-        children.push_back(it->first);
-      }
-    }
-  }
-
-  if (children.size() == 0)
-  {
-    return utils::mkZero(size);
-  }
-  return utils::mkSortedNode(kind::BITVECTOR_OR, children);
+  Node n1 = rules::OrSimplifyRmDups(node).d_node;
+  Node n2 = rules::OrSimplifySimpConsts(n1).d_node;
+  Node n3 = rules::OrSimplifyOnes(n2).d_node;
+  Node n4 = rules::OrSimplifyRmZeros(n3).d_node;
+  return rules::OrSimplifyCancel(n4).d_node;
 }
 
 template<> inline
 bool RewriteRule<XorSimplify>::applies(TNode node) {
-  return (node.getKind() == kind::BITVECTOR_XOR);
+  return true;
 }
 
 template <>
 inline Node RewriteRule<XorSimplify>::apply(TNode node)
 {
-  Debug("bv-rewrite") << "RewriteRule<XorSimplify>(" << node << ")"
-                      << std::endl;
-
-  NodeManager *nm = NodeManager::currentNM();
-  std::unordered_map<TNode, Count, TNodeHashFunction> subterms;
-  unsigned size = utils::getSize(node);
-  BitVector constant;
-  bool const_set = false;
-
-  for (unsigned i = 0; i < node.getNumChildren(); ++i)
-  {
-    TNode current = node[i];
-    // simplify constants
-    if (current.getKind() == kind::CONST_BITVECTOR)
-    {
-      BitVector bv = current.getConst<BitVector>();
-      if (const_set)
-      {
-        constant = constant ^ bv;
-      }
-      else
-      {
-        const_set = true;
-        constant = bv;
-      }
-    }
-    else
-    {
-      // collect number of occurances of each term and its negation
-      if (current.getKind() == kind::BITVECTOR_NOT)
-      {
-        insert(subterms, current[0], true);
-      }
-      else
-      {
-        insert(subterms, current, false);
-      }
-    }
-  }
-
-  std::vector<Node> children;
-
-  std::unordered_map<TNode, Count, TNodeHashFunction>::const_iterator it =
-      subterms.begin();
-  unsigned true_count = 0;
-  bool seen_false = false;
-  for (; it != subterms.end(); ++it)
-  {
-    unsigned pos = it->second.pos;  // number of positive occurances
-    unsigned neg = it->second.neg;  // number of negated occurances
-
-    // remove duplicates using the following rules
-    // a xor a ==> false
-    // false xor false ==> false
-    seen_false = seen_false ? seen_false : (pos > 1 || neg > 1);
-    // check what did not reduce
-    if (pos % 2 && neg % 2)
-    {
-      // we have a xor ~a ==> true
-      ++true_count;
-    }
-    else if (pos % 2)
-    {
-      // we had a positive occurence left
-      children.push_back(it->first);
-    }
-    else if (neg % 2)
-    {
-      // we had a negative occurence left
-      children.push_back(nm->mkNode(kind::BITVECTOR_NOT, it->first));
-    }
-    // otherwise both reduced to false
-  }
-
-  std::vector<BitVector> xorConst;
-  BitVector true_bv = BitVector::mkOnes(size);
-  BitVector false_bv(size, (unsigned)0);
-
-  if (true_count)
-  {
-    // true xor ... xor true ==> true (odd)
-    //                       ==> false (even)
-    xorConst.push_back(true_count % 2 ? true_bv : false_bv);
-  }
-  if (seen_false)
-  {
-    xorConst.push_back(false_bv);
-  }
-  if (const_set)
-  {
-    xorConst.push_back(constant);
-  }
-
-  if (xorConst.size() > 0)
-  {
-    BitVector result = xorConst[0];
-    for (unsigned i = 1; i < xorConst.size(); ++i)
-    {
-      result = result ^ xorConst[i];
-    }
-    children.push_back(utils::mkConst(result));
-  }
-
-  Assert(children.size());
-
-  return utils::mkSortedNode(kind::BITVECTOR_XOR, children);
+  Node n1 = rules::XorSimplifyRmDups(node).d_node;
+  Node n2 = rules::XorSimplifySimpConsts(n1).d_node;
+  return rules::XorSimplifyCancel(n2).d_node;
 }
 
 /** 
