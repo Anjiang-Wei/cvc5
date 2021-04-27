@@ -83,6 +83,7 @@ class Op(Enum):
     LT = auto()
     GEQ = auto()
     LEFT_SHIFT = auto()
+    MOD = auto()
 
     ###########################################################################
     # Theory-independent
@@ -360,6 +361,8 @@ def infer_types(context, node):
     if isinstance(node, Var):
         # Variable sorts are declared in the context
         node.sort = context[node.name]
+        for child in node.sort.children:
+            infer_types(context, child)
         return
 
     if isinstance(node, Fn):
@@ -489,11 +492,14 @@ def infer_types(context, node):
                         node.children[1].sort.children[:])
         elif node.op in [Op.COND]:
             # TODO: check that types are the same across branches
-            sort = Sort(node.children[0].sort.base,
-                        node.children[0].sort.children[:])
+            if node.children[0].sort.base == BaseSort.BitVec:
+                sort = Sort(BaseSort.BitVec, [Var(fresh_name("bw"), Sort(BaseSort.Int32, [], True))])
+            else:
+                sort = Sort(node.children[0].sort.base,
+                            node.children[0].sort.children[:])
         elif node.op in [Op.BVCONST]:
             sort = Sort(BaseSort.BitVec, [node.children[1]])
-        elif node.op in [Op.PLUS, Op.MINUS, Op.MULT]:
+        elif node.op in [Op.PLUS, Op.MINUS, Op.MULT, Op.MOD]:
             assert node.children[0].sort.is_int()
             assert node.children[1].sort.is_int()
             sort = unify_int_sorts(node.children[0].sort, node.children[1].sort)

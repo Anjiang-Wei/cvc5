@@ -49,6 +49,7 @@ symbol_to_op = {
     'xor': Op.XOR,
     '+': Op.PLUS,
     '-': Op.MINUS,
+    'mod': Op.MOD,
     '*': Op.MULT,
     '<': Op.LT,
     '>=': Op.GEQ,

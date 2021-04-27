@@ -12,6 +12,8 @@ from parser import parse_rules
 
 from backend_lfsc import collect_params
 
+import smt_switch as ss
+
 op_to_kind = {
     Op.BVUGT: "BITVECTOR_UGT",
     Op.BVUGE: "BITVECTOR_UGE",
@@ -75,6 +77,7 @@ op_to_const_eval = {
     Op.PLUS: lambda args: "({} + {})".format(args[0], args[1]),
     Op.MINUS: lambda args: "({} - {})".format(args[0], args[1]),
     Op.MULT: lambda args: "({} * {})".format(args[0], args[1]),
+    Op.MOD: lambda args: "({} % {})".format(args[0], args[1]),
     Op.LEQ: lambda args: "({} <= {})".format(args[0], args[1]),
     Op.LT: lambda args: "({} < {})".format(args[0], args[1]),
     Op.GEQ: lambda args: "({} >= {})".format(args[0], args[1]),
@@ -670,8 +673,16 @@ def expr_to_code(expr):
         elif expr.op == Op.BV_VAL:
             return f"({args[0]}).getValue()"
         elif expr.op == Op.BVCONST:
-            val = f"Integer({args[0]})" if expr.children[0].sort.base == BaseSort.Int32 else args[0]
-            width = f"{args[1]}.getUnsignedInt()" if expr.children[1].sort.base == BaseSort.Int else args[1]
+            val = (
+                f"Integer({args[0]})"
+                if expr.children[0].sort.base == BaseSort.Int32
+                else args[0]
+            )
+            width = (
+                f"{args[1]}.getUnsignedInt()"
+                if expr.children[1].sort.base == BaseSort.Int
+                else args[1]
+            )
             return f"BitVector({width}, {val})"
         elif expr.op == Op.GET_CONST:
             sort = expr.children[0].sort
@@ -713,7 +724,10 @@ def expr_to_code(expr):
             if op_to_nindex[kind] != 0:
                 # Convert Integer to uint32_t for indices
                 for i, arg in enumerate(args[: op_to_nindex[kind] + 1]):
-                    if expr.children[i].sort and expr.children[i].sort.base == BaseSort.Int:
+                    if (
+                        expr.children[i].sort
+                        and expr.children[i].sort.base == BaseSort.Int
+                    ):
                         args[i] = f"{arg}.getUnsignedInt()"
 
                 op = "bv::utils::mkIndexedOp({})".format(
@@ -745,7 +759,10 @@ def expr_to_code(expr):
         elif expr.sort and expr.sort.const:
             if expr.sort.base == BaseSort.Int:
                 for i, arg in enumerate(args):
-                    if expr.children[i].sort and expr.children[i].sort.base == BaseSort.Int32:
+                    if (
+                        expr.children[i].sort
+                        and expr.children[i].sort.base == BaseSort.Int32
+                    ):
                         args[i] = f"Integer({arg})"
             return op_to_const_eval[expr.op](args)
         elif expr.op == Op.MAP:
@@ -1073,7 +1090,9 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                         last = last and (not has_non_remainder)
                         curr_block = match_instrs
 
-                        if expr.op in nary_ops and len(nlist_children) == len(expr.children):
+                        if expr.op in nary_ops and len(nlist_children) == len(
+                            expr.children
+                        ):
                             curr_block.append(
                                 Assert(
                                     Fn(
@@ -1177,14 +1196,16 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
                                     Assign(child, Fn(Op.SLICE, [node, next_idx, var_i]))
                                 )
 
-                                if Op.CONCAT and isinstance(child.sort.children[0].children[0], Var):
+                                if Op.CONCAT and isinstance(
+                                    child.sort.children[0].children[0], Var
+                                ):
                                     len_var = child.sort.children[0].children[0]
-                                    list_node = Fn(Op.MK_NODE, [KindConst(Op.CONCAT), child])
+                                    list_node = Fn(
+                                        Op.MK_NODE, [KindConst(Op.CONCAT), child]
+                                    )
                                     list_node.sort = Sort(BaseSort.BitVec, [len_var])
                                     list_len = Fn(Op.BV_SIZE, [list_node])
-                                    loop_body.append(
-                                        Assign(len_var, list_len)
-                                    )
+                                    loop_body.append(Assign(len_var, list_len))
 
                                 max_val = mk_node(
                                     Op.PLUS,
@@ -1228,14 +1249,19 @@ def rule_to_match_ir(cfg, out_block, node_var, out_var, lhs):
 
                                     # TODO: merge with other case
                                     remainder = expr.children[-1]
-                                    if Op.CONCAT and isinstance(remainder.sort.children[0].children[0], Var):
+                                    if Op.CONCAT and isinstance(
+                                        remainder.sort.children[0].children[0], Var
+                                    ):
                                         len_var = remainder.sort.children[0].children[0]
-                                        list_node = Fn(Op.MK_NODE, [KindConst(Op.CONCAT), remainder])
-                                        list_node.sort = Sort(BaseSort.BitVec, [len_var])
-                                        list_len = Fn(Op.BV_SIZE, [list_node])
-                                        curr_block.append(
-                                            Assign(len_var, list_len)
+                                        list_node = Fn(
+                                            Op.MK_NODE,
+                                            [KindConst(Op.CONCAT), remainder],
                                         )
+                                        list_node.sort = Sort(
+                                            BaseSort.BitVec, [len_var]
+                                        )
+                                        list_len = Fn(Op.BV_SIZE, [list_node])
+                                        curr_block.append(Assign(len_var, list_len))
                                 expr_to_ir(
                                     child,
                                     loop_var,
@@ -1660,6 +1686,283 @@ def rule_to_lfsc(rule):
     print(rule_pattern.format(rule_name, "\n".join(varargs), lhs, rhs, closing_parens))
 
 
+def term_from_node(solver, context, expr, extra_cond):
+    if expr in context:
+        return context[expr]
+
+    if isinstance(expr, Var):
+        if expr not in context:
+            if expr.sort and expr.sort.is_int():
+                intsort = solver.make_sort(ss.sortkinds.INT)
+                context[expr] = solver.make_symbol(expr.name, intsort)
+            else:
+                print(f"Unsupported sort for {expr}: {expr.sort}")
+                assert False
+        return context[expr]
+    elif isinstance(expr, Fn):
+        if expr.sort.base == BaseSort.Bool and expr.children[0].sort.base == BaseSort.BitVec:
+            boolsort = solver.make_sort(ss.sortkinds.BOOL)
+            return solver.make_symbol(fresh_name("bv_pred"), boolsort)
+        elif expr.op == Op.POW2:
+            bw = term_from_node(solver, context, expr.children[0].sort.children[0], extra_cond)
+            intsort = solver.make_sort(ss.sortkinds.INT)
+            zero = solver.make_term(0, intsort)
+            context[expr] = solver.make_symbol(fresh_name("pow2"), intsort)
+            extra_cond.add(solver.make_term(ss.primops.Ge, context[expr], zero))
+            extra_cond.add(solver.make_term(ss.primops.Le, context[expr], bw))
+            return context[expr]
+        elif expr.op == Op.NPOW2:
+            bw = term_from_node(solver, context, expr.children[0].sort.children[0], extra_cond)
+            intsort = solver.make_sort(ss.sortkinds.INT)
+            zero = solver.make_term(0, intsort)
+            context[expr] = solver.make_symbol(fresh_name("npow2"), intsort)
+            extra_cond.add(solver.make_term(ss.primops.Ge, context[expr], zero))
+            extra_cond.add(solver.make_term(ss.primops.Le, context[expr], bw))
+            return context[expr]
+        elif expr.op == Op.ZEROES:
+            bw = term_from_node(solver, context, expr.children[0].sort.children[0], extra_cond)
+            intsort = solver.make_sort(ss.sortkinds.INT)
+            zero = solver.make_term(0, intsort)
+            context[expr] = solver.make_symbol(fresh_name("zeroes"), intsort)
+            extra_cond.add(solver.make_term(ss.primops.Ge, context[expr], zero))
+            extra_cond.add(solver.make_term(ss.primops.Le, context[expr], bw))
+            return context[expr]
+
+        terms = []
+        for child in expr.children:
+            terms.append(term_from_node(solver, context, child, extra_cond))
+
+        if expr.op == Op.PLUS:
+            return solver.make_term(ss.primops.Plus, *terms)
+        elif expr.op == Op.MINUS:
+            return solver.make_term(ss.primops.Minus, *terms)
+        elif expr.op == Op.EQ:
+            return solver.make_term(ss.primops.Equal, *terms)
+        elif expr.op == Op.LT:
+            return solver.make_term(ss.primops.Lt, *terms)
+        elif expr.op == Op.LEQ:
+            return solver.make_term(ss.primops.Le, *terms)
+        elif expr.op == Op.GEQ:
+            return solver.make_term(ss.primops.Ge, *terms)
+        elif expr.op == Op.AND:
+            return solver.make_term(ss.primops.And, *terms)
+        elif expr.op == Op.OR:
+            return solver.make_term(ss.primops.Or, *terms)
+        elif expr.op == Op.NOT:
+            return solver.make_term(ss.primops.Not, *terms)
+        elif expr.op == Op.MULT:
+            return solver.make_term(ss.primops.Mult, *terms)
+        elif expr.op == Op.MOD:
+            return solver.make_term(ss.primops.Mod, *terms)
+
+        print(f"Op not supported {expr.op}")
+        assert False
+    elif isinstance(expr, IntConst):
+        intsort = solver.make_sort(ss.sortkinds.INT)
+        return solver.make_term(expr.val, intsort)
+    elif isinstance(expr, BoolConst):
+        return solver.make_term(expr.val)
+    else:
+        print(f"Expr not supported {expr}")
+        assert False
+
+
+def get_type_invariants(lhs, solver, context, path_cond, expr, invariants, extra_cond):
+    def add_invariant(inv):
+        invariants.add(solver.make_term(ss.primops.Implies, path_cond, inv))
+
+    if isinstance(expr, Fn):
+        if expr.op == Op.COND:
+            not_prev_case_conds = solver.make_term(True)
+
+            bw = None
+            if expr.sort.base == BaseSort.BitVec:
+                bw = term_from_node(solver, context, expr.sort.children[0], extra_cond)
+
+            for case in expr.children:
+                case_cond = term_from_node(solver, context, case.children[0], extra_cond)
+                get_type_invariants(
+                    lhs,
+                    solver,
+                    context,
+                    path_cond,
+                    case.children[0],
+                    invariants,
+                    extra_cond,
+                )
+
+                cond = solver.make_term(ss.primops.And, not_prev_case_conds, case_cond)
+                not_prev_case_conds = solver.make_term(
+                    ss.primops.And,
+                    not_prev_case_conds,
+                    solver.make_term(ss.primops.Not, case_cond),
+                )
+                new_path_cond = solver.make_term(ss.primops.And, path_cond, cond)
+                get_type_invariants(
+                    lhs,
+                    solver,
+                    context,
+                    new_path_cond,
+                    case.children[1],
+                    invariants,
+                    extra_cond,
+                )
+
+                if bw is not None and case.children[1].sort.base != BaseSort.Fail:
+                    case_bw = term_from_node(
+                        solver, context, case.children[1].sort.children[0], extra_cond
+                    )
+                    inv = solver.make_term(ss.primops.Equal, case_bw, bw)
+                    extra_cond.add(solver.make_term(ss.primops.Implies, new_path_cond, inv))
+
+                if isinstance(case.children[1], Fn) and case.children[1].op == Op.FAIL:
+                    # Assert that we don't take fail paths
+                    extra_cond.add(solver.make_term(ss.primops.Not, cond))
+        elif expr.op == Op.LET:
+            if expr.children[1].sort.is_int():
+                context[expr.children[0]] = term_from_node(
+                    solver, context, expr.children[1], extra_cond
+                )
+            get_type_invariants(
+                lhs, solver, context, path_cond, expr.children[2], invariants, extra_cond
+            )
+        elif expr.op == Op.MAP:
+            lambda_context = dict(context)
+            get_type_invariants(
+                lhs, solver, lambda_context, path_cond, expr.children[0].children[1], invariants, extra_cond
+            )
+        elif expr.op == Op.BVCONST:
+            intsort = solver.make_sort(ss.sortkinds.INT)
+            zero = solver.make_term(0, intsort)
+            val = term_from_node(solver, context, expr.children[0], extra_cond)
+            add_invariant(solver.make_term(ss.primops.Ge, val, zero))
+        else:
+            for child in expr.children:
+                get_type_invariants(
+                    lhs, solver, context, path_cond, child, invariants, extra_cond
+                )
+
+            if expr.op == Op.EXTRACT:
+                intsort = solver.make_sort(ss.sortkinds.INT)
+                zero = solver.make_term(0, intsort)
+                high = term_from_node(solver, context, expr.children[0], extra_cond)
+                low = term_from_node(solver, context, expr.children[1], extra_cond)
+                inner_bw = term_from_node(
+                    solver, context, expr.children[2].sort.children[0], extra_cond
+                )
+                add_invariant(solver.make_term(ss.primops.Ge, high, zero))
+                add_invariant(solver.make_term(ss.primops.Ge, low, zero))
+                add_invariant(solver.make_term(ss.primops.Ge, high, low))
+                add_invariant(solver.make_term(ss.primops.Gt, inner_bw, high))
+            elif expr.op in [
+                Op.ROTATE_LEFT,
+                Op.ROTATE_RIGHT,
+                Op.SIGN_EXTEND,
+                Op.ZERO_EXTEND,
+            ]:
+                intsort = solver.make_sort(ss.sortkinds.INT)
+                zero = solver.make_term(0, intsort)
+                amount = term_from_node(solver, context, expr.children[0], extra_cond)
+                add_invariant(solver.make_term(ss.primops.Ge, amount, zero))
+            elif expr.op in [Op.BVULT, Op.BVADD, Op.BVAND, Op.BVOR, Op.BVXOR, Op.BVMUL, Op.BVSUB, Op.BVSHL] or (expr.op == Op.EQ and expr.children[0].sort.base == BaseSort.BitVec):
+                bw = None
+                for child in expr.children:
+                    child_bw = None
+                    if child.sort.base == BaseSort.List:
+                        child_bw = term_from_node(solver, context, child.sort.children[0].children[0], extra_cond)
+                    else:
+                        child_bw = term_from_node(solver, context, child.sort.children[0], extra_cond)
+
+                    if bw is None:
+                        bw = child_bw
+                    else:
+                        add_invariant(solver.make_term(ss.primops.Equal, bw, child_bw))
+            elif expr.op == Op.CONCAT:
+                lists = []
+                for child in expr.children:
+                    if child.sort.base == BaseSort.List:
+                        # Bit-widths of lists in concats are >= 0
+                        intsort = solver.make_sort(ss.sortkinds.INT)
+                        zero = solver.make_term(0, intsort)
+                        bw = term_from_node(
+                            solver, context, child.sort.children[0].children[0], extra_cond
+                        )
+                        add_invariant(solver.make_term(ss.primops.Ge, bw, zero))
+                        lists.append(child)
+
+                if lhs and len(lists) >= len(expr.children) - 1:
+                    # If there is at most one non-list item, then at least one
+                    # of the list items must be non-empty
+                    disj = []
+                    for l in lists:
+                        intsort = solver.make_sort(ss.sortkinds.INT)
+                        zero = solver.make_term(0, intsort)
+                        bw = term_from_node(
+                            solver, context, l.sort.children[0].children[0], extra_cond
+                        )
+                        disj.append(solver.make_term(ss.primops.Gt, bw, zero))
+                    add_invariant(solver.make_term(ss.primops.Or, disj))
+
+    if expr.sort and expr.sort.base == BaseSort.BitVec:
+        # Bit-widths are positive
+        intsort = solver.make_sort(ss.sortkinds.INT)
+        zero = solver.make_term(0, intsort)
+        bw = term_from_node(solver, context, expr.sort.children[0], extra_cond)
+        add_invariant(solver.make_term(ss.primops.Gt, bw, zero))
+
+
+def verify_types(rule):
+    solver = ss.solvers["cvc4"](False)
+    solver.set_opt("produce-models", "true")
+    solver.set_logic("QF_NIA")
+
+    context = dict()
+
+    preconds = set()
+    path_cond = solver.make_term(True)
+    get_type_invariants(True, solver, context, path_cond, rule.lhs, preconds, preconds)
+
+    postconds = set()
+    get_type_invariants(False, solver, context, path_cond, rule.rhs, postconds, preconds)
+
+    if rule.lhs.sort.base == BaseSort.BitVec and rule.rhs.sort.base == BaseSort.BitVec:
+        lhs_bw = term_from_node(solver, context, rule.lhs.sort.children[0], preconds)
+        rhs_bw = term_from_node(solver, context, rule.rhs.sort.children[0], preconds)
+        postconds.add(solver.make_term(ss.primops.Equal, lhs_bw, rhs_bw))
+        print(solver.make_term(ss.primops.Equal, lhs_bw, rhs_bw))
+
+    for precond in preconds:
+        print(f"PRECOND {precond}")
+        solver.assert_formula(precond)
+    for postcond in postconds:
+        print(f"POSTCOND {postcond}")
+
+    if not postconds:
+        print(f"WARNING: no type checks for {rule.name}")
+        return
+
+    # cond = solver.make_term(
+    #     ss.primops.Or,
+    #     [solver.make_term(ss.primops.Not, postcond) for postcond in postconds],
+    # )
+    for postcond in postconds:
+        solver.push()
+        solver.assert_formula(solver.make_term(ss.primops.Not, postcond))
+        r = solver.check_sat()
+        if not r.is_unsat():
+            print(f"{rule.name}: Type check failed. Condition: {postcond}")
+            for v, t in context.items():
+                print(f"{v.name} => {solver.get_value(t)}")
+            assert False
+        solver.pop()
+
+    print(f"{rule.name}: Type check successful")
+
+
+def verify_rule(rule):
+    verify_types(rule)
+
+
 def type_check(rules):
     for rule in rules:
         print(f"Type checking {rule.name}")
@@ -1687,6 +1990,14 @@ def dump_ir(args):
     print(gen_rules_implementation(rules))
 
 
+def verify(args):
+    rules = parse_rules(args.infile.read())
+    # rules = [rule for rule in rules if rule.name == args.rewrite]
+    type_check(rules)
+    for rule in rules:
+        verify_rule(rule)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Compile rewrite rules.")
     subparsers = parser.add_subparsers()
@@ -1707,6 +2018,11 @@ def main():
     parser_dump_ir.add_argument("infile", type=argparse.FileType("r"), help="Rule file")
     parser_dump_ir.add_argument("rewrite", help="Name of the rewrite to dump")
     parser_dump_ir.set_defaults(func=dump_ir)
+
+    parser_dump_ir = subparsers.add_parser("verify")
+    parser_dump_ir.add_argument("infile", type=argparse.FileType("r"), help="Rule file")
+    parser_dump_ir.add_argument("rewrite", help="Name of the rewrite to dump")
+    parser_dump_ir.set_defaults(func=verify)
 
     args = parser.parse_args()
     args.func(args)
