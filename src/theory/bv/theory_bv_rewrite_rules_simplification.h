@@ -1095,8 +1095,7 @@ inline bool RewriteRule<UdivPow2>::applies(TNode node)
 template <>
 inline Node RewriteRule<UdivPow2>::apply(TNode node)
 {
-  Node n1 = rules::UdivPowX(node).d_node;
-  return rules::UdivPowXNeg(n1).d_node;
+  return rules::UdivPowX(node).d_node;
   /*
   Debug("bv-rewrite") << "RewriteRule<UdivPow2>(" << node << ")" << std::endl;
   NodeManager *nm = NodeManager::currentNM();

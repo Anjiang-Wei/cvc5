@@ -519,15 +519,17 @@
       ((= 1 (pow2 c)) x)
       ((< 0 (pow2 c)) (concat (_ bv 0 (- (pow2 c) 1)) ((_ extract (- n 1) (- (pow2 c) 1)) x)))))
 
+/*
 (define-rule UdivPowXNeg ((n Int :const) (c (_ BitVec n) :const) (x (_ BitVec n)) (xs (_ BitVec n) :list))
     (bvudiv x c)
     (cond 
       ((and (< 1 n) (= 1 (npow2 c))) (bvneg x))
-      ((= 1 (npow2 c)) (bvneg x))
+      ((= 1 (npow2 c)) x)
       ((and (< 1 n) (< 0 (npow2 c)))
         (bvneg (concat (_ bv 0 (- (npow2 c) 1)) ((_ extract (- n 1) (- (npow2 c) 1)) x))))
       ((< 0 (npow2 c))
         (concat (_ bv 0 (- (npow2 c) 1)) ((_ extract (- n 1) (- (npow2 c) 1)) x)))))
+*/
 
 (define-rule UdivZero ((n Int :const) (x (_ BitVec n)))
     (bvudiv x (_ bv 0 n))
