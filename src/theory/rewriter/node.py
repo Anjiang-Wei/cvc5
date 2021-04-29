@@ -196,7 +196,8 @@ class BoolConst(Node):
         self.val = val
 
     def __eq__(self, other):
-        return self.val == other.val
+        assert isinstance(other, Node)
+        return isinstance(other, BoolConst) and self.val == other.val
 
     def __hash__(self):
         return hash(self.val)
@@ -313,12 +314,14 @@ def subst(node, substs):
     # TODO: non-destructive substitution?
     if node in substs:
         return substs[node]
-    else:
+    elif isinstance(node, Fn):
         new_children = []
         for child in node.children:
             new_children.append(subst(child, substs))
-        node.children = new_children
-        return node
+        new_node = Fn(node.op, new_children)
+        new_node.sort = node.sort
+        return new_node
+    return node
 
 
 def unify_types(t1, t2):

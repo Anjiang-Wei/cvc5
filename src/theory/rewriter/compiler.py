@@ -109,6 +109,7 @@ op_to_lfsc = {
 }
 
 op_to_nindex = {
+    Op.MINUS: 0,
     Op.BVUGT: 0,
     Op.BVUGE: 0,
     Op.BVSGT: 0,
@@ -150,6 +151,7 @@ op_to_nindex = {
     Op.REPEAT: 1,
     Op.NOT: 0,
     Op.AND: 0,
+    Op.OR: 0,
     Op.XOR: 0,
     Op.EQ: 0,
     Op.ITE: 0,
@@ -1835,7 +1837,16 @@ def get_type_invariants(lhs, solver, context, path_cond, expr, invariants, extra
             intsort = solver.make_sort(ss.sortkinds.INT)
             zero = solver.make_term(0, intsort)
             val = term_from_node(solver, context, expr.children[0], extra_cond)
+            bw = term_from_node(solver, context, expr.children[1], extra_cond)
             add_invariant(solver.make_term(ss.primops.Ge, val, zero))
+            add_invariant(solver.make_term(ss.primops.Le, val,
+                solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, bw, solver.make_term(1, intsort)), solver.make_term(1, intsort), 
+                solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, bw, solver.make_term(2, intsort)), solver.make_term(3, intsort),
+                solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, bw, solver.make_term(3, intsort)), solver.make_term(7, intsort),
+                solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, bw, solver.make_term(4, intsort)), solver.make_term(15, intsort),
+                solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, bw, solver.make_term(5, intsort)), solver.make_term(31, intsort),
+                solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, bw, solver.make_term(6, intsort)), solver.make_term(63, intsort), bw))))))))
+                # solver.make_term(ss.primops.Mult, bw, bw)))))))))
         else:
             for child in expr.children:
                 get_type_invariants(
@@ -1941,10 +1952,6 @@ def verify_types(rule):
         print(f"WARNING: no type checks for {rule.name}")
         return
 
-    # cond = solver.make_term(
-    #     ss.primops.Or,
-    #     [solver.make_term(ss.primops.Not, postcond) for postcond in postconds],
-    # )
     for postcond in postconds:
         solver.push()
         solver.assert_formula(solver.make_term(ss.primops.Not, postcond))
@@ -1952,15 +1959,398 @@ def verify_types(rule):
         if not r.is_unsat():
             print(f"{rule.name}: Type check failed. Condition: {postcond}")
             for v, t in context.items():
-                print(f"{v.name} => {solver.get_value(t)}")
+                print(f"{v} => {solver.get_value(t)}")
             assert False
         solver.pop()
 
     print(f"{rule.name}: Type check successful")
 
+def get_bitwidth_configs(rule, path, n):
+    bitwidth_configs = []
+
+    solver = ss.solvers["cvc4"](False)
+    solver.set_opt("produce-models", "true")
+    solver.set_logic("QF_NIA")
+
+    context = dict()
+
+    preconds = set()
+    path_cond = solver.make_term(True)
+    get_type_invariants(True, solver, context, path_cond, rule.lhs, preconds, preconds)
+
+    for cond, nconds in path:
+        solver.assert_formula(term_from_node(solver, context, cond, preconds))
+        for ncond in nconds:
+            solver.assert_formula(solver.make_term(ss.primops.Not, term_from_node(solver, context, ncond, preconds)))
+
+    for precond in preconds:
+        solver.assert_formula(precond)
+
+    for i in range(n):
+        solver.push()
+        r = solver.check_sat()
+        bitwidth_map = dict()
+        if r.is_sat():
+            for v, t in context.items():
+                val = solver.get_value(t)
+                bitwidth_map[v] = int(str(val))
+
+            bitwidth_configs.append(bitwidth_map)
+        else:
+            return bitwidth_configs
+        solver.pop()
+        intsort = solver.make_sort(ss.sortkinds.INT)
+        block_list = [solver.make_term(ss.primops.Equal, t, solver.make_term(bitwidth_map[v], intsort)) for v, t in context.items()]
+
+        if len(block_list) == 1:
+            solver.assert_formula(solver.make_term(ss.primops.Not, block_list[0]))
+        elif len(block_list) > 1:
+            solver.assert_formula(solver.make_term(ss.primops.Not, solver.make_term(ss.primops.And, block_list)))
+
+    return bitwidth_configs
+
+def instantiate_bitwidths(solver, context, bitwidths, expr, path):
+    def get_val(val_expr):
+        if val_expr in bitwidths:
+            return bitwidths[val_expr]
+        elif isinstance(val_expr, Var):
+            return None
+        elif isinstance(val_expr, IntConst):
+            return val_expr.val
+        elif isinstance(val_expr, Fn):
+            if val_expr.op == Op.PLUS:
+                return get_val(val_expr.children[0]) + get_val(val_expr.children[1])
+            elif val_expr.op == Op.MINUS:
+                return get_val(val_expr.children[0]) - get_val(val_expr.children[1])
+            elif val_expr.op == Op.MULT:
+                return get_val(val_expr.children[0]) * get_val(val_expr.children[1])
+            elif val_expr.op == Op.MOD:
+                return get_val(val_expr.children[0]) % get_val(val_expr.children[1])
+            elif val_expr.op == Op.LT:
+                return get_val(val_expr.children[0]) < get_val(val_expr.children[1])
+            elif val_expr.op == Op.GEQ:
+                return get_val(val_expr.children[0]) >= get_val(val_expr.children[1])
+            elif val_expr.op == Op.EQ:
+                return get_val(val_expr.children[0]) == get_val(val_expr.children[1])
+
+        print(f"Can't get value from {val_expr}")
+        assert False
+
+    if expr in context:
+        return context[expr]
+
+    # TODO: refactor into get_theory class
+    if expr.sort and expr.sort.base == BaseSort.Bool and isinstance(expr, Fn) and expr.children[0].sort.is_int():
+        # Evaluate integer terms
+        val = get_val(expr)
+        return solver.make_term(val)
+
+    bw = None
+    if expr.sort:
+        bw_expr = None
+        if expr.sort.base == BaseSort.BitVec:
+            bw_expr = expr.sort.children[0]
+        elif expr.sort.base == BaseSort.List and expr.sort.children[0].base == BaseSort.BitVec:
+            bw_expr = expr.sort.children[0].children[0]
+
+        if bw_expr is not None:
+            bw = get_val(bw_expr)
+
+    if isinstance(expr, Var):
+        if expr.sort.base == BaseSort.BitVec:
+            bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+            if expr in bitwidths:
+                return bitwidths[expr]
+            context[expr] = solver.make_symbol(fresh_name(expr.name), bvsort)
+            return context[expr]
+        elif expr.sort.base == BaseSort.List:
+            if bw == 0:
+                # This can happen for arguments to concat
+                return None
+
+            bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+            context[expr] = solver.make_symbol(fresh_name(expr.name), bvsort)
+            return context[expr]
+    elif isinstance(expr, Fn):
+        if expr.op == Op.BVCONST:
+            bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+            val_expr = expr.children[0]
+
+            val = get_val(val_expr)
+            return solver.make_term(val, bvsort)
+        elif expr.op == Op.COND:
+            res = None
+            path_conds = [cond for cond, _ in path]
+            for case in expr.children:
+                if case.children[0] not in path_conds:
+                    continue
+
+                res = instantiate_bitwidths(solver, context, bitwidths, case.children[1], path)
+                break
+
+            assert res is not None
+            return res
+        elif expr.op == Op.LET:
+            var = expr.children[0]
+            val = None
+            if var in bitwidths:
+                val = bitwidths[var]
+            else:
+                val = instantiate_bitwidths(solver, context, bitwidths, expr.children[1], path)
+
+            local_context = dict(context)
+            local_context[var] = val
+            return instantiate_bitwidths(solver, local_context, bitwidths, expr.children[2], path)
+        elif expr.op == Op.MAP:
+            list_term = instantiate_bitwidths(solver, context, bitwidths, expr.children[1], path)
+            substs = { expr.children[0].children[0]: expr.children[1] }
+            new_body = subst(expr.children[0].children[1], substs)
+            return instantiate_bitwidths(solver, context, bitwidths, new_body, path)
+
+        terms = []
+        for child in expr.children[op_to_nindex[expr.op]:]:
+            term = instantiate_bitwidths(solver, context, bitwidths, child, path)
+            if term is not None:
+                terms.append(term)
+
+        if expr.op == Op.BVNEG:
+            return solver.make_term(ss.primops.BVNeg, *terms)
+        elif expr.op == Op.BVADD:
+            if len(terms) == 1:
+                return terms[0] 
+            else:
+                return solver.make_term(ss.primops.BVAdd, *terms)
+        elif expr.op == Op.BVSUB:
+            return solver.make_term(ss.primops.BVSub, *terms)
+        elif expr.op == Op.BVMUL:
+            if len(terms) == 1:
+                return terms[0] 
+            else:
+                return solver.make_term(ss.primops.BVMul, *terms)
+        elif expr.op == Op.BVUDIV:
+            return solver.make_term(ss.primops.BVUdiv, *terms)
+        elif expr.op == Op.BVUREM:
+            return solver.make_term(ss.primops.BVUrem, *terms)
+        elif expr.op == Op.BVSDIV:
+            return solver.make_term(ss.primops.BVSdiv, *terms)
+        elif expr.op == Op.BVSREM:
+            return solver.make_term(ss.primops.BVSrem, *terms)
+        elif expr.op == Op.BVSMOD:
+            return solver.make_term(ss.primops.BVSmod, *terms)
+        elif expr.op == Op.BVAND:
+            if len(terms) == 1:
+                return terms[0] 
+            else:
+                return solver.make_term(ss.primops.BVAnd, *terms)
+        elif expr.op == Op.BVOR:
+            if len(terms) == 1:
+                return terms[0] 
+            else:
+                return solver.make_term(ss.primops.BVOr, *terms)
+        elif expr.op == Op.BVXOR:
+            if len(terms) == 1:
+                return terms[0] 
+            else:
+                return solver.make_term(ss.primops.BVXor, *terms)
+        elif expr.op == Op.BVULE:
+            return solver.make_term(ss.primops.BVUle, *terms)
+        elif expr.op == Op.BVULT:
+            return solver.make_term(ss.primops.BVUlt, *terms)
+        elif expr.op == Op.BVUGE:
+            return solver.make_term(ss.primops.BVUge, *terms)
+        elif expr.op == Op.BVUGT:
+            return solver.make_term(ss.primops.BVUgt, *terms)
+        elif expr.op == Op.BVSLE:
+            return solver.make_term(ss.primops.BVSle, *terms)
+        elif expr.op == Op.BVSGE:
+            return solver.make_term(ss.primops.BVSge, *terms)
+        elif expr.op == Op.BVSLT:
+            return solver.make_term(ss.primops.BVSlt, *terms)
+        elif expr.op == Op.BVSGT:
+            return solver.make_term(ss.primops.BVSgt, *terms)
+        elif expr.op == Op.BVSHL:
+            return solver.make_term(ss.primops.BVShl, *terms)
+        elif expr.op == Op.BVLSHR:
+            return solver.make_term(ss.primops.BVLshr, *terms)
+        elif expr.op == Op.BVASHR:
+            return solver.make_term(ss.primops.BVAshr, *terms)
+        elif expr.op == Op.BVNOT:
+            return solver.make_term(ss.primops.BVNot, *terms)
+        elif expr.op == Op.BVNAND:
+            return solver.make_term(ss.primops.BVNand, *terms)
+        elif expr.op == Op.BVNOR:
+            return solver.make_term(ss.primops.BVNor, *terms)
+        elif expr.op == Op.BVXNOR:
+            return solver.make_term(ss.primops.BVXnor, *terms)
+        elif expr.op == Op.BVREDAND:
+            zero = solver.make_term(0, terms[0].get_sort())
+            return solver.make_term(ss.primops.BVComp, terms[0], solver.make_term(ss.primops.BVNot, zero))
+        elif expr.op == Op.BVREDOR:
+            zero = solver.make_term(0, terms[0].get_sort())
+            return solver.make_term(ss.primops.BVNot, solver.make_term(ss.primops.BVComp, terms[0], zero))
+        elif expr.op == Op.BVCOMP:
+            return solver.make_term(ss.primops.BVComp, *terms)
+        elif expr.op == Op.BVITE:
+            bvsort = solver.make_sort(ss.sortkinds.BV, 1)
+            return solver.make_term(ss.primops.Ite, solver.make_term(ss.primops.Equal, terms[0], solver.make_term(1, bvsort)), terms[1], terms[2])
+        elif expr.op == Op.SIGN_EXTEND:
+            op = ss.Op(ss.primops.Sign_Extend, get_val(expr.children[0]))
+            return solver.make_term(op, terms[0])
+        elif expr.op == Op.ZERO_EXTEND:
+            op = ss.Op(ss.primops.Zero_Extend, get_val(expr.children[0]))
+            return solver.make_term(op, terms[0])
+        elif expr.op == Op.ROTATE_LEFT:
+            op = ss.Op(ss.primops.Rotate_Left, get_val(expr.children[0]))
+            return solver.make_term(op, terms[0])
+        elif expr.op == Op.ROTATE_RIGHT:
+            op = ss.Op(ss.primops.Rotate_Right, get_val(expr.children[0]))
+            return solver.make_term(op, terms[0])
+        elif expr.op == Op.REPEAT:
+            op = ss.Op(ss.primops.Repeat, get_val(expr.children[0]))
+            return solver.make_term(op, terms[0])
+        elif expr.op == Op.EXTRACT:
+            op = ss.Op(ss.primops.Extract, get_val(expr.children[0]), get_val(expr.children[1]))
+            return solver.make_term(op, terms[0])
+        elif expr.op == Op.CONCAT:
+            if len(terms) == 1:
+                return terms[0] 
+            else:
+                return solver.make_term(ss.primops.Concat, *terms)
+        elif expr.op == Op.NOT:
+            return solver.make_term(ss.primops.Not, *terms)
+        elif expr.op == Op.AND:
+            return solver.make_term(ss.primops.And, *terms)
+        elif expr.op == Op.OR:
+            return solver.make_term(ss.primops.Or, *terms)
+        elif expr.op == Op.XOR:
+            return solver.make_term(ss.primops.Xor, *terms)
+        elif expr.op == Op.EQ:
+            return solver.make_term(ss.primops.Equal, *terms)
+        elif expr.op == Op.ITE:
+            return solver.make_term(ss.primops.Ite, *terms)
+
+        print(f"Unsupported op {expr.op}")
+        assert False
+
+    elif isinstance(expr, BoolConst):
+        return solver.make_term(expr.val)
+
+def get_paths(expr):
+    paths = []
+    if isinstance(expr, Fn) and expr.op == Op.COND:
+        conds = []
+        for case in expr.children:
+            if isinstance(case.children[1], Fn) and case.children[1].op == Op.FAIL:
+                continue
+            child_paths = get_paths(case.children[1])
+            for path in child_paths:
+                paths.append([(case.children[0], conds[:])] + path)
+            conds.append(case.children[0])
+    else:
+        for child in expr.children:
+            paths.extend([path for path in get_paths(child) if path])
+    if not paths:
+        paths.append([])
+    return paths
+
+def verify_equivalence(rule):
+    solver = ss.solvers["cvc4"](False)
+    # solver = ss.solvers["cvc4"](False)
+    solver.set_opt("produce-models", "true")
+    solver.set_opt("incremental", "true")
+    solver.set_logic("QF_BV")
+
+    paths = get_paths(rule.rhs)
+    print(f"Paths: {paths}")
+
+    for path in paths:
+        print(f"Verifying path: {path}")
+        bitwidth_configs = get_bitwidth_configs(rule, path, 16)
+
+        for bitwidths in bitwidth_configs:
+            vals = dict()
+            for v, val in bitwidths.items():
+                # TODO: refactor
+                if isinstance(v, Fn) and v.op == Op.POW2:
+                    bw = bitwidths[v.children[0].sort.children[0]]
+                    val = bitwidths[v]
+                    if val > 0:
+                        bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+                        vals[v.children[0]] = solver.make_term(2 ** (val - 1), bvsort)
+                elif isinstance(v, Fn) and v.op == Op.NPOW2:
+                    bw = bitwidths[v.children[0].sort.children[0]]
+                    val = bitwidths[v]
+                    if val > 0:
+                        bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+                        vals[v.children[0]] = solver.make_term(ss.primops.BVNeg, solver.make_term(2 ** (val - 1), bvsort))
+                elif isinstance(v, Fn) and v.op == Op.ZEROES:
+                    bw = bitwidths[v.children[0].sort.children[0]]
+                    val = bitwidths[v]
+                    if val == bw:
+                        bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+                        vals[v.children[0]] = solver.make_term(0, bvsort)
+                    elif val > 0:
+                        bvsort_pfx = solver.make_sort(ss.sortkinds.BV, val)
+                        bvsort_sfx = solver.make_sort(ss.sortkinds.BV, bw - val)
+                        vals[v.children[0]] = solver.make_term(ss.primops.Concat, solver.make_term(0, bvsort_pfx), solver.make_symbol(fresh_name("bv"), bvsort_sfx))
+                    else:
+                        bvsort = solver.make_sort(ss.sortkinds.BV, bw)
+                        vals[v.children[0]] = solver.make_symbol(fresh_name("bv"), bvsort)
+            bitwidths.update(vals)
+
+            context = dict()
+            lhs = instantiate_bitwidths(solver, context, bitwidths, rule.lhs, path)
+            print("lhs", lhs)
+            rhs = instantiate_bitwidths(solver, context, bitwidths, rule.rhs, path)
+            print("rhs", rhs)
+
+            solver.push()
+
+            # Assert path conditions
+            for cond, nconds in path:
+                solver.assert_formula(instantiate_bitwidths(solver, context, bitwidths, cond, path))
+                for ncond in nconds:
+                    solver.assert_formula(solver.make_term(ss.primops.Not, instantiate_bitwidths(solver, context, bitwidths, ncond, path)))
+
+            solver.assert_formula(solver.make_term(ss.primops.Not, solver.make_term(ss.primops.Equal, lhs, rhs)))
+            r = solver.check_sat()
+            if not r.is_unsat():
+                print(f"{rule.name}: Verification failed ({bitwidths})")
+                for v, t in context.items():
+                    print(f"{v.name} => {solver.get_value(t)}")
+                print(f"lhs => {solver.get_value(lhs)}")
+                print(f"rhs => {solver.get_value(rhs)}")
+                assert False
+            else:
+                print(f"{rule.name}: Verification successful ({bitwidths})")
+            solver.pop()
+
+
+def remove_lets(context, expr):
+    if expr in context:
+        return context[expr]
+
+    if isinstance(expr, Fn):
+        if expr.op == Op.LET:
+            local_context = dict(context)
+            local_context[expr.children[0]] = remove_lets(context, expr.children[1])
+            return remove_lets(local_context, expr.children[2])
+
+        new_children = []
+        for child in expr.children:
+            new_children.append(remove_lets(context, child))
+        n = Fn(expr.op, new_children)
+        n.sort = expr.sort
+        return n
+    
+    return expr
+
 
 def verify_rule(rule):
+    rule.rhs = remove_lets({}, rule.rhs)
+    print(rule.rhs)
     verify_types(rule)
+    verify_equivalence(rule)
 
 
 def type_check(rules):
@@ -1992,7 +2382,7 @@ def dump_ir(args):
 
 def verify(args):
     rules = parse_rules(args.infile.read())
-    # rules = [rule for rule in rules if rule.name == args.rewrite]
+    rules = [rule for rule in rules if rule.name == args.rewrite]
     type_check(rules)
     for rule in rules:
         verify_rule(rule)
