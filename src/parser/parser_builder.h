@@ -44,6 +44,18 @@ class Parser;
  */
 class CVC5_EXPORT ParserBuilder
 {
+<<<<<<< HEAD
+=======
+  enum InputType {
+    FILE_INPUT,
+    STREAM_INPUT,
+    STRING_INPUT
+  };
+
+  /** The input type. */
+  InputType d_inputType;
+
+>>>>>>> 81404ddfc (Always parse streams with line buffer)
   /** The input language */
   InputLanguage d_lang;
 
