@@ -69,33 +69,6 @@ Parser::~Parser() {
   d_commandQueue.clear();
 }
 
-std::unique_ptr<InputParser> Parser::parseFile(const std::string& fname,
-                                               bool useMmap)
-{
-  d_input = Input::newFileInput(d_lang, fname, useMmap);
-  d_input->setParser(*this);
-  d_done = false;
-  return std::unique_ptr<InputParser>(new InputParser(this, d_input));
-}
-
-std::unique_ptr<InputParser> Parser::parseStream(const std::string& name,
-                                                 std::istream& stream)
-{
-  d_input = Input::newStreamInput(d_lang, stream, name);
-  d_input->setParser(*this);
-  d_done = false;
-  return std::unique_ptr<InputParser>(new InputParser(this, d_input));
-}
-
-std::unique_ptr<InputParser> Parser::parseString(const std::string& name,
-                                                 const std::string& str)
-{
-  d_input = Input::newStringInput(d_lang, str, name);
-  d_input->setParser(*this);
-  d_done = false;
-  return std::unique_ptr<InputParser>(new InputParser(this, d_input));
-}
-
 api::Solver* Parser::getSolver() const { return d_solver; }
 
 api::Term Parser::getSymbol(const std::string& name, SymbolType type)

@@ -252,10 +252,17 @@ class CVC5_EXPORT Parser
   api::Solver* getSolver() const;
 
   /** Get the associated input. */
-  Input* getInput() const { return d_input; }
+  Input* getInput() const { return d_input.get(); }
 
   /** Get unresolved sorts */
   inline std::set<api::Sort>& getUnresolvedSorts() { return d_unresolved; }
+
+  /** Deletes and replaces the current parser input. */
+  void setInput(Input* input)  {
+    d_input.reset(input);
+    d_input->setParser(*this);
+    d_done = false;
+  }
 
   /**
    * Check if we are done -- either the end of input has been reached, or some
