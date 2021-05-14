@@ -482,24 +482,14 @@ Node StringsPreprocess::reduce(Node t,
 
     // contains( x, y )
     Node cond2 = nm->mkNode(kind::STRING_STRCTN, x, y);
-    // x = str.++( rp1, y, rp2 )
-    Node c21 = x.eqNode(nm->mkNode(kind::STRING_CONCAT, rp1, y, rp2));
+
+    Node idx = nm->mkNode(kind::STRING_STRIDOF, x, y, zero);
+    Node pfx = nm->mkNode(kind::STRING_SUBSTR, x, zero, idx);
+    Node end = nm->mkNode(kind::PLUS, idx, nm->mkNode(kind::STRING_LENGTH, y));
+    Node sfxLen = nm->mkNode(kind::MINUS, nm->mkNode(kind::STRING_LENGTH, x), end);
+    Node sfx = nm->mkNode(kind::STRING_SUBSTR, x, end, sfxLen);
     // rpw = str.++( rp1, z, rp2 )
-    Node c22 = rpw.eqNode(nm->mkNode(kind::STRING_CONCAT, rp1, z, rp2));
-    // ~contains( str.++( rp1, substr( y, 0, len(y)-1 ) ), y )
-    Node c23 =
-        nm->mkNode(kind::STRING_STRCTN,
-                   nm->mkNode(
-                       kind::STRING_CONCAT,
-                       rp1,
-                       nm->mkNode(kind::STRING_SUBSTR,
-                                  y,
-                                  zero,
-                                  nm->mkNode(kind::MINUS,
-                                             nm->mkNode(kind::STRING_LENGTH, y),
-                                             one))),
-                   y)
-            .negate();
+    Node eq = rpw.eqNode(nm->mkNode(kind::STRING_CONCAT, pfx, z, sfx));
 
     // assert:
     //   IF    y=""
@@ -515,7 +505,7 @@ Node StringsPreprocess::reduce(Node t,
                          c1,
                          nm->mkNode(kind::ITE,
                                     cond2,
-                                    nm->mkNode(kind::AND, c21, c22, c23),
+                                    eq,
                                     rpw.eqNode(x)));
     asserts.push_back(rr);
 
