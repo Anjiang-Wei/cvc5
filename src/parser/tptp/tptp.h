@@ -24,7 +24,7 @@
 
 #include "api/cpp/cvc5.h"
 #include "parser/parse_op.h"
-#include "parser/parser.h"
+#include "parser/parser_state.h"
 #include "util/hash.h"
 
 namespace cvc5 {
@@ -37,9 +37,10 @@ class Solver;
 
 namespace parser {
 
-class Tptp : public Parser {
+class Tptp : public ParserState {
  private:
-  friend class ParserBuilder;
+  friend class Parser;
+
  public:
   bool cnf() const { return d_cnf; }
   void setCnf(bool cnf) { d_cnf = cnf; }

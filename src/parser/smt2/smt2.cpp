@@ -34,7 +34,7 @@ Smt2::Smt2(api::Solver* solver,
            InputLanguage lang,
            bool strictMode,
            bool parseOnly)
-    : Parser(solver, sm, lang, strictMode, parseOnly),
+    : ParserState(solver, sm, lang, strictMode, parseOnly),
       d_logicSet(false),
       d_seenSetLogic(false)
 {
@@ -46,7 +46,7 @@ void Smt2::addArithmeticOperators() {
   addOperator(api::PLUS, "+");
   addOperator(api::MINUS, "-");
   // api::MINUS is converted to api::UMINUS if there is only a single operand
-  Parser::addOperator(api::UMINUS);
+  ParserState::addOperator(api::UMINUS);
   addOperator(api::MULT, "*");
   addOperator(api::LT, "<");
   addOperator(api::LEQ, "<=");
@@ -129,13 +129,13 @@ void Smt2::addBitvectorOperators() {
 
 void Smt2::addDatatypesOperators()
 {
-  Parser::addOperator(api::APPLY_CONSTRUCTOR);
-  Parser::addOperator(api::APPLY_TESTER);
-  Parser::addOperator(api::APPLY_SELECTOR);
+  ParserState::addOperator(api::APPLY_CONSTRUCTOR);
+  ParserState::addOperator(api::APPLY_TESTER);
+  ParserState::addOperator(api::APPLY_SELECTOR);
 
   if (!strictModeEnabled())
   {
-    Parser::addOperator(api::APPLY_UPDATER);
+    ParserState::addOperator(api::APPLY_UPDATER);
     addOperator(api::DT_SIZE, "dt.size");
   }
 }
@@ -262,10 +262,10 @@ void Smt2::addSepOperators() {
   addOperator(api::SEP_PTO, "pto");
   addOperator(api::SEP_WAND, "wand");
   addOperator(api::SEP_EMP, "emp");
-  Parser::addOperator(api::SEP_STAR);
-  Parser::addOperator(api::SEP_PTO);
-  Parser::addOperator(api::SEP_WAND);
-  Parser::addOperator(api::SEP_EMP);
+  ParserState::addOperator(api::SEP_STAR);
+  ParserState::addOperator(api::SEP_PTO);
+  ParserState::addOperator(api::SEP_WAND);
+  ParserState::addOperator(api::SEP_EMP);
 }
 
 void Smt2::addCoreSymbols()
@@ -287,7 +287,7 @@ void Smt2::addOperator(api::Kind kind, const std::string& name)
 {
   Debug("parser") << "Smt2::addOperator( " << kind << ", " << name << " )"
                   << std::endl;
-  Parser::addOperator(kind);
+  ParserState::addOperator(kind);
   operatorKindMap[name] = kind;
 }
 
@@ -295,7 +295,7 @@ void Smt2::addIndexedOperator(api::Kind tKind,
                               api::Kind opKind,
                               const std::string& name)
 {
-  Parser::addOperator(tKind);
+  ParserState::addOperator(tKind);
   d_indexedOpKindMap[name] = opKind;
 }
 
@@ -330,7 +330,7 @@ api::Term Smt2::getExpressionForNameAndType(const std::string& name,
   {
     return mkAbstractValue(name);
   }
-  return Parser::getExpressionForNameAndType(name, t);
+  return ParserState::getExpressionForNameAndType(name, t);
 }
 
 bool Smt2::getTesterName(api::Term cons, std::string& name)
@@ -518,7 +518,7 @@ Command* Smt2::setLogic(std::string name, bool fromCommand)
   addCoreSymbols();
 
   if(d_logic.isTheoryEnabled(theory::THEORY_UF)) {
-    Parser::addOperator(api::APPLY_UF);
+    ParserState::addOperator(api::APPLY_UF);
 
     if (!strictModeEnabled() && d_logic.hasCardinalityConstraints())
     {

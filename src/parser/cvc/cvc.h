@@ -19,15 +19,15 @@
 #define CVC5__PARSER__CVC_H
 
 #include "api/cpp/cvc5.h"
-#include "parser/parser.h"
+#include "parser/parser_state.h"
 
 namespace cvc5 {
 
 namespace parser {
 
-class Cvc : public Parser
+class Cvc : public ParserState
 {
-  friend class ParserBuilder;
+  friend class Parser;
 
  public:
   void forceLogic(const std::string& logic) override;
@@ -41,7 +41,7 @@ class Cvc : public Parser
       InputLanguage lang,
       bool strictMode = false,
       bool parseOnly = false)
-      : Parser(solver, sm, lang, strictMode, parseOnly)
+      : ParserState(solver, sm, lang, strictMode, parseOnly)
   {
   }
 };

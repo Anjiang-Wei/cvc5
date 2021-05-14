@@ -17,7 +17,7 @@
 
 #include "base/output.h"
 #include "parser/input.h"
-#include "parser/parser.h"
+#include "parser/parser_state.h"
 #include "smt/command.h"
 
 namespace cvc5 {
@@ -82,7 +82,9 @@ api::Term InputParser::nextExpression()
   return result;
 }
 
-InputParser::InputParser(Parser* state, Input* input)
+bool InputParser::done() { return d_state->done(); }
+
+InputParser::InputParser(ParserState* state, Input* input)
     : d_state(state), d_input(input)
 {
 }

@@ -31,6 +31,7 @@ namespace parser {
 
 class Input;
 class Parser;
+class ParserState;
 
 /**
  * This class is the main interface for retrieving commands and expressions
@@ -39,6 +40,7 @@ class Parser;
 class CVC5_EXPORT InputParser
 {
   friend Parser;
+  friend ParserState;
 
  public:
   /** Parse and return the next command. */
@@ -47,6 +49,9 @@ class CVC5_EXPORT InputParser
   /** Parse and return the next expression. */
   api::Term nextExpression();
 
+  /** Is this input parser done? */
+  bool done();
+
  private:
   /**
    * Constructor.
@@ -54,10 +59,10 @@ class CVC5_EXPORT InputParser
    * @param state The parser state to use.
    * @param input The input to parse. This class takes ownership.
    */
-  InputParser(Parser* state, Input* input);
+  InputParser(ParserState* state, Input* input);
 
   /** The parser state */
-  Parser* d_state;
+  ParserState* d_state;
 
   /** The underlying input */
   std::unique_ptr<Input> d_input;

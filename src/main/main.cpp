@@ -24,13 +24,10 @@
 #include "base/configuration.h"
 #include "base/output.h"
 #include "main/command_executor.h"
-#include "main/interactive_shell.h"
 #include "options/language.h"
 #include "options/option_exception.h"
 #include "options/options.h"
 #include "parser/parser.h"
-#include "parser/parser_builder.h"
-#include "parser/parser_exception.h"
 #include "util/result.h"
 
 using namespace std;

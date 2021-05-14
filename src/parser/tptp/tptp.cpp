@@ -37,7 +37,7 @@ Tptp::Tptp(api::Solver* solver,
            InputLanguage lang,
            bool strictMode,
            bool parseOnly)
-    : Parser(solver, sm, lang, strictMode, parseOnly),
+    : ParserState(solver, sm, lang, strictMode, parseOnly),
       d_cnf(false),
       d_fof(false)
 {
@@ -441,7 +441,7 @@ api::Term Tptp::mkDecimal(
 
 void Tptp::forceLogic(const std::string& logic)
 {
-  Parser::forceLogic(logic);
+  ParserState::forceLogic(logic);
   preemptCommand(new SetBenchmarkLogicCommand(logic));
 }
 

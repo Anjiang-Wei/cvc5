@@ -31,6 +31,7 @@
 #include "parser/input.h"
 #include "parser/line_buffer.h"
 #include "parser/parser_exception.h"
+#include "parser/parser_state.h"
 
 namespace cvc5 {
 namespace parser {
@@ -209,7 +210,7 @@ protected:
   void setAntlr3Parser(pANTLR3_PARSER pParser);
 
   /** Set the Parser object for this input. */
-  void setParser(Parser& parser) override;
+  void setParserState(ParserState* state) override;
 };/* class AntlrInput */
 
 inline std::string AntlrInput::tokenText(pANTLR3_COMMON_TOKEN token) {

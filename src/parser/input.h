@@ -35,6 +35,8 @@ class Command;
 
 namespace parser {
 
+class ParserState;
+
 class InputStreamException : public Exception
 {
  public:
@@ -81,7 +83,8 @@ class Parser;
  */
 class CVC5_EXPORT Input
 {
-  friend class Parser; // for parseError, parseCommand, parseExpr
+  friend class Parser;       // for setParserState
+  friend class ParserState;  // for parseError, parseCommand, parseExpr
   friend class InputParser;  // for parseError, parseCommand, parseExpr
   friend class ParserBuilder;
 
@@ -172,7 +175,7 @@ class CVC5_EXPORT Input
   virtual api::Term parseExpr() = 0;
 
   /** Set the Parser object for this input. */
-  virtual void setParser(Parser& parser) = 0;
+  virtual void setParserState(ParserState* state) = 0;
 
 }; /* class Input */
 

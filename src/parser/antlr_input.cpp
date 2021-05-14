@@ -16,6 +16,7 @@
 #include "parser/antlr_input.h"
 
 #include <antlr3.h>
+
 #include <limits>
 
 #include "base/check.h"
@@ -26,8 +27,8 @@
 #include "parser/cvc/cvc_input.h"
 #include "parser/input.h"
 #include "parser/memory_mapped_input_buffer.h"
-#include "parser/parser.h"
 #include "parser/parser_exception.h"
+#include "parser/parser_state.h"
 #include "parser/smt2/smt2_input.h"
 #include "parser/smt2/sygus_input.h"
 #include "parser/tptp/tptp_input.h"
@@ -267,11 +268,11 @@ pANTLR3_COMMON_TOKEN_STREAM AntlrInput::getTokenStream() {
 
 void AntlrInput::lexerError(pANTLR3_BASE_RECOGNIZER recognizer) {
   pANTLR3_LEXER lexer = (pANTLR3_LEXER)(recognizer->super);
-  Assert(lexer != NULL);
-  Parser *parser = (Parser*)(lexer->super);
-  Assert(parser != NULL);
-  AntlrInput *input = (AntlrInput*) parser->getInput();
-  Assert(input != NULL);
+  Assert(lexer != nullptr);
+  ParserState* state = (ParserState*)(lexer->super);
+  Assert(state != nullptr);
+  AntlrInput* input = (AntlrInput*)state->getInput();
+  Assert(input != nullptr);
 
   /* Call the error display routine *if* there's not already a 
    * parse error pending.  If a parser error is pending, this
@@ -513,13 +514,14 @@ void AntlrInput::setAntlr3Lexer(pANTLR3_LEXER pLexer) {
   d_lexer->rec->state->tokSource->nextToken = &nextToken;
 }
 
-void AntlrInput::setParser(Parser& parser) {
+void AntlrInput::setParserState(ParserState* state)
+{
   // ANTLR isn't using super in the lexer or the parser, AFAICT.
   // We could also use @lexer/parser::context to add a field to the generated
   // objects, but then it would have to be declared separately in every
   // language's grammar and we'd have to in the address of the field anyway.
-  d_lexer->super = &parser;
-  d_parser->super = &parser;
+  d_lexer->super = state;
+  d_parser->super = state;
 }
 
 void AntlrInput::setAntlr3Parser(pANTLR3_PARSER pParser) {

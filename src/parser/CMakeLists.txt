@@ -48,8 +48,8 @@ set(libcvc5parser_src_files
   parse_op.h
   parser.cpp
   parser.h
-  parser_builder.cpp
-  parser_builder.h
+  parser_state.cpp
+  parser_state.h
   parser_exception.h
   smt2/smt2.cpp
   smt2/smt2.h

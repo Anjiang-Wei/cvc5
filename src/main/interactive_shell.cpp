@@ -47,7 +47,6 @@
 #include "parser/input.h"
 #include "parser/input_parser.h"
 #include "parser/parser.h"
-#include "parser/parser_builder.h"
 #include "smt/command.h"
 #include "theory/logic_info.h"
 
@@ -94,13 +93,7 @@ InteractiveShell::InteractiveShell(api::Solver* solver, SymbolManager* sm)
       d_out(*d_options.getOutConst()),
       d_quit(false)
 {
-  ParserBuilder parserBuilder(solver, sm, d_options);
-  /* Create parser with bogus input. */
-  d_parser = parserBuilder.build();
-  if(d_options.wasSetByUserForceLogicString()) {
-    LogicInfo tmp(d_options.getForceLogicString());
-    d_parser->forceLogic(tmp.getLogicString());
-  }
+  d_parser.reset(new Parser(solver, sm, d_options));
 
 #if HAVE_LIBEDITLINE
   if(&d_in == &cin) {
@@ -172,7 +165,6 @@ InteractiveShell::~InteractiveShell() {
              << ": " << strerror(err) << std::endl;
   }
 #endif /* HAVE_LIBEDITLINE */
-  delete d_parser;
 }
 
 Command* InteractiveShell::readCommand()

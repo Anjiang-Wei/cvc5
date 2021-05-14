@@ -21,7 +21,7 @@ namespace parser {
 
 void Cvc::forceLogic(const std::string& logic)
 {
-  Parser::forceLogic(logic);
+  ParserState::forceLogic(logic);
   preemptCommand(new SetBenchmarkLogicCommand(logic));
 }
 

@@ -37,7 +37,6 @@
 #include "options/set_language.h"
 #include "parser/input_parser.h"
 #include "parser/parser.h"
-#include "parser/parser_builder.h"
 #include "smt/command.h"
 #include "smt/smt_engine.h"
 #include "util/result.h"
@@ -258,10 +257,8 @@ int runCvc5(int argc, char* argv[], Options& opts)
         // pExecutor->doCommand(cmd);
       }
 
-      ParserBuilder parserBuilder(pExecutor->getSolver(),
-                                  pExecutor->getSymbolManager(),
-                                  opts);
-      std::unique_ptr<Parser> parser(parserBuilder.build());
+      std::unique_ptr<Parser> parser(new Parser(
+          pExecutor->getSolver(), pExecutor->getSymbolManager(), opts));
       std::unique_ptr<InputParser> inputParser;
       if( inputFromStdin ) {
         inputParser = parser->parseStream(filename, cin);
@@ -413,10 +410,8 @@ int runCvc5(int argc, char* argv[], Options& opts)
         pExecutor->doCommand(cmd);
       }
 
-      ParserBuilder parserBuilder(pExecutor->getSolver(),
-                                  pExecutor->getSymbolManager(),
-                                  opts);
-      std::unique_ptr<Parser> parser(parserBuilder.build());
+      std::unique_ptr<Parser> parser(new Parser(
+          pExecutor->getSolver(), pExecutor->getSymbolManager(), opts));
       std::unique_ptr<InputParser> inputParser;
       if( inputFromStdin ) {
         inputParser = parser->parseStream(filename, cin);

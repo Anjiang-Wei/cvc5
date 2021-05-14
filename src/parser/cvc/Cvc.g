@@ -429,7 +429,7 @@ unsigned findPivot(const std::vector<unsigned>& operators,
   return pivot;
 }/* findPivot() */
 
-cvc5::api::Term createPrecedenceTree(Parser* parser, api::Solver* solver,
+cvc5::api::Term createPrecedenceTree(ParserState* state, api::Solver* solver,
                           const std::vector<cvc5::api::Term>& expressions,
                           const std::vector<unsigned>& operators,
                           unsigned startIndex, unsigned stopIndex) {
@@ -447,9 +447,9 @@ cvc5::api::Term createPrecedenceTree(Parser* parser, api::Solver* solver,
   bool negate;
   api::Kind k = getOperatorKind(operators[pivot], negate);
   cvc5::api::Term lhs = createPrecedenceTree(
-      parser, solver, expressions, operators, startIndex, pivot);
+      state, solver, expressions, operators, startIndex, pivot);
   cvc5::api::Term rhs = createPrecedenceTree(
-      parser, solver, expressions, operators, pivot + 1, stopIndex);
+      state, solver, expressions, operators, pivot + 1, stopIndex);
 
   if (lhs.getSort().isSet())
   {
@@ -475,7 +475,7 @@ cvc5::api::Term createPrecedenceTree(Parser* parser, api::Solver* solver,
   return negate ? e.notTerm() : e;
 }/* createPrecedenceTree() recursive variant */
 
-api::Term createPrecedenceTree(Parser* parser, api::Solver* s,
+api::Term createPrecedenceTree(ParserState* state, api::Solver* s,
                           const std::vector<cvc5::api::Term>& expressions,
                           const std::vector<unsigned>& operators) {
   if(Debug.isOn("prec") && operators.size() > 1) {
@@ -489,7 +489,7 @@ api::Term createPrecedenceTree(Parser* parser, api::Solver* s,
   }
 
   api::Term e = createPrecedenceTree(
-      parser, s, expressions, operators, 0, expressions.size() - 1);
+      state, s, expressions, operators, 0, expressions.size() - 1);
   if(Debug.isOn("prec") && operators.size() > 1) {
     language::SetLanguage::Scope ls(Debug("prec"), language::output::LANG_AST);
     Debug("prec") << "=> " << e << std::endl;
@@ -566,7 +566,7 @@ namespace cvc5 {
 
 #include "base/output.h"
 #include "parser/antlr_input.h"
-#include "parser/parser.h"
+#include "parser/parser_state.h"
 
 #define REPEAT_COMMAND(k, CommandCtor)                      \
   ({                                                        \
@@ -588,7 +588,7 @@ using namespace cvc5::parser;
 /* These need to be macros so they can refer to the PARSER macro, which will be defined
  * by ANTLR *after* this section. (If they were functions, PARSER would be undefined.) */
 #undef PARSER_STATE
-#define PARSER_STATE ((Parser*)PARSER->super)
+#define PARSER_STATE ((ParserState*)PARSER->super)
 #undef SOLVER
 #define SOLVER PARSER_STATE->getSolver()
 #undef MK_TERM

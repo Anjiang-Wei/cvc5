@@ -56,8 +56,8 @@
 
 #include "base/check.h"
 #include "parser/antlr_input.h"
-#include "parser/parser.h"
 #include "parser/parser_exception.h"
+#include "parser/parser_state.h"
 
 using namespace std;
 
@@ -92,11 +92,11 @@ void AntlrInput::reportError(pANTLR3_BASE_RECOGNIZER recognizer) {
 
   // Dig the cvc5 objects out of the ANTLR3 mess
   pANTLR3_PARSER antlr3Parser = (pANTLR3_PARSER)(recognizer->super);
-  Assert(antlr3Parser != NULL);
-  Parser *parser = (Parser*)(antlr3Parser->super);
-  Assert(parser != NULL);
-  AntlrInput *input = (AntlrInput*) parser->getInput() ;
-  Assert(input != NULL);
+  Assert(antlr3Parser != nullptr);
+  ParserState* state = (ParserState*)(antlr3Parser->super);
+  Assert(state != nullptr);
+  AntlrInput* input = (AntlrInput*)state->getInput();
+  Assert(input != nullptr);
 
   // Signal we are in error recovery now
   recognizer->state->errorRecovery = ANTLR3_TRUE;
