@@ -71,35 +71,20 @@ Node StringsPreprocess::reduce(Node t,
     Node m = t[2];
     Node skt = sc->mkSkolemCached(t, SkolemCache::SK_PURIFY, "sst");
     Node t12 = nm->mkNode(PLUS, n, m);
-    Node lt0 = nm->mkNode(STRING_LENGTH, s);
-    //start point is greater than or equal zero
-    Node c1 = nm->mkNode(GEQ, n, zero);
-    //start point is less than end of string
-    Node c2 = nm->mkNode(GT, lt0, n);
-    //length is positive
-    Node c3 = nm->mkNode(GT, m, zero);
-    Node cond = nm->mkNode(AND, c1, c2, c3);
-
-    Node emp = Word::mkEmptyWord(t.getType());
+    Node ls = nm->mkNode(STRING_LENGTH, s);
 
     Node sk1 = sc->mkSkolemCached(s, n, SkolemCache::SK_PREFIX, "sspre");
     Node sk2 = sc->mkSkolemCached(s, t12, SkolemCache::SK_SUFFIX_REM, "sssufr");
-    Node b11 = s.eqNode(nm->mkNode(STRING_CONCAT, sk1, skt, sk2));
-    //length of first skolem is second argument
-    Node b12 = nm->mkNode(STRING_LENGTH, sk1).eqNode(n);
-    Node lsk2 = nm->mkNode(STRING_LENGTH, sk2);
-    // Length of the suffix is either 0 (in the case where m + n > len(s)) or
-    // len(s) - n -m
-    Node b13 = nm->mkNode(
-        OR,
-        nm->mkNode(EQUAL, lsk2, nm->mkNode(MINUS, lt0, nm->mkNode(PLUS, n, m))),
-        nm->mkNode(EQUAL, lsk2, zero));
-    // Length of the result is at most m
-    Node b14 = nm->mkNode(LEQ, nm->mkNode(STRING_LENGTH, skt), m);
 
-    Node b1 = nm->mkNode(AND, b11, b12, b13, b14);
-    Node b2 = skt.eqNode(emp);
-    Node lemma = nm->mkNode(ITE, cond, b1, b2);
+    Node lsk1 = nm->mkNode(STRING_LENGTH, sk1);
+    Node lskt = nm->mkNode(STRING_LENGTH, skt);
+    Node lsk2 = nm->mkNode(STRING_LENGTH, sk2);
+
+    Node b1 = s.eqNode(nm->mkNode(STRING_CONCAT, sk1, skt, sk2));
+    Node b2 = nm->mkNode(OR, lsk1.eqNode(n), nm->mkNode(AND, lsk1.eqNode(zero), lskt.eqNode(zero)));
+    Node b3 = nm->mkNode(OR, lsk2.eqNode(nm->mkNode(MINUS, ls, t12)), lsk2.eqNode(zero), nm->mkNode(LT, n, zero), nm->mkNode(LT, m, zero));
+    Node b4 = nm->mkNode(OR, nm->mkNode(LEQ, nm->mkNode(STRING_LENGTH, skt), m), lskt.eqNode(zero));
+    Node lemma = nm->mkNode(AND, b1, b2, b3, b4);
 
     // assert:
     // IF    n >=0 AND len( s ) > n AND m > 0
