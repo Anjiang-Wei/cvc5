@@ -4735,7 +4735,21 @@ std::ostream& operator<<(std::ostream& out, const Statistics& stats)
 
 Solver::Solver(Options* opts)
 {
-  d_nodeMgr.reset(new NodeManager());
+  init(opts, std::move(std::make_unique<NodeManager>()));
+}
+
+Solver::~Solver() {}
+
+/* Helpers and private functions                                              */
+/* -------------------------------------------------------------------------- */
+
+Solver::Solver(Options* opts, std::unique_ptr<NodeManager> nm)
+{
+  init(opts, std::move(nm));
+}
+
+void Solver::init(Options* opts, std::unique_ptr<NodeManager> nm) {
+  d_nodeMgr.swap(nm);
   d_originalOptions.reset(new Options());
   if (opts != nullptr)
   {
@@ -4746,11 +4760,6 @@ Solver::Solver(Options* opts)
   d_rng.reset(new Random(d_smtEngine->getOptions().driver.seed));
   resetStatistics();
 }
-
-Solver::~Solver() {}
-
-/* Helpers and private functions                                              */
-/* -------------------------------------------------------------------------- */
 
 NodeManager* Solver::getNodeManager(void) const { return d_nodeMgr.get(); }
 
@@ -7183,6 +7192,17 @@ void Solver::push(uint32_t nscopes) const
   {
     d_smtEngine->push();
   }
+  ////////
+  CVC5_API_TRY_CATCH_END;
+}
+
+void Solver::reset(Options* opts)
+{
+  CVC5_API_TRY_CATCH_BEGIN;
+  //////// all checks before this line
+  std::unique_ptr<NodeManager> nm(std::move(d_nodeMgr));
+  this->~Solver();
+  new (this) Solver(opts, std::move(nm));
   ////////
   CVC5_API_TRY_CATCH_END;
 }

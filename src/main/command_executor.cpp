@@ -118,7 +118,7 @@ void CommandExecutor::reset()
    * NodeManager copies the options into a new options object before SmtEngine
    * configures additional options based on the given CL options.
    * We can thus safely reuse CommandExecutor::d_options here. */
-  d_solver.reset(new api::Solver(&d_options));
+  d_solver->reset(&d_options);
 }
 
 bool CommandExecutor::doCommandSingleton(Command* cmd)

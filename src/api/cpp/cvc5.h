@@ -3931,6 +3931,8 @@ class CVC5_EXPORT Solver
    */
   void push(uint32_t nscopes = 1) const;
 
+  void reset(Options* opts);
+
   /**
    * Remove all assertions.
    * SMT-LIB:
@@ -4134,6 +4136,10 @@ class CVC5_EXPORT Solver
   Statistics getStatistics() const;
 
  private:
+  Solver(Options* opts, std::unique_ptr<NodeManager> nm);
+
+  void init(Options* opts, std::unique_ptr<NodeManager> nm);
+
   /** @return the node manager of this solver */
   NodeManager* getNodeManager(void) const;
   /** Reset the API statistics */
