@@ -98,47 +98,51 @@ bool ArrayStoreTypeRule::computeIsConst(NodeManager* nodeManager, TNode n)
   TNode index = n[1];
   TNode value = n[2];
 
-  // A constant must have only constant children and be in normal form
-  // If any child is non-const, this is not a constant
-  if (!store.isConst() || !index.isConst() || !value.isConst())
-  {
-    return false;
-  }
-
-  // Normal form for nested stores is just ordering by index but also need to
-  // check that we are not writing to default value
-  if (store.getKind() == kind::STORE && (!(store[1] < index)))
-  {
-    return false;
-  }
-
   unsigned depth = 1;
-  unsigned valCount = 1;
   while (store.getKind() == kind::STORE)
   {
-    depth += 1;
-    if (store[2] == value)
+    // A constant must have only constant children and be in normal form
+    // If any child is non-const, this is not a constant
+    if (!index.isConst() || !value.isConst())
     {
-      valCount += 1;
+      return false;
     }
+
+    // Normal form for nested stores is just ordering by index
+    if (!(store[1] < index))
+    {
+      return false;
+    }
+
+    depth += 1;
     store = store[0];
   }
-  Assert(store.getKind() == kind::STORE_ALL);
+
+  if (store.getKind() != kind::STORE_ALL) {
+    return false;
+  }
+
   ArrayStoreAll storeAll = store.getConst<ArrayStoreAll>();
   Node defaultValue = storeAll.getValue();
-  if (value == defaultValue)
+
+  store = n[0];
+  while (store.getKind() == kind::STORE)
   {
-    return false;
+    if (value == defaultValue)
+    {
+      return false;
+    }
+    store = store[0];
   }
 
   // Get the cardinality of the index type
   Cardinality indexCard = index.getType().getCardinality();
-
   if (indexCard.isInfinite())
   {
     return true;
   }
 
+  size_t valCount = 1;
   // When index sort is finite, we have to check whether there is any value
   // that is written to more than the default value.  If so, it is not in
   // normal form.
