@@ -58,8 +58,14 @@ if(NOT GMP_FOUND_SYSTEM)
     URL https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.bz2
     URL_HASH SHA1=2dcf34d4a432dbe6cce1475a835d20fe44f75822
     CONFIGURE_COMMAND
-      <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --enable-cxx --with-pic
-      --disable-shared --enable-static --host=${TOOLCHAIN_PREFIX}
+      <SOURCE_DIR>/configure
+        --prefix=<INSTALL_DIR>
+        --libdir=<INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}
+        --enable-cxx
+        --with-pic
+        --disable-shared
+        --enable-static
+        --host=${TOOLCHAIN_PREFIX}
     BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libgmp.a
   )
 

@@ -59,8 +59,13 @@ if(NOT CLN_FOUND_SYSTEM)
     URL_HASH SHA1=71d02b90ef0575f06b7bafb8690f73e8064d8228
     DOWNLOAD_NAME cln.tgz
     CONFIGURE_COMMAND cd <SOURCE_DIR> && ./autogen.sh && autoreconf -iv
-    COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-shared
-            --enable-static --with-pic
+    COMMAND
+      <SOURCE_DIR>/configure
+        --prefix=<INSTALL_DIR>
+        --libdir=<INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}
+        --disable-shared
+        --enable-static
+        --with-pic
     BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libcln.a
   )
 
