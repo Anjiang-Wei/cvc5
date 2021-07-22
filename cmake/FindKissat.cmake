@@ -60,14 +60,14 @@ if(NOT Kissat_FOUND_SYSTEM)
     CONFIGURE_COMMAND <SOURCE_DIR>/configure -fPIC --quiet
                       CC=${CMAKE_C_COMPILER}
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/build/libkissat.a
-                    <INSTALL_DIR>/lib/libkissat.a
+                    <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libkissat.a
     COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/src/kissat.h
             <INSTALL_DIR>/include/kissat/kissat.h
-    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libkissat.a
+    BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libkissat.a
   )
 
   set(Kissat_INCLUDE_DIR "${DEPS_BASE}/include/")
-  set(Kissat_LIBRARIES "${DEPS_BASE}/lib/libkissat.a")
+  set(Kissat_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libkissat.a")
 endif()
 
 set(Kissat_FOUND TRUE)

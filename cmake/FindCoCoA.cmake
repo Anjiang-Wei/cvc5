@@ -75,7 +75,7 @@ if(NOT CoCoA_FOUND_SYSTEM)
   add_dependencies(CoCoA-EP GMP)
 
   set(CoCoA_INCLUDE_DIR "${DEPS_BASE}/include/")
-  set(CoCoA_LIBRARIES "${DEPS_BASE}/lib/libcocoa.a")
+  set(CoCoA_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libcocoa.a")
 endif()
 
 set(CoCoA_FOUND TRUE)

@@ -60,11 +60,11 @@ if(NOT GMP_FOUND_SYSTEM)
     CONFIGURE_COMMAND
       <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --enable-cxx --with-pic
       --disable-shared --enable-static --host=${TOOLCHAIN_PREFIX}
-    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libgmp.a
+    BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libgmp.a
   )
 
   set(GMP_INCLUDE_DIR "${DEPS_BASE}/include/")
-  set(GMP_LIBRARIES "${DEPS_BASE}/lib/libgmp.a")
+  set(GMP_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libgmp.a")
 endif()
 
 set(GMP_FOUND TRUE)

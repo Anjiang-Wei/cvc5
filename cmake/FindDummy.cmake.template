@@ -75,7 +75,7 @@ if(NOT Dummy_FOUND_SYSTEM)
 
     # set the variables like the find_* commands at the top
     set(Dummy_INCLUDE_DIR "${DEPS_BASE}/include/")
-    set(Dummy_LIBRARIES "${DEPS_BASE}/lib/libdummy.a")
+    set(Dummy_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libdummy.a")
 endif()
 
 # just set this to true

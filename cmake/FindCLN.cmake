@@ -61,13 +61,13 @@ if(NOT CLN_FOUND_SYSTEM)
     CONFIGURE_COMMAND cd <SOURCE_DIR> && ./autogen.sh && autoreconf -iv
     COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --disable-shared
             --enable-static --with-pic
-    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libcln.a
+    BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libcln.a
   )
 
   add_dependencies(CLN-EP GMP)
 
   set(CLN_INCLUDE_DIR "${DEPS_BASE}/include/")
-  set(CLN_LIBRARIES "${DEPS_BASE}/lib/libcln.a")
+  set(CLN_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libcln.a")
 endif()
 
 set(CLN_FOUND TRUE)

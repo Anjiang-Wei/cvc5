@@ -89,14 +89,14 @@ if(NOT CaDiCaL_FOUND_SYSTEM)
       <SOURCE_DIR>/build/makefile
     BUILD_COMMAND ${make_cmd} -C <SOURCE_DIR>/build libcadical.a
     INSTALL_COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/build/libcadical.a
-                    <INSTALL_DIR>/lib/libcadical.a
+            <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libcadical.a
     COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/src/cadical.hpp
             <INSTALL_DIR>/include/cadical.hpp
-    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libcadical.a
+    BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libcadical.a
   )
 
   set(CaDiCaL_INCLUDE_DIR "${DEPS_BASE}/include/")
-  set(CaDiCaL_LIBRARIES "${DEPS_BASE}/lib/libcadical.a")
+  set(CaDiCaL_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libcadical.a")
 endif()
 
 set(CaDiCaL_FOUND TRUE)

@@ -90,11 +90,11 @@ if(NOT Poly_FOUND_SYSTEM)
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} static_pic_poly static_pic_polyxx
     INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install
     COMMAND ${CMAKE_COMMAND} -E copy src/libpicpoly.a
-            <INSTALL_DIR>/lib/libpicpoly.a
+            <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libpicpoly.a
     COMMAND ${CMAKE_COMMAND} -E copy src/libpicpolyxx.a
-            <INSTALL_DIR>/lib/libpicpolyxx.a
-    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libpicpoly.a
-                     <INSTALL_DIR>/lib/libpicpolyxx.a
+            <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libpicpolyxx.a
+    BUILD_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libpicpoly.a
+                     <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/libpicpolyxx.a
   )
   ExternalProject_Add_Step(
     Poly-EP cleanup
@@ -104,8 +104,8 @@ if(NOT Poly_FOUND_SYSTEM)
   add_dependencies(Poly-EP GMP)
 
   set(Poly_INCLUDE_DIR "${DEPS_BASE}/include/")
-  set(Poly_LIBRARIES "${DEPS_BASE}/lib/libpicpoly.a")
-  set(PolyXX_LIBRARIES "${DEPS_BASE}/lib/libpicpolyxx.a")
+  set(Poly_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libpicpoly.a")
+  set(PolyXX_LIBRARIES "${DEPS_BASE}/${CMAKE_INSTALL_LIBDIR}/libpicpolyxx.a")
 endif()
 
 set(Poly_FOUND TRUE)
