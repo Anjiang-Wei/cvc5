@@ -40,7 +40,7 @@ bool getDslPfRule(TNode n, DslPfRule& id)
 }
 
 RewriteProofRule::RewriteProofRule()
-    : d_id(DslPfRule::FAIL), d_isFixedPoint(false), d_isFlatForm(false)
+    : d_id(DslPfRule::FAIL), d_isFlatForm(false)
 {
 }
 
@@ -49,7 +49,7 @@ void RewriteProofRule::init(DslPfRule id,
                             const std::vector<Node>& fvs,
                             const std::vector<Node>& cond,
                             Node conc,
-                            bool isFixedPoint,
+                            Node context,
                             bool isFlatForm)
 {
   // not initialized yet
@@ -73,7 +73,7 @@ void RewriteProofRule::init(DslPfRule id,
     d_obGen.push_back(cc);
   }
   d_conc = conc;
-  d_isFixedPoint = isFixedPoint;
+  d_context = context;
   d_isFlatForm = isFlatForm;
   if (!expr::getListVarContext(conc, d_listVarCtx))
   {
@@ -97,7 +97,7 @@ void RewriteProofRule::init(DslPfRule id,
     }
   }
   // if fixed point, initialize match utility
-  if (d_isFixedPoint)
+  if (d_context != Node::null())
   {
     d_mt.addTerm(conc[0]);
   }
@@ -266,7 +266,7 @@ Node RewriteProofRule::getConclusionFor(const std::vector<Node>& ss) const
   Assert(d_fvs.size() == ss.size());
   return expr::narySubstitute(d_conc, d_fvs, ss);
 }
-bool RewriteProofRule::isFixedPoint() const { return d_isFixedPoint; }
+bool RewriteProofRule::isFixedPoint() const { return d_context != Node::null(); }
 bool RewriteProofRule::isFlatForm() const { return d_isFlatForm; }
 }  // namespace rewriter
 }  // namespace cvc5

@@ -715,7 +715,7 @@ Node RewriteDbProofCons::getRuleConclusion(const RewriteProofRule& rpr,
     d_currFixedPointId = rpr.getId();
     // check if stgt also rewrites with the same rule?
     bool continueFixedPoint;
-    std::vector<Node> transEq;
+    std::vector<Node> steps;
     // start from the source, match again to start the chain. Notice this is
     // required for uniformity since we want to successfully cache the first
     // step, independent of the target.
@@ -728,13 +728,26 @@ Node RewriteDbProofCons::getRuleConclusion(const RewriteProofRule& rpr,
       if (!d_currFixedPointConc.isNull())
       {
         // currently avoid accidental loops: arbitrarily bound to 1000
-        continueFixedPoint = transEq.size() <= 1000;
+        continueFixedPoint = steps.size() <= 1000;
         Assert(d_currFixedPointConc.getKind() == EQUAL);
-        transEq.push_back(stgt.eqNode(d_currFixedPointConc[1]));
+        steps.push_back(d_currFixedPointConc[1]);
         stgt = d_currFixedPointConc[1];
       }
       d_currFixedPointConc = Node::null();
     } while (continueFixedPoint);
+
+    std::vector<Node> transEq;
+    Node prev = ssrc;
+    Node context = rpr.getContext();
+    Node placeholder = context[0][0];
+    for (Node& step : steps) {
+      Node stepConc = context[1].substitute(TNode(placeholder), TNode(step));
+      stepConc = expr::narySubstitute(stepConc, vars, subs);
+      transEq.push_back(prev.eqNode(stepConc));
+      prev = stepConc;
+    }
+    std::cout << transEq << std::endl;
+
     d_currFixedPointId = DslPfRule::FAIL;
     // add the transistivity rule here if needed
     if (transEq.size() >= 2)
