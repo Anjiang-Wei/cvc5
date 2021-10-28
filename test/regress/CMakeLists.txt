@@ -1653,6 +1653,7 @@ set(regress_1_tests
   regress1/decision/wishue160.smt2
   regress1/errorcrash.smt2
   regress1/fp/fp_to_real.smt2
+  regress1/fp/proj-issue327-abs-ref-cond.smt2
   regress1/fp/rti_3_5_bug_report.smt2
   regress1/fmf-fun-dbu.smt2
   regress1/fmf/ALG008-1.smt2

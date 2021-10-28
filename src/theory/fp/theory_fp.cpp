@@ -213,9 +213,10 @@ bool TheoryFp::refineAbstraction(TheoryModel *m, TNode abstract, TNode concrete)
     if (abstractValue != concreteValue)
     {
       // Need refinement lemmas
-      // only in the normal and subnormal case
+      // only in the normal, subnormal, and zero cases
       Assert(floatValue.getConst<FloatingPoint>().isNormal()
-             || floatValue.getConst<FloatingPoint>().isSubnormal());
+             || floatValue.getConst<FloatingPoint>().isSubnormal()
+             || floatValue.getConst<FloatingPoint>().isZero());
 
       Node defined = nm->mkNode(
           kind::AND,
