@@ -32,8 +32,19 @@ class NoopRewriter : public TheoryRewriter
   {
     return RewriteResponse(REWRITE_DONE, n);
   }
+
   RewriteResponse postRewrite(TNode n) override
   {
+    NodeManager* nm = NodeManager::currentNM();
+    if (n.getKind() == kind::UMINUS)
+    {
+      Node x = n[0];
+      if (x.getKind() == kind::CONST_RATIONAL)
+      {
+        return RewriteResponse(REWRITE_DONE,
+                               nm->mkConstInt(-x.getConst<Rational>()));
+      }
+    }
     return RewriteResponse(REWRITE_DONE, n);
   }
 }; /* class NoopRewriter */

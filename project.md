@@ -117,15 +117,18 @@ form `(<= (- y x) n)`. The SMT-LIB logic
 [QF\_IDL](http://smtlib.cs.uiowa.edu/logics-all.shtml#QF_IDL) (quantifier-free
 IDL problems) allows constraints of the form `(op (- y x) n)`, `(op (- y x) (-
 n))`, and `(op y x)` where `op` is one of `<`, `<=`, `>`, `>=`, `=`, or
-`distinct` and not only `(<= (- y x) n)`. We can automatically rewrite these
-constraints to the latter form in the solver.
+`distinct` and not only `(<= (- y x) n)`. Additionally, the constant value `n`
+may be on the right-hand or left-hand side. To support the full range of
+constraints, we can rewrite them to the latter form in the solver.
 
-**Task**: Complete `IdlExtension::ppRewrite()` to rewrite the IDL constraints to
-the form that `IdlExtension::processAssertion()` expects.
+**Task**: Complete all `TODO`s in `IdlExtension::ppRewrite()` to rewrite the
+IDL constraints to the form that `IdlExtension::processAssertion()` expects.
+Test your code by creating SMT-LIB benchmarks that exercise all the different
+cases.
 
 _Hint_: Compare the constraints in `test/regress/regress0/idl/example.smt2` and
 `test/regress/regress0/idl/example-rewritten.smt2` to get an idea of what the
-rewrites should look like.
+rewrites should look like. This example only covers parts of the `TODO`s.
 
 If you would like to test your solver with additional inputs, you can use the
 [SMT-LIB benchmarks for
@@ -158,52 +161,3 @@ all the other nodes. The distance of a node becomes its value in the model.
 `IdlExtension::collectModelInfo()` by computing the values in the `distance`
 vector. The skeleton takes those `distance` values and asserts that the values
 of the variables are the same as their distance.
-
-# Testing your Implementation on the Cluster
-
-The Centaur Lab has a SLURM cluster with two partitions that can be accessed by
-SSHing to `barrett2.stanford.edu` using your CSID. To access the cluster off
-campus, the machine can either be accessed via [Stanford
-VPN](https://uit.stanford.edu/service/vpn) or by first SSHing into
-[`theory.stanford.edu`](https://cs.stanford.edu/computing-guide/access/shell-access-ssh).
-
-Your home directory is on the [AFS](https://uit.stanford.edu/service/afs),
-which has only very limited storage. Instead, it is highly recommended to store
-all files on the networked storage `/barrett/scratch/<username>`. Note that
-this storage is not backed up.
-
-The cluster already has a copy of all the latest [SMT-LIB
-benchmarks](http://smtlib.cs.uiowa.edu/benchmarks.shtml), scripts to run jobs,
-and scripts to analyze the results of runs.
-
-Before starting a job, configure cvc5 with `--static --auto-download` and
-compile it. This will compile cvc5 as a static binary in `production`. It is
-important that performance comparisons are always done in `production` instead
-of `debug`, because `debug` disables most compiler optimizations and performs
-additional sanity checks.
-
-To launch a job, use the `submit-job.sh` script from
-`/barrett/scratch/local/bin` (you can optionally add
-`/barrett/scratch/local/bin` to your `PATH` variable to access the cluster
-scripts more easily).
-
-**Task**: Use `submit-job.sh -h` and refer to the
-[documentation](https://github.com/stanford-centaur/cluster-tools/blob/master/slurm_scripts/README_submit_jobs.txt)
-to learn more about the options of the script.  Launch two jobs with a time
-limit of 2 minutes, a memory limit of 8 GB RAM, and 2 CPUs. Both jobs should
-use the benchmark set `non_incremental_QF_IDL`. One job should use
-`--arith-idl-ext` for the solver options. The partition does not matter, it
-just has to be consistent across the two runs.
-
-Benchmark sets are text files that simply contain a list of benchmarks. The
-standard benchmark sets can be found in `/barrett/scratch/benchmarks/`.
-
-After launching the job, you can monitor its progress using
-[squeue](https://slurm.schedmd.com/squeue.html).
-
-Once the job has completed, we can analyze the results using the `cmpr.py`
-script.
-
-**Task**: Use the `cmpr.py` script to compare the two runs. Useful options
-include `-t`, `-G`, and `--summarize-errors`. What are you observing? Are there
-any disagreements (marked `di`) or errors (marked `ee`)?

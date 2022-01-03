@@ -35,6 +35,7 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_parent(parent),
       d_varMap(context()),
       d_varList(context()),
+      d_facts(context()),
       d_numVars(0)
 {
 }
@@ -67,11 +68,56 @@ void IdlExtension::presolve()
   }
 }
 
+void IdlExtension::notifyFact(
+    TNode atom, bool pol, TNode fact, bool isPrereg, bool isInternal)
+{
+  Trace("theory::arith::idl")
+      << "IdlExtension::notifyFact(): processing " << fact << std::endl;
+  d_facts.push_back(fact);
+}
+
 Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 {
+  // We are only interested in predicates
+  if (!atom.getType().isBoolean())
+  {
+    return atom;
+  }
+
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   NodeManager* nm = NodeManager::currentNM();
+
+  if (atom[0].getKind() == kind::CONST_RATIONAL)
+  {
+    // Move constant value to right-hand side
+    Kind k = kind::EQUAL;
+    switch (atom.getKind())
+    {
+      // -------------------------------------------------------------------------
+      // TODO: Handle these cases.
+      // -------------------------------------------------------------------------
+      case kind::EQUAL:
+      case kind::LT:
+      case kind::LEQ:
+      case kind::GT:
+      case kind::GEQ:
+      default: break;
+    }
+
+    return ppRewrite(nm->mkNode(k, atom[1], atom[0]), lems);
+  }
+  else if (atom[1].getKind() == kind::VARIABLE)
+  {
+    // Handle the case where there are no constants, e.g., (= x y) where both
+    // x and y are variables
+    Node ret = atom;
+    // -------------------------------------------------------------------------
+    // TODO: Handle this case.
+    // -------------------------------------------------------------------------
+    return ppRewrite(ret, lems);
+  }
+
   switch (atom.getKind())
   {
     case kind::EQUAL:
@@ -80,7 +126,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
       Assert(atom[0].getKind() == kind::MINUS);
       Node negated_left = nm->mkNode(kind::MINUS, atom[0][1], atom[0][0]);
       const Rational& right = atom[1].getConst<Rational>();
-      Node negated_right = nm->mkConst(-right);
+      Node negated_right = nm->mkConstInt(-right);
       Node r_le_l = nm->mkNode(kind::LEQ, negated_left, negated_right);
       return nm->mkNode(kind::AND, l_le_r, r_le_l);
     }
@@ -92,22 +138,11 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
     case kind::LEQ:
     case kind::GT:
     case kind::GEQ:
-    case kind::NOT:
       // -------------------------------------------------------------------------
 
     default: break;
   }
   return atom;
-}
-
-Theory::assertions_iterator IdlExtension::facts_begin() const
-{
-  return d_parent.facts_begin();
-}
-
-Theory::assertions_iterator IdlExtension::facts_end() const
-{
-  return d_parent.facts_end();
 }
 
 void IdlExtension::postCheck(Theory::Effort level)
@@ -116,6 +151,10 @@ void IdlExtension::postCheck(Theory::Effort level)
   {
     return;
   }
+
+  Trace("theory::arith::idl")
+      << "IdlExtension::postCheck(): number of facts = " << d_facts.size()
+      << std::endl;
 
   // Reset the graph
   for (size_t i = 0; i < d_numVars; i++)
@@ -126,15 +165,14 @@ void IdlExtension::postCheck(Theory::Effort level)
     }
   }
 
-  for (Theory::assertions_iterator i = facts_begin(); i != facts_end(); ++i)
+  for (Node fact : d_facts)
   {
     // For simplicity, we reprocess all the literals that have been asserted to
-    // this theory solver. A better implementation would use `Theory::get()` to
-    // only get new assertions.
-    Assertion assertion = (*i);
-    Trace("theory::idl") << "IdlExtension::check(): processing "
-                         << assertion.d_assertion << std::endl;
-    processAssertion(assertion.d_assertion);
+    // this theory solver. A better implementation would process facts in
+    // notifyFact().
+    Trace("theory::arith::idl")
+        << "IdlExtension::check(): processing " << fact << std::endl;
+    processAssertion(fact);
   }
 
   if (negativeCycle())
@@ -143,9 +181,9 @@ void IdlExtension::postCheck(Theory::Effort level)
     // to this theory solver. A better implementation would only include the
     // literals involved in the conflict here.
     NodeBuilder conjunction(kind::AND);
-    for (Theory::assertions_iterator i = facts_begin(); i != facts_end(); ++i)
+    for (Node fact : d_facts)
     {
-      conjunction << (*i).d_assertion;
+      conjunction << fact;
     }
     Node conflict = conjunction;
     // Send the conflict using the inference manager. Each conflict is assigned
@@ -171,7 +209,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   for (size_t i = 0; i < d_numVars; i++)
   {
     // Assert that the variable's value is equal to its distance in the model
-    m->assertEquality(d_varList[i], nm->mkConst(distance[i]), true);
+    m->assertEquality(d_varList[i], nm->mkConstInt(distance[i]), true);
   }
 
   return true;

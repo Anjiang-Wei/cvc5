@@ -46,24 +46,12 @@ class IdlExtension : protected EnvObj
   /** Set up the solving data structures */
   void presolve();
 
+  /** Called for each asserted literal */
+  void notifyFact(
+      TNode atom, bool pol, TNode fact, bool isPrereg, bool isInternal);
+
   /** Pre-processing of input atoms */
   Node ppRewrite(TNode atom, std::vector<SkolemLemma>& lems);
-
-  /**
-   * Provides access to the facts queue, primarily intended for theory
-   * debugging purposes.
-   *
-   * @return the iterator to the beginning of the fact queue
-   */
-  Theory::assertions_iterator facts_begin() const;
-
-  /**
-   * Provides access to the facts queue, primarily intended for theory
-   * debugging purposes.
-   *
-   * @return the iterator to the end of the fact queue
-   */
-  Theory::assertions_iterator facts_end() const;
 
   /** Check for conflicts in the current facts */
   void postCheck(Theory::Effort level);
@@ -92,6 +80,9 @@ class IdlExtension : protected EnvObj
 
   /** Context-dependent vector of variables */
   context::CDList<TNode> d_varList;
+
+  /** Context-dependent list of asserted theory literals */
+  context::CDList<TNode> d_facts;
 
   /** i,jth entry is true iff there is an edge from i to j. */
   std::vector<std::vector<bool>> d_valid;

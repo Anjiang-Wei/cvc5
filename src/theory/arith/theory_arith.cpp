@@ -274,6 +274,7 @@ bool TheoryArith::preNotifyFact(
 {
   if (d_idlExtension != nullptr)
   {
+    d_idlExtension->notifyFact(atom, pol, fact, isPrereg, isInternal);
     return true;
   }
 
