@@ -237,8 +237,11 @@ void IdlExtension::processAssertion(TNode assertion)
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
 
-  d_valid[index1][index2] = true;
-  d_matrix[index1][index2] = value;
+  if (!d_valid[index1][index2] || value < d_matrix[index1][index2])
+  {
+    d_valid[index1][index2] = true;
+    d_matrix[index1][index2] = value;
+  }
 }
 
 bool IdlExtension::negativeCycle()
