@@ -92,6 +92,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   NodeManager* nm = NodeManager::currentNM();
 
   if (atom[0].getKind() == kind::CONST_RATIONAL)
@@ -110,7 +111,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
       case kind::GEQ:
       default: break;
     }
-
+    std::cout << "nm->mkNode(" << k << ", " << atom[1] << "," <<  atom[0] << ")" << std::endl;
     return ppRewrite(nm->mkNode(k, atom[1], atom[0]), lems);
   }
   else if (atom[1].getKind() == kind::VARIABLE)
@@ -134,6 +135,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
       const Rational& right = atom[1].getConst<Rational>();
       Node negated_right = nm->mkConstInt(-right);
       Node r_le_l = nm->mkNode(kind::LEQ, negated_left, negated_right);
+      // std::cout << "case equal, tranform to " << nm->mkNode(kind::AND, l_le_r, r_le_l) << std::endl;
       return nm->mkNode(kind::AND, l_le_r, r_le_l);
     }
 
@@ -141,10 +143,34 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
     // TODO: Handle these cases.
     // -------------------------------------------------------------------------
     case kind::LT:
+    {
+      const Rational& right = atom[1].getConst<Rational>();
+      Node right_minus_1 = nm->mkConstInt(right - 1);
+      // std::cout << "case lt, tranform to " << nm->mkNode(kind::LEQ, atom[0], right_minus_1) << std::endl;
+      return nm->mkNode(kind::LEQ, atom[0], right_minus_1);
+    }
     case kind::LEQ:
+    {
+      break;
+    }
     case kind::GT:
+    {
+      Assert(atom[0].getKind() == kind::MINUS);
+      Node negated_left = nm->mkNode(kind::MINUS, atom[0][1], atom[0][0]);
+      const Rational& right = atom[1].getConst<Rational>();
+      Node negated_right = nm->mkConstInt(-right - 1);
+      // std::cout << "case gt, tranform to " << nm->mkNode(kind::LEQ, negated_left, negated_right) << std::endl;
+      return nm->mkNode(kind::LEQ, negated_left, negated_right);
+    }
     case kind::GEQ:
-      // -------------------------------------------------------------------------
+    {
+      Assert(atom[0].getKind() == kind::MINUS);
+      Node negated_left = nm->mkNode(kind::MINUS, atom[0][1], atom[0][0]);
+      const Rational& right = atom[1].getConst<Rational>();
+      Node negated_right = nm->mkConstInt(-right);
+      // std::cout << "case geq, tranform to " << nm->mkNode(kind::LEQ, negated_left, negated_right) << std::endl;
+      return nm->mkNode(kind::LEQ, negated_left, negated_right);
+    }
 
     default: break;
   }
@@ -178,6 +204,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     // notifyFact().
     Trace("theory::arith::idl")
         << "IdlExtension::check(): processing " << fact << std::endl;
+    std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
 
@@ -284,9 +311,9 @@ bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matri
     d_dist_new.emplace_back(Rational(10000000));
   }
   d_dist_new.emplace_back(Rational(0));
-  for (int i = 0; i < d_numVars; i++) { // repeat d_numVars (|V| - 1) times
-    for (int u = 0; u < d_numVars + 1; u++) {
-      for (int v = 0; v < d_numVars + 1; v++) {
+  for (size_t i = 0; i < d_numVars; i++) { // repeat d_numVars (|V| - 1) times
+    for (size_t u = 0; u < d_numVars + 1; u++) {
+      for (size_t v = 0; v < d_numVars + 1; v++) {
         if (d_valid_new[u][v]) {
           if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
             d_dist_new[v] = d_dist_new[u] + d_matrix_new[u][v];
@@ -296,8 +323,8 @@ bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matri
     }
   }
 
-  for (int u = 0; u < d_numVars + 1; u++) {
-      for (int v = 0; v < d_numVars + 1; v++) {
+  for (size_t u = 0; u < d_numVars + 1; u++) {
+      for (size_t v = 0; v < d_numVars + 1; v++) {
         if (d_valid_new[u][v]) {
           if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
             return true;
@@ -313,12 +340,12 @@ bool IdlExtension::negativeCycle()
   // --------------------------------------------------------------------------
   // TODO: write the code to detect a negative cycle.
   // --------------------------------------------------------------------------
-  std::cout << "Enter negativeCycle2" << std::endl;
-  printMatrix(d_matrix, d_valid, d_numVars);
+  // std::cout << "Enter negativeCycle2" << std::endl;
+  // printMatrix(d_matrix, d_valid, d_numVars);
   //david
   init_new_matrix();
   
-  printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
+  // printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
   bool result = Bellman_Ford(d_matrix_new, d_valid_new, d_numVars);
   
   return result;
