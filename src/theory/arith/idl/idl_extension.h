@@ -104,7 +104,7 @@ class IdlExtension : protected EnvObj
   std::vector<std::vector<Rational>> d_matrix_new;
   std::vector<std::vector<bool>> d_valid_new;
 
-  /** i, jth entry stores the distance of the d_matrix_new graph **/
+  /** Distance from the additional node **/
   std::vector<Rational> d_dist_new;
 }; /* class IdlExtension */
 

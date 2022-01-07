@@ -210,6 +210,10 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   // TODO: implement model generation by computing the single-source shortest
   // path from a node that has distance zero to all other nodes
   // ---------------------------------------------------------------------------
+  for (size_t i = 0; i < d_numVars; i++)
+  {
+    distance[i] = d_dist_new[i];
+  }
 
   NodeManager* nm = NodeManager::currentNM();
   for (size_t i = 0; i < d_numVars; i++)
