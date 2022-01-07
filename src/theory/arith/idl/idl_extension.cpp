@@ -66,6 +66,12 @@ void IdlExtension::presolve()
     d_matrix.emplace_back(d_numVars);
     d_valid.emplace_back(d_numVars, false);
   }
+
+  //david
+  for (size_t i = 0; i < d_numVars + 1; ++i) {
+    d_matrix_new.emplace_back(d_numVars + 1);
+    d_valid_new.emplace_back(d_numVars + 1, false);
+  }
 }
 
 void IdlExtension::notifyFact(
@@ -244,27 +250,99 @@ void IdlExtension::processAssertion(TNode assertion)
   }
 }
 
+void IdlExtension::init_new_matrix()
+{
+  for (size_t i = 0; i < d_numVars; ++i)
+  {
+    for (size_t j = 0; j < d_numVars; ++j)
+    {
+      if (d_valid[i][j])
+      {
+        d_matrix_new[j][i] = d_matrix[i][j];
+        d_valid_new[j][i] = d_valid[i][j];
+      }
+    }
+  }
+  for (size_t i = 0; i < d_numVars; ++i)
+  {
+    d_matrix_new[d_numVars][i] = 0;
+    d_valid_new[d_numVars][i] = true;
+  }
+}
+
+bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
+                  const std::vector<std::vector<bool>> d_valid_new,
+                  const size_t d_numVars)
+{
+  /* There are d_numVars+1 vertices in total
+    [0, d_numVars) are original matrix, d_numVars is the additional one */
+  for (size_t i = 0; i < d_numVars; i++) {
+    d_dist_new.emplace_back(Rational(10000000));
+  }
+  d_dist_new.emplace_back(Rational(0));
+  for (int i = 0; i < d_numVars; i++) { // repeat d_numVars (|V| - 1) times
+    for (int u = 0; u < d_numVars + 1; u++) {
+      for (int v = 0; v < d_numVars + 1; v++) {
+        if (d_valid_new[u][v]) {
+          if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
+            d_dist_new[v] = d_dist_new[u] + d_matrix_new[u][v];
+          }
+        }
+      }
+    }
+  }
+
+  for (int u = 0; u < d_numVars + 1; u++) {
+      for (int v = 0; v < d_numVars + 1; v++) {
+        if (d_valid_new[u][v]) {
+          if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
+            return true;
+          }
+        }
+      }
+    }
+  return false;
+}
+
 bool IdlExtension::negativeCycle()
 {
   // --------------------------------------------------------------------------
   // TODO: write the code to detect a negative cycle.
   // --------------------------------------------------------------------------
-
-  return false;
+  std::cout << "Enter negativeCycle2" << std::endl;
+  printMatrix(d_matrix, d_valid, d_numVars);
+  //david
+  init_new_matrix();
+  
+  printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
+  bool result = Bellman_Ford(d_matrix_new, d_valid_new, d_numVars);
+  
+  return result;
 }
 
 void IdlExtension::printMatrix(const std::vector<std::vector<Rational>>& matrix,
-                               const std::vector<std::vector<bool>>& valid)
+                               const std::vector<std::vector<bool>>& valid,
+                               const size_t d_numVars)
 {
   std::cout << "      ";
   for (size_t j = 0; j < d_numVars; ++j)
   {
-    std::cout << std::setw(6) << d_varList[j];
+    if (j < d_varList.size()) {
+      std::cout << std::setw(6) << d_varList[j];
+    }
+    else {
+      std::cout << std::setw(6) << "***";
+    }
   }
   std::cout << std::endl;
   for (size_t i = 0; i < d_numVars; ++i)
   {
-    std::cout << std::setw(6) << d_varList[i];
+    if (i < d_varList.size()) {
+      std::cout << std::setw(6) << d_varList[i];
+    }
+    else {
+      std::cout << std::setw(6) << "***";
+    }
     for (size_t j = 0; j < d_numVars; ++j)
     {
       if (valid[i][j])

@@ -68,7 +68,14 @@ class IdlExtension : protected EnvObj
 
   /** Print the matrix */
   void printMatrix(const std::vector<std::vector<Rational>>& matrix,
-                   const std::vector<std::vector<bool>>& valid);
+                   const std::vector<std::vector<bool>>& valid,
+                   const size_t d_numVars);
+  
+  void init_new_matrix();
+
+  bool Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
+                    const std::vector<std::vector<bool>> d_valid_new,
+                    const size_t d_numVars);
 
   typedef context::CDHashMap<TNode, size_t> TNodeToUnsignedCDMap;
 
@@ -92,6 +99,13 @@ class IdlExtension : protected EnvObj
 
   /** Number of variables in the graph */
   size_t d_numVars;
+
+  /** i, jth entry stores the weight for the edge from i to j in the graph (with addtional node) **/
+  std::vector<std::vector<Rational>> d_matrix_new;
+  std::vector<std::vector<bool>> d_valid_new;
+
+  /** i, jth entry stores the distance of the d_matrix_new graph **/
+  std::vector<Rational> d_dist_new;
 }; /* class IdlExtension */
 
 }  // namespace idl
