@@ -92,7 +92,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
-  std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  // std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   NodeManager* nm = NodeManager::currentNM();
 
   if (atom[0].getKind() == kind::CONST_RATIONAL)
@@ -105,23 +105,39 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
       // TODO: Handle these cases.
       // -------------------------------------------------------------------------
       case kind::EQUAL:
+      {
+        return ppRewrite(nm->mkNode(kind::EQUAL, atom[1], atom[0]), lems);
+      }
       case kind::LT:
+      {
+        return ppRewrite(nm->mkNode(kind::GT, atom[1], atom[0]), lems);
+      }
       case kind::LEQ:
+      {
+        return ppRewrite(nm->mkNode(kind::GEQ, atom[1], atom[0]), lems);
+      }
       case kind::GT:
+      {
+        return ppRewrite(nm->mkNode(kind::LT, atom[1], atom[0]), lems);
+      }
       case kind::GEQ:
+      {
+        return ppRewrite(nm->mkNode(kind::LEQ, atom[1], atom[0]), lems);
+      }
       default: break;
     }
-    std::cout << "nm->mkNode(" << k << ", " << atom[1] << "," <<  atom[0] << ")" << std::endl;
     return ppRewrite(nm->mkNode(k, atom[1], atom[0]), lems);
   }
   else if (atom[1].getKind() == kind::VARIABLE)
   {
     // Handle the case where there are no constants, e.g., (= x y) where both
     // x and y are variables
-    Node ret = atom;
     // -------------------------------------------------------------------------
     // TODO: Handle this case.
     // -------------------------------------------------------------------------
+    Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
+    Node zero_const = nm->mkConstInt(0);
+    Node ret = nm->mkNode(atom.getKind(), a_minus_b, zero_const);
     return ppRewrite(ret, lems);
   }
 
@@ -204,7 +220,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     // notifyFact().
     Trace("theory::arith::idl")
         << "IdlExtension::check(): processing " << fact << std::endl;
-    std::cout << "IdlExtension::check(): processing " << fact << std::endl;
+    // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
 
