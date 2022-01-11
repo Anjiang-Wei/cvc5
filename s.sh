@@ -4,8 +4,8 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=4G
-#SBATCH --output=/home/users/sotoudeh/batch_data/%j_%a.log
-#SBATCH --error=/home/users/sotoudeh/batch_data/%j_%a.err
+#SBATCH --output=/home/users/anjiang/cvc5/log/%j_%a.log
+#SBATCH --error=/home/users/anjiang/cvc5/log/%j_%a.err
 #SBATCH --array 1-500%100
 
 # We have 2372 things (excluding the LFS ones), we want to have 500 tasks
