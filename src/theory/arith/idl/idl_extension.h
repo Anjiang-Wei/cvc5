@@ -106,6 +106,8 @@ class IdlExtension : protected EnvObj
 
   /** Distance from the additional node **/
   std::vector<Rational> d_dist_new;
+
+  Node shift_node;
 }; /* class IdlExtension */
 
 }  // namespace idl

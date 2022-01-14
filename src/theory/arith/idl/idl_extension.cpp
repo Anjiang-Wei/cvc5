@@ -38,6 +38,10 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_facts(context()),
       d_numVars(0)
 {
+  NodeManager *nm = NodeManager::currentNM();
+  SkolemManager *sm = nm->getSkolemManager();
+  shift_node = sm->mkSkolemFunction(SkolemFunId::NONE, nm->integerType(), 
+    nm->mkConst(kind::CONST_RATIONAL, Rational(0)));
 }
 
 void IdlExtension::preRegisterTerm(TNode node)
@@ -92,7 +96,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
-  // std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   NodeManager* nm = NodeManager::currentNM();
 
   if (atom[0].getKind() == kind::CONST_RATIONAL)
@@ -139,6 +143,12 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
     Node zero_const = nm->mkConstInt(0);
     Node ret = nm->mkNode(atom.getKind(), a_minus_b, zero_const);
     return ppRewrite(ret, lems);
+  }
+  else if (atom[0].getKind() == kind::VARIABLE && 
+    atom[1].getKind() == kind::CONST_RATIONAL) {
+    // handle (? x 5) ---> (? (- x shift_node) 5)
+    Node x_shift = nm->mkNode(kind::MINUS, atom[0], shift_node);
+    return ppRewrite(nm->mkNode(atom.getKind(), x_shift, atom[1]), lems);
   }
 
   switch (atom.getKind())
@@ -220,7 +230,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     // notifyFact().
     Trace("theory::arith::idl")
         << "IdlExtension::check(): processing " << fact << std::endl;
-    // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
+    std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
 
@@ -253,9 +263,15 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   // TODO: implement model generation by computing the single-source shortest
   // path from a node that has distance zero to all other nodes
   // ---------------------------------------------------------------------------
+  Rational shift = Rational(0);
+  if (d_varMap.count(shift_node)) {
+    shift = distance[d_varMap[shift_node]];
+    std::cout << "shift = " << shift << std::endl;
+  }
+
   for (size_t i = 0; i < d_numVars; i++)
   {
-    distance[i] = d_dist_new[i];
+    distance[i] = d_dist_new[i] - shift;
   }
 
   NodeManager* nm = NodeManager::currentNM();
@@ -357,11 +373,11 @@ bool IdlExtension::negativeCycle()
   // TODO: write the code to detect a negative cycle.
   // --------------------------------------------------------------------------
   // std::cout << "Enter negativeCycle2" << std::endl;
-  // printMatrix(d_matrix, d_valid, d_numVars);
+  printMatrix(d_matrix, d_valid, d_numVars);
   //david
   init_new_matrix();
   
-  // printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
+  printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
   bool result = Bellman_Ford(d_matrix_new, d_valid_new, d_numVars);
   
   return result;
@@ -375,7 +391,11 @@ void IdlExtension::printMatrix(const std::vector<std::vector<Rational>>& matrix,
   for (size_t j = 0; j < d_numVars; ++j)
   {
     if (j < d_varList.size()) {
-      std::cout << std::setw(6) << d_varList[j];
+      if (d_varList[j] == shift_node) {
+        std::cout << std::setw(6) << "shift";
+      } else {
+        std::cout << std::setw(6) << d_varList[j];
+      }
     }
     else {
       std::cout << std::setw(6) << "***";
@@ -385,7 +405,11 @@ void IdlExtension::printMatrix(const std::vector<std::vector<Rational>>& matrix,
   for (size_t i = 0; i < d_numVars; ++i)
   {
     if (i < d_varList.size()) {
-      std::cout << std::setw(6) << d_varList[i];
+      if (d_varList[i] == shift_node) {
+        std::cout << std::setw(6) << "shift";
+      } else {
+        std::cout << std::setw(6) << d_varList[i];
+      }
     }
     else {
       std::cout << std::setw(6) << "***";
