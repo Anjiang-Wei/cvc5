@@ -96,7 +96,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
-  // std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   NodeManager* nm = NodeManager::currentNM();
 
   if (atom[0].getKind() == kind::CONST_RATIONAL)
@@ -139,16 +139,70 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
     // -------------------------------------------------------------------------
     // TODO: Handle this case.
     // -------------------------------------------------------------------------
-    Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
-    Node zero_const = nm->mkConstInt(0);
-    Node ret = nm->mkNode(atom.getKind(), a_minus_b, zero_const);
-    return ppRewrite(ret, lems);
+    switch (atom.getKind()) {
+      case kind::EQUAL: {
+        // x = y: x - y <= 0 && y - x <= 0
+        Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
+        Node b_minus_a = nm->mkNode(kind::MINUS, atom[1], atom[0]);
+        Node zero_const = nm->mkConstInt(0);
+        Node ret = nm->mkNode(kind::AND,
+            nm->mkNode(kind::LEQ, a_minus_b, zero_const),
+            nm->mkNode(kind::LEQ, b_minus_a, zero_const));
+        return ppRewrite(ret, lems);
+      }
+      case kind::LT: {
+        // x < y: x - y <= -1
+        Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
+        Node ret = nm->mkNode(kind::LEQ, a_minus_b, nm->mkConstInt(-1));
+        return ppRewrite(ret, lems);
+      }
+      case kind::LEQ: {
+        // x <= y: x-y <= 0
+        Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
+        Node ret = nm->mkNode(kind::LEQ, a_minus_b, nm->mkConstInt(0));
+        return ppRewrite(ret, lems);
+      }
+      case kind::GT: {
+        // x > y: y-x <= -1
+        Node b_minus_a = nm->mkNode(kind::MINUS, atom[1], atom[0]);
+        Node ret = nm->mkNode(kind::LEQ, b_minus_a, nm->mkConstInt(-1));
+        return ppRewrite(ret, lems);
+      }
+      case kind::GEQ: {
+        // x >= y: y-x <= 0
+        Node b_minus_a = nm->mkNode(kind::MINUS, atom[1], atom[0]);
+        Node ret = nm->mkNode(kind::LEQ, b_minus_a, nm->mkConstInt(0));
+        return ppRewrite(ret, lems);
+      }
+      default: break;
+    }
+    return ppRewrite(nm->mkNode(atom.getKind(), atom[0], atom[1]), lems);
   }
   else if (atom[0].getKind() == kind::VARIABLE && 
     atom[1].getKind() == kind::CONST_RATIONAL) {
     // handle (? x 5) ---> (? (- x shift_node) 5)
     Node x_shift = nm->mkNode(kind::MINUS, atom[0], shift_node);
     return ppRewrite(nm->mkNode(atom.getKind(), x_shift, atom[1]), lems);
+  }
+  else if (atom[0].getKind() == kind::PLUS && atom[1].getKind() == kind::PLUS) {
+    // (op (+ x 22) (+ y 27))
+    Node left = atom[0];
+    Node right = atom[1];
+    if (left[0].getKind() == kind::VARIABLE && left[1].getKind() == kind::CONST_RATIONAL
+        && right[0].getKind() == kind::VARIABLE && right[1].getKind() == kind::CONST_RATIONAL) {
+          Node const_minus = nm->mkConstInt(right[1].getConst<Rational>() - left[1].getConst<Rational>());
+          Node var_minus = nm->mkNode(kind::MINUS, left[0], right[0]);
+          return ppRewrite(nm->mkNode(atom.getKind(), var_minus, const_minus), lems);
+    }
+  }
+  else if (atom[0].getKind() == kind::VARIABLE && atom[1].getKind() == kind::PLUS) {
+    // (op x (+ y 22))
+    Node left = atom[0];
+    Node right = atom[1];
+    if (right[0].getKind() == kind::VARIABLE && right[1].getKind() == kind::CONST_RATIONAL) {
+          Node var_minus = nm->mkNode(kind::MINUS, left, right[0]);
+          return ppRewrite(nm->mkNode(atom.getKind(), var_minus, right[1]), lems);
+    }
   }
 
   switch (atom.getKind())
