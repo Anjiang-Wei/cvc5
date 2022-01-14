@@ -96,7 +96,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
-  std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  // std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   NodeManager* nm = NodeManager::currentNM();
 
   if (atom[0].getKind() == kind::CONST_RATIONAL)
@@ -230,7 +230,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     // notifyFact().
     Trace("theory::arith::idl")
         << "IdlExtension::check(): processing " << fact << std::endl;
-    std::cout << "IdlExtension::check(): processing " << fact << std::endl;
+    // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
 
@@ -266,7 +266,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   Rational shift = Rational(0);
   if (d_varMap.count(shift_node)) {
     shift = distance[d_varMap[shift_node]];
-    std::cout << "shift = " << shift << std::endl;
+    // std::cout << "shift = " << shift << std::endl;
   }
 
   for (size_t i = 0; i < d_numVars; i++)
@@ -315,6 +315,13 @@ void IdlExtension::processAssertion(TNode assertion)
 
 void IdlExtension::init_new_matrix()
 {
+  for (size_t i = 0; i < d_numVars; ++i)
+  {
+    for (size_t j = 0; j < d_numVars; ++j)
+    {
+      d_valid_new[i][j] = false;
+    }
+  }
   for (size_t i = 0; i < d_numVars; ++i)
   {
     for (size_t j = 0; j < d_numVars; ++j)
@@ -373,11 +380,11 @@ bool IdlExtension::negativeCycle()
   // TODO: write the code to detect a negative cycle.
   // --------------------------------------------------------------------------
   // std::cout << "Enter negativeCycle2" << std::endl;
-  printMatrix(d_matrix, d_valid, d_numVars);
+  // printMatrix(d_matrix, d_valid, d_numVars);
   //david
   init_new_matrix();
   
-  printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
+  // printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
   bool result = Bellman_Ford(d_matrix_new, d_valid_new, d_numVars);
   
   return result;
