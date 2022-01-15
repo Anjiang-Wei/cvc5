@@ -17,6 +17,7 @@
 
 #include <iomanip>
 #include <queue>
+#include <deque>
 #include <set>
 
 #include "expr/node_builder.h"
@@ -152,31 +153,31 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
         Node ret = nm->mkNode(kind::AND,
             nm->mkNode(kind::LEQ, a_minus_b, zero_const),
             nm->mkNode(kind::LEQ, b_minus_a, zero_const));
-        return ppRewrite(ret, lems);
+        return ret;
       }
       case kind::LT: {
         // x < y: x - y <= -1
         Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
         Node ret = nm->mkNode(kind::LEQ, a_minus_b, nm->mkConstInt(-1));
-        return ppRewrite(ret, lems);
+        return ret;
       }
       case kind::LEQ: {
         // x <= y: x-y <= 0
         Node a_minus_b = nm->mkNode(kind::MINUS, atom[0], atom[1]);
         Node ret = nm->mkNode(kind::LEQ, a_minus_b, nm->mkConstInt(0));
-        return ppRewrite(ret, lems);
+        return ret;
       }
       case kind::GT: {
         // x > y: y-x <= -1
         Node b_minus_a = nm->mkNode(kind::MINUS, atom[1], atom[0]);
         Node ret = nm->mkNode(kind::LEQ, b_minus_a, nm->mkConstInt(-1));
-        return ppRewrite(ret, lems);
+        return ret;
       }
       case kind::GEQ: {
         // x >= y: y-x <= 0
         Node b_minus_a = nm->mkNode(kind::MINUS, atom[1], atom[0]);
         Node ret = nm->mkNode(kind::LEQ, b_minus_a, nm->mkConstInt(0));
-        return ppRewrite(ret, lems);
+        return ret;
       }
       default: break;
     }
@@ -347,7 +348,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
 
   for (size_t i = 0; i < d_numVars; i++)
   {
-    distance[i] = Rational(dis[i]) - shift;
+    distance[i] = dis[i] - shift;
   }
 
   NodeManager* nm = NodeManager::currentNM();
@@ -522,7 +523,7 @@ void IdlExtension::spfa_init() {
         m_spfa++;
         // d_matrix_new[j][i] = d_matrix[i][j];
         // d_valid_new[j][i] = d_valid[i][j];
-        adj[j].emplace_back(i, (int) d_matrix[i][j].getDouble());
+        adj[j].emplace_back(i, d_matrix[i][j]);
       }
     }
   }
@@ -534,19 +535,26 @@ bool IdlExtension::spfa_early_terminate()
    /* There are d_numVars+1 vertices in total
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
-  std::fill(dis, dis + n_spfa, 0);
+  for (int i = 0; i < n_spfa; i++) {
+    dis.emplace_back(Rational(0));
+  }
+  // std::fill(dis, dis + n_spfa, 0);
 	std::fill(pre, pre + n_spfa, -1);
 	std::fill(in_queue, in_queue + n_spfa, true);
-	std::queue<int> queue;
+  Rational sum(0);
+  num_on_stack = 0;
 	for (int i = 0; i < n_spfa; ++i)
   {
-		queue.push(i);
+		queue.push_back(i);
+    num_on_stack++;
   }
   int iter = 0;
 	while (!queue.empty())
 	{
 		int u = queue.front();
-		queue.pop();
+		queue.pop_front();
+    num_on_stack--;
+    sum = sum - dis[u];
 		in_queue[u] = false;
 		for (auto [v, w] : adj[u])
     {
@@ -562,8 +570,15 @@ bool IdlExtension::spfa_early_terminate()
         }
 				if (!in_queue[v])
 				{
-					queue.push(v);
+					queue.push_back(v);
 					in_queue[v] = true;
+          num_on_stack++;
+          sum = sum + dis[v];
+          while (dis[queue.front()] * num_on_stack > sum) {
+              int ufront = queue.front();
+              queue.pop_front();
+              queue.push_back(ufront);
+          }
 				}
 			}
     }

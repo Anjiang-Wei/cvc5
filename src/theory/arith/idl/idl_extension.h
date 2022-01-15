@@ -111,19 +111,21 @@ class IdlExtension : protected EnvObj
   Node shift_node;
   // std::deque<size_t> Q;
 
-  //const int MAX_N = 1000000;
+  //const int MAX_N = 100000;
 
   int n_spfa, m_spfa;
-  std::vector<std::pair<size_t, int>> adj[1000000];
+  std::vector<std::pair<size_t, Rational>> adj[100000];
 
-  int dis[1000000];
-  size_t pre[1000000], len[1000000];
-  bool in_queue[1000000];
+  std::vector<Rational> dis;
+  size_t pre[100000], len[100000];
+  bool in_queue[100000];
 
-  bool visited[1000000], on_stack[1000000];
+  bool visited[100000], on_stack[100000];
   bool detect_cycle();
   bool spfa_early_terminate();
   void spfa_init();
+  int num_on_stack;
+  std::deque<int> queue;
 
   // bool debug = false;
 }; /* class IdlExtension */
