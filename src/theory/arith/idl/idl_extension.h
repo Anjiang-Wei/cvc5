@@ -108,6 +108,8 @@ class IdlExtension : protected EnvObj
   std::vector<Rational> d_dist_new;
 
   Node shift_node;
+
+  // bool debug = false;
 }; /* class IdlExtension */
 
 }  // namespace idl

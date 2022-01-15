@@ -96,7 +96,9 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
-  std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  // if (debug) {
+  //   std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
+  // }
   NodeManager* nm = NodeManager::currentNM();
 
   if (atom[0].getKind() == kind::CONST_RATIONAL)
@@ -202,6 +204,24 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
     if (right[0].getKind() == kind::VARIABLE && right[1].getKind() == kind::CONST_RATIONAL) {
           Node var_minus = nm->mkNode(kind::MINUS, left, right[0]);
           return ppRewrite(nm->mkNode(atom.getKind(), var_minus, right[1]), lems);
+    }
+  }
+  else if (atom[0].getKind() == kind::PLUS && atom[1].getKind() == kind::CONST_RATIONAL) {
+    // (op (+ x 15) 145)
+    Node left = atom[0];
+    Node right = atom[1];
+    if (left[0].getKind() == kind::VARIABLE && left[1].getKind() == kind::CONST_RATIONAL) {
+      Node const_minus = nm->mkConstInt(right.getConst<Rational>() - left[1].getConst<Rational>());
+      return ppRewrite(nm->mkNode(atom.getKind(), left[0], const_minus), lems);
+    }
+  }
+  else if (atom[0].getKind() == kind::MINUS && atom[1].getKind() == kind::CONST_RATIONAL) {
+    // (op (- x 15) 145)
+    Node left = atom[0];
+    Node right = atom[1];
+    if (left[0].getKind() == kind::VARIABLE && left[1].getKind() == kind::CONST_RATIONAL) {
+      Node const_add = nm->mkConstInt(right.getConst<Rational>() + left[1].getConst<Rational>());
+      return ppRewrite(nm->mkNode(atom.getKind(), left[0], const_add), lems);
     }
   }
 
@@ -342,6 +362,9 @@ void IdlExtension::processAssertion(TNode assertion)
 {
   bool polarity = assertion.getKind() != kind::NOT;
   TNode atom = polarity ? assertion : assertion[0];
+  // if (debug) {
+  //   std::cout << "processAssertion" << atom << std::endl;
+  // }
   Assert(atom.getKind() == kind::LEQ);
   Assert(atom[0].getKind() == kind::MINUS);
   TNode var1 = atom[0][0];
