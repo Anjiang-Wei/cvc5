@@ -23,6 +23,7 @@
 #include "theory/skolem_lemma.h"
 #include "theory/theory.h"
 #include "theory/theory_model.h"
+#include <deque>
 
 namespace cvc5 {
 namespace theory {
@@ -108,6 +109,21 @@ class IdlExtension : protected EnvObj
   std::vector<Rational> d_dist_new;
 
   Node shift_node;
+  // std::deque<size_t> Q;
+
+  //const int MAX_N = 1000000;
+
+  int n_spfa, m_spfa;
+  std::vector<std::pair<size_t, int>> adj[1000000];
+
+  int dis[1000000];
+  size_t pre[1000000], len[1000000];
+  bool in_queue[1000000];
+
+  bool visited[1000000], on_stack[1000000];
+  bool detect_cycle();
+  bool spfa_early_terminate();
+  void spfa_init();
 
   // bool debug = false;
 }; /* class IdlExtension */
