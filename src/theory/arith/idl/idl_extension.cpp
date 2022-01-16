@@ -65,22 +65,6 @@ void IdlExtension::presolve()
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
 
-  // Initialize adjacency matrix.
-  /*
-  for (size_t i = 0; i < d_numVars; ++i)
-  {
-    d_matrix.emplace_back(d_numVars);
-    d_valid.emplace_back(d_numVars, false);
-  }
-  */
-
-  //david
-  /*
-  for (size_t i = 0; i < d_numVars + 1; ++i) {
-    d_matrix_new.emplace_back(d_numVars + 1);
-    d_valid_new.emplace_back(d_numVars + 1, false);
-  }
-  */
 }
 
 void IdlExtension::notifyFact(
@@ -293,16 +277,7 @@ void IdlExtension::postCheck(Theory::Effort level)
       << "IdlExtension::postCheck(): number of facts = " << d_facts.size()
       << std::endl;
 
-  // Reset the graph
-  /*
-  for (size_t i = 0; i < d_numVars; i++)
-  {
-    for (size_t j = 0; j < d_numVars; j++)
-    {
-      d_valid[i][j] = false;
-    }
-  }
-  */
+
   for (int i = 0; i < (m_spfa >= 0 ? m_spfa + 2 : 0); i++) {
     adj[i].clear();
   }
@@ -395,154 +370,10 @@ void IdlExtension::processAssertion(TNode assertion)
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
 
-  /*
-
-  if (!d_valid[index1][index2] || value < d_matrix[index1][index2])
-  {
-    d_valid[index1][index2] = true;
-    d_matrix[index1][index2] = value;
-  }
-  */
   m_spfa++;
   adj[index2].emplace_back(index1, value);
 }
 
-/*
-void IdlExtension::spfa_init() {
-
-  for (size_t i = 0; i < d_numVars; ++i)
-  {
-    for (size_t j = 0; j < d_numVars; ++j)
-    {
-      if (d_valid[i][j])
-      {
-        m_spfa++;
-        // d_matrix_new[j][i] = d_matrix[i][j];
-        // d_valid_new[j][i] = d_valid[i][j];
-        adj[j].emplace_back(i, d_matrix[i][j]);
-      }
-    }
-  }
-
-}
-*/
-
-/*
-void IdlExtension::init_new_matrix()
-{
-  for (size_t i = 0; i < d_numVars; ++i)
-  {
-    for (size_t j = 0; j < d_numVars; ++j)
-    {
-      d_valid_new[i][j] = false;
-    }
-  }
-  for (size_t i = 0; i < d_numVars; ++i)
-  {
-    for (size_t j = 0; j < d_numVars; ++j)
-    {
-      if (d_valid[i][j])
-      {
-        d_matrix_new[j][i] = d_matrix[i][j];
-        d_valid_new[j][i] = d_valid[i][j];
-      }
-    }
-  }
-  for (size_t i = 0; i < d_numVars; ++i)
-  {
-    d_matrix_new[d_numVars][i] = 0;
-    d_valid_new[d_numVars][i] = true;
-  }
-}
-*/
-
-
-// bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
-//                   const std::vector<std::vector<bool>> d_valid_new,
-//                   const size_t d_numVars)
-// {
-  // return false;
-  /*
-  for (size_t i = 0; i < d_numVars; i++) {
-    d_dist_new.emplace_back(Rational(10000000));
-  }
-  d_dist_new.emplace_back(Rational(0));
-  */
-  /*
-  for (size_t i = 0; i < d_numVars; i++) { // repeat d_numVars (|V| - 1) times
-    for (size_t u = 0; u < d_numVars + 1; u++) {
-      for (size_t v = 0; v < d_numVars + 1; v++) {
-        if (d_valid_new[u][v]) {
-          if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
-            d_dist_new[v] = d_dist_new[u] + d_matrix_new[u][v];
-          }
-        }
-      }
-    }
-  }
-
-  for (size_t u = 0; u < d_numVars + 1; u++) {
-      for (size_t v = 0; v < d_numVars + 1; v++) {
-        if (d_valid_new[u][v]) {
-          if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
-            return true;
-          }
-        }
-      }
-    }
-  return false;
-  */
-
-  /*
-  procedure Shortest-Path-Faster-Algorithm(G, s)
-  1    for each vertex v ≠ s in V(G)
-  2        d(v) := ∞
-  3    d(s) := 0
-  -----------------
-  4    offer s into Q
-  5    while Q is not empty
-  6        u := poll Q
-  7        for each edge (u, v) in E(G)
-  8            if d(u) + w(u, v) < d(v) then
-  9                d(v) := d(u) + w(u, v)
- 10                if v is not in Q then
- 11                    offer v into Q
-  procedure Large-Label-Last(G, Q)
-     x := average of d(v) for all v in Q
-     while d(front(Q)) > x
-         u := pop front of Q
-         push u to back of Q
- */
-
-/*
-  Q.push_back(d_numVars);
-  size_t Qsize = 1;
-  size_t dsum = 0;
-  while (!Q.empty()) {
-    size_t u = Q.front();
-    Q.pop_front();
-    Qsize--;
-    dsum = dsum - d_dist_new[u];
-    for (size_t v = 0; v < d_numVars + 1; v++) {
-      if (d_valid_new[u][v]) {
-        if (d_dist_new[u] + d_matrix_new[u][v] < d_dist_new[v]) {
-            d_dist_new[v] = d_dist_new[u] + d_matrix_new[u][v];
-            if (std::find(Q.begin(), Q.end(), v) == Q.end()) {
-              Q.push_back(v);
-              Qsize++;
-              dsum = dsum + d_dist_new[v];
-              while (d_dist_new[Q.front()] * Qsize > dsum) {
-                  size_t ufront = Q.front();
-                  Q.pop_front();
-                  Q.push_back(ufront);
-              }
-            }
-          }
-      }
-    }
-  }
-  */
-// }
 
 bool IdlExtension::spfa_early_terminate()
 {
@@ -641,12 +472,6 @@ bool IdlExtension::negativeCycle()
   // std::cout << "Enter negativeCycle2" << std::endl;
   // printMatrix(d_matrix, d_valid, d_numVars);
   //david
-  // init_new_matrix();
-
-  // spfa_init();
-  
-  // printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
-  //bool result = Bellman_Ford(d_matrix_new, d_valid_new, d_numVars);
   bool result = spfa_early_terminate();
   
   return result;
