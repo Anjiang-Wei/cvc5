@@ -282,6 +282,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     adj[i].clear();
   }
   myfacts.clear();
+  myvalues.clear();
   n_spfa = d_numVars;
   m_spfa = 0;
 
@@ -305,8 +306,10 @@ void IdlExtension::postCheck(Theory::Effort level)
     NodeBuilder conjunction(kind::AND);
     for (Node fact : result)
     {
+      // std::cout << fact << std::endl;
       conjunction << fact;
     }
+    // std::cout << "end reporting" << std::endl;
     Node conflict = conjunction;
     // Send the conflict using the inference manager. Each conflict is assigned
     // an ID. Here, we use  ARITH_CONF_IDL_EXT, which indicates a generic
@@ -375,6 +378,7 @@ void IdlExtension::processAssertion(TNode assertion)
   m_spfa++;
   adj[index2].emplace_back(index1, value);
   myfacts[std::make_pair(index2, index1)] = assertion;
+  myvalues[std::make_pair(index2, index1)] = (long long) value.getDouble();
   // myfacts[index2].emplace_back(index1, assertion);
 }
 
@@ -463,13 +467,22 @@ std::vector<TNode> IdlExtension::detect_cycle()
                 {
                     if (on_stack[j])
                     {
+                        long long sum_cycle = 0;
                         int current = j;
                         while (pre[current] != j) {
                           result.emplace_back(myfacts.at(std::make_pair(pre[current], (size_t) current)));
+                          sum_cycle = sum_cycle + myvalues.at(std::make_pair(pre[current], (size_t) current));
                           current = pre[current];
                         }
                         result.emplace_back(myfacts.at(std::make_pair(pre[current], (size_t) current)));
-                        return result;
+                        sum_cycle = sum_cycle + myvalues.at(std::make_pair(pre[current], (size_t) current));
+                        if (sum_cycle < 0) {
+                            return result;
+                        }
+                        else {
+                          result.clear();
+                            break;
+                        }
                     }
                     break;
                 }

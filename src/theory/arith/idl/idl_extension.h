@@ -118,6 +118,7 @@ class IdlExtension : protected EnvObj
   int n_spfa, m_spfa;
   std::vector<std::pair<size_t, Rational>> adj[100000];
   std::unordered_map<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
+  std::unordered_map<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
 
   std::vector<Rational> dis;
   size_t pre[100000], len[100000];
