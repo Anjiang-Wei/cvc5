@@ -72,11 +72,11 @@ class IdlExtension : protected EnvObj
                    const std::vector<std::vector<bool>>& valid,
                    const size_t d_numVars);
   
-  void init_new_matrix();
+  // void init_new_matrix();
 
-  bool Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
-                    const std::vector<std::vector<bool>> d_valid_new,
-                    const size_t d_numVars);
+  // bool Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
+  //                   const std::vector<std::vector<bool>> d_valid_new,
+  //                   const size_t d_numVars);
 
   typedef context::CDHashMap<TNode, size_t> TNodeToUnsignedCDMap;
 
@@ -93,10 +93,10 @@ class IdlExtension : protected EnvObj
   context::CDList<TNode> d_facts;
 
   /** i,jth entry is true iff there is an edge from i to j. */
-  std::vector<std::vector<bool>> d_valid;
+  // std::vector<std::vector<bool>> d_valid;
 
   /** i,jth entry stores weight for edge from i to j. */
-  std::vector<std::vector<Rational>> d_matrix;
+  // std::vector<std::vector<Rational>> d_matrix;
 
   /** Number of variables in the graph */
   size_t d_numVars;

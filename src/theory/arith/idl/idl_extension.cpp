@@ -66,11 +66,13 @@ void IdlExtension::presolve()
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
 
   // Initialize adjacency matrix.
+  /*
   for (size_t i = 0; i < d_numVars; ++i)
   {
     d_matrix.emplace_back(d_numVars);
     d_valid.emplace_back(d_numVars, false);
   }
+  */
 
   //david
   /*
@@ -99,7 +101,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
   Trace("theory::arith::idl")
       << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
-  // if (debug) {
+  // if (true) {
   //   std::cout << "IdlExtension::ppRewrite(): processing " << atom << std::endl;
   // }
   NodeManager* nm = NodeManager::currentNM();
@@ -292,6 +294,7 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
   // Reset the graph
+  /*
   for (size_t i = 0; i < d_numVars; i++)
   {
     for (size_t j = 0; j < d_numVars; j++)
@@ -299,6 +302,12 @@ void IdlExtension::postCheck(Theory::Effort level)
       d_valid[i][j] = false;
     }
   }
+  */
+  for (int i = 0; i < (m_spfa >= 0 ? m_spfa + 2 : 0); i++) {
+    adj[i].clear();
+  }
+  n_spfa = d_numVars;
+  m_spfa = 0;
 
   for (Node fact : d_facts)
   {
@@ -365,7 +374,7 @@ void IdlExtension::processAssertion(TNode assertion)
 {
   bool polarity = assertion.getKind() != kind::NOT;
   TNode atom = polarity ? assertion : assertion[0];
-  // if (debug) {
+  // if (true) {
   //   std::cout << "processAssertion" << atom << std::endl;
   // }
   Assert(atom.getKind() == kind::LEQ);
@@ -386,13 +395,39 @@ void IdlExtension::processAssertion(TNode assertion)
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
 
+  /*
+
   if (!d_valid[index1][index2] || value < d_matrix[index1][index2])
   {
     d_valid[index1][index2] = true;
     d_matrix[index1][index2] = value;
   }
+  */
+  m_spfa++;
+  adj[index2].emplace_back(index1, value);
 }
 
+/*
+void IdlExtension::spfa_init() {
+
+  for (size_t i = 0; i < d_numVars; ++i)
+  {
+    for (size_t j = 0; j < d_numVars; ++j)
+    {
+      if (d_valid[i][j])
+      {
+        m_spfa++;
+        // d_matrix_new[j][i] = d_matrix[i][j];
+        // d_valid_new[j][i] = d_valid[i][j];
+        adj[j].emplace_back(i, d_matrix[i][j]);
+      }
+    }
+  }
+
+}
+*/
+
+/*
 void IdlExtension::init_new_matrix()
 {
   for (size_t i = 0; i < d_numVars; ++i)
@@ -419,13 +454,14 @@ void IdlExtension::init_new_matrix()
     d_valid_new[d_numVars][i] = true;
   }
 }
+*/
 
 
-bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
-                  const std::vector<std::vector<bool>> d_valid_new,
-                  const size_t d_numVars)
-{
-  return false;
+// bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matrix_new,
+//                   const std::vector<std::vector<bool>> d_valid_new,
+//                   const size_t d_numVars)
+// {
+  // return false;
   /*
   for (size_t i = 0; i < d_numVars; i++) {
     d_dist_new.emplace_back(Rational(10000000));
@@ -506,29 +542,8 @@ bool IdlExtension::Bellman_Ford(const std::vector<std::vector<Rational>> d_matri
     }
   }
   */
-}
+// }
 
-void IdlExtension::spfa_init() {
-  for (int i = 0; i < (m_spfa >= 0 ? m_spfa + 2 : 0); i++) {
-    adj[i].clear();
-  }
-  n_spfa = d_numVars;
-  m_spfa = 0;
-  for (size_t i = 0; i < d_numVars; ++i)
-  {
-    for (size_t j = 0; j < d_numVars; ++j)
-    {
-      if (d_valid[i][j])
-      {
-        m_spfa++;
-        // d_matrix_new[j][i] = d_matrix[i][j];
-        // d_valid_new[j][i] = d_valid[i][j];
-        adj[j].emplace_back(i, d_matrix[i][j]);
-      }
-    }
-  }
-
-}
 bool IdlExtension::spfa_early_terminate()
 {
 
@@ -628,7 +643,7 @@ bool IdlExtension::negativeCycle()
   //david
   // init_new_matrix();
 
-  spfa_init();
+  // spfa_init();
   
   // printMatrix(d_matrix_new, d_valid_new, d_numVars + 1);
   //bool result = Bellman_Ford(d_matrix_new, d_valid_new, d_numVars);
