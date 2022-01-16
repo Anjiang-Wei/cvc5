@@ -281,6 +281,7 @@ void IdlExtension::postCheck(Theory::Effort level)
   for (int i = 0; i < (m_spfa >= 0 ? m_spfa + 2 : 0); i++) {
     adj[i].clear();
   }
+  myfacts.clear();
   n_spfa = d_numVars;
   m_spfa = 0;
 
@@ -295,13 +296,14 @@ void IdlExtension::postCheck(Theory::Effort level)
     processAssertion(fact);
   }
 
-  if (negativeCycle())
+  auto result = spfa_early_terminate();
+  if (result.size() > 0)
   {
     // Return a conflict that includes all the literals that have been asserted
     // to this theory solver. A better implementation would only include the
     // literals involved in the conflict here.
     NodeBuilder conjunction(kind::AND);
-    for (Node fact : d_facts)
+    for (Node fact : result)
     {
       conjunction << fact;
     }
@@ -372,15 +374,18 @@ void IdlExtension::processAssertion(TNode assertion)
 
   m_spfa++;
   adj[index2].emplace_back(index1, value);
+  myfacts[std::make_pair(index2, index1)] = assertion;
+  // myfacts[index2].emplace_back(index1, assertion);
 }
 
 
-bool IdlExtension::spfa_early_terminate()
+std::vector<TNode> IdlExtension::spfa_early_terminate()
 {
 
    /* There are d_numVars+1 vertices in total
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
+  std::vector<TNode> result;
   for (int i = 0; i < n_spfa; i++) {
     dis.emplace_back(Rational(0));
   }
@@ -411,8 +416,9 @@ bool IdlExtension::spfa_early_terminate()
 				if (++iter == n_spfa)
         {
             iter = 0;
-            if (detect_cycle())
-                return true;
+            result = detect_cycle();
+            if (result.size() > 0)
+                return result;
         }
 				if (!in_queue[v])
 				{
@@ -430,21 +436,23 @@ bool IdlExtension::spfa_early_terminate()
     }
 
 	}
-  if (detect_cycle())
-    return true;
-	return false;
+  result = detect_cycle();
+  return result;
 }
 
 
-bool IdlExtension::detect_cycle()
+std::vector<TNode> IdlExtension::detect_cycle()
 {
     std::vector<int> vec;
+    std::vector<TNode> result;
     std::fill(on_stack, on_stack + n_spfa, false);
     std::fill(visited, visited + n_spfa, false);
     for (int i = 0; i < n_spfa; ++i)
+    {
         if (!visited[i])
         {
             for (int j = i; j != -1; j = pre[j])
+            {
                 if (!visited[j])
                 {
                     visited[j] = true;
@@ -454,28 +462,28 @@ bool IdlExtension::detect_cycle()
                 else
                 {
                     if (on_stack[j])
-                        return true;
+                    {
+                        int current = j;
+                        while (pre[current] != j) {
+                          result.emplace_back(myfacts.at(std::make_pair(pre[current], (size_t) current)));
+                          current = pre[current];
+                        }
+                        result.emplace_back(myfacts.at(std::make_pair(pre[current], (size_t) current)));
+                        return result;
+                    }
                     break;
                 }
+            }
             for (int j : vec)
+            {
                 on_stack[j] = false;
+            }
             vec.clear();
         }
-    return false;
+    }
+    return result;
 }
 
-bool IdlExtension::negativeCycle()
-{
-  // --------------------------------------------------------------------------
-  // TODO: write the code to detect a negative cycle.
-  // --------------------------------------------------------------------------
-  // std::cout << "Enter negativeCycle2" << std::endl;
-  // printMatrix(d_matrix, d_valid, d_numVars);
-  //david
-  bool result = spfa_early_terminate();
-  
-  return result;
-}
 
 void IdlExtension::printMatrix(const std::vector<std::vector<Rational>>& matrix,
                                const std::vector<std::vector<bool>>& valid,

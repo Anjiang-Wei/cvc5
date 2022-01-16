@@ -24,6 +24,8 @@
 #include "theory/theory.h"
 #include "theory/theory_model.h"
 #include <deque>
+#include <unordered_map>
+#include <boost/functional/hash.hpp>
 
 namespace cvc5 {
 namespace theory {
@@ -65,7 +67,7 @@ class IdlExtension : protected EnvObj
   void processAssertion(TNode assertion);
 
   /** Return true iff the graph has a negative cycle */
-  bool negativeCycle();
+  // bool negativeCycle();
 
   /** Print the matrix */
   void printMatrix(const std::vector<std::vector<Rational>>& matrix,
@@ -115,14 +117,15 @@ class IdlExtension : protected EnvObj
 
   int n_spfa, m_spfa;
   std::vector<std::pair<size_t, Rational>> adj[100000];
+  std::unordered_map<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
 
   std::vector<Rational> dis;
   size_t pre[100000], len[100000];
   bool in_queue[100000];
 
   bool visited[100000], on_stack[100000];
-  bool detect_cycle();
-  bool spfa_early_terminate();
+  std::vector<TNode> detect_cycle();
+  std::vector<TNode> spfa_early_terminate();
   void spfa_init();
   int num_on_stack;
   std::deque<int> queue;
