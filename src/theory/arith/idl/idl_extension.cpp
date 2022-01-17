@@ -278,7 +278,7 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
-  for (int i = 0; i < (m_spfa >= 0 && m_spfa < 100000 - 2 ? m_spfa + 2 : 0); i++) {
+  for (int i = 0; i < (m_spfa >= 0 && m_spfa < 1000000 - 2 ? m_spfa + 2 : 0); i++) {
     adj[i].clear();
   }
   myfacts.clear();
