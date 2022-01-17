@@ -278,7 +278,7 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
-  for (int i = 0; i < (m_spfa >= 0 ? m_spfa + 2 : 0); i++) {
+  for (int i = 0; i < (m_spfa >= 0 && m_spfa < 100000 - 2 ? m_spfa + 2 : 0); i++) {
     adj[i].clear();
   }
   myfacts.clear();
@@ -303,10 +303,14 @@ void IdlExtension::postCheck(Theory::Effort level)
     // Return a conflict that includes all the literals that have been asserted
     // to this theory solver. A better implementation would only include the
     // literals involved in the conflict here.
+    if (result.size() == 1) {
+        d_parent.getInferenceManager().conflict(result[0],
+                                            InferenceId::ARITH_CONF_IDL_EXT);
+        return;
+    }
     NodeBuilder conjunction(kind::AND);
     for (Node fact : result)
     {
-      // std::cout << fact << std::endl;
       conjunction << fact;
     }
     // std::cout << "end reporting" << std::endl;
