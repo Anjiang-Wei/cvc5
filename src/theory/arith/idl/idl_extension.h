@@ -133,7 +133,7 @@ class IdlExtension : protected EnvObj
   int num_on_stack;
   std::deque<int> queue;
 
-  context::CDList<TNode> pre_detect_cycle;
+  // context::CDList<TNode> pre_detect_cycle;
 
   // bool debug = false;
 }; /* class IdlExtension */

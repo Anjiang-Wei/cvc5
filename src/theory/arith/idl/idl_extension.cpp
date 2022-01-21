@@ -38,7 +38,7 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_varList(context()),
       d_facts(context()),
       d_numVars(0),
-      pre_detect_cycle(context()),
+      // pre_detect_cycle(context()),
       myfacts(context()),
       myvalues(context())
 {
@@ -299,11 +299,11 @@ void IdlExtension::postCheck(Theory::Effort level)
     // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
-  if (pre_detect_cycle.size() > 0) {
-    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
-              InferenceId::ARITH_CONF_IDL_EXT);
-    return;
-  }
+  // if (pre_detect_cycle.size() > 0) {
+  //   d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
+  //             InferenceId::ARITH_CONF_IDL_EXT);
+  //   return;
+  // }
 
   auto result = spfa_early_terminate();
   if (result.size() > 0)
@@ -387,12 +387,12 @@ void IdlExtension::processAssertion(TNode assertion)
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
 
-  if (index1 == index2) {
-    if (value < Rational(0)) { // already a negative cycle
-      pre_detect_cycle.push_back(assertion);
-      return;
-    }
-  }
+  // if (index1 == index2) {
+  //   if (value < Rational(0)) { // already a negative cycle
+  //     pre_detect_cycle.push_back(assertion);
+  //     return;
+  //   }
+  // }
 
   m_spfa++;
   adj[index2].emplace_back(index1, value);
