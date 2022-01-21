@@ -66,17 +66,10 @@ void IdlExtension::presolve()
   d_numVars = d_varMap.size();
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
-  if (dis.size() == 0) {
-    dis.reserve(d_numVars);
-    pre.reserve(d_numVars);
-    in_queue.reserve(d_numVars);
-    for (int i = 0; i < d_numVars; i++) {
-      dis.emplace_back(Rational(0));
-      pre.emplace_back(-1);
-      in_queue.emplace_back(true);
-      }
-  } else {
-    Assert(dis.size() == d_numVars);
+  if (dis.size() != d_numVars) {
+    dis.resize(d_numVars);
+    pre.resize(d_numVars);
+    in_queue.resize(d_numVars);
   }
 }
 
@@ -430,11 +423,10 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
   // std::fill(dis, dis + n_spfa, 0);
 	// std::fill(pre, pre + n_spfa, -1);
 	// std::fill(in_queue, in_queue + n_spfa, true);
-  for (int i = 0; i < n_spfa; i++) {
-    dis[i] = Rational(0);
-    pre[i] = -1;
-    in_queue[i] = true;
-  }
+  Assert(dis.size() == n_spfa);
+  std::fill(dis.begin(), dis.end(), Rational(0));
+  std::fill(pre.begin(), pre.end(), -1);
+  std::fill(in_queue.begin(), in_queue.end(), true);
   Rational sum(0);
   num_on_stack = 0;
 	for (int i = 0; i < n_spfa; ++i)
