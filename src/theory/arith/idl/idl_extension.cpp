@@ -38,7 +38,9 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_varList(context()),
       d_facts(context()),
       d_numVars(0),
-      pre_detect_cycle(context())
+      pre_detect_cycle(context()),
+      myfacts(context()),
+      myvalues(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -394,8 +396,10 @@ void IdlExtension::processAssertion(TNode assertion)
 
   m_spfa++;
   adj[index2].emplace_back(index1, value);
-  myfacts[std::make_pair(index2, index1)] = assertion;
-  myvalues[std::make_pair(index2, index1)] = (long long) value.getDouble();
+  myfacts.insert(std::make_pair(index2, index1), assertion);
+  myvalues.insert(std::make_pair(index2, index1), (long long) value.getDouble());
+  // myfacts[std::make_pair(index2, index1)] = assertion;
+  // myvalues[std::make_pair(index2, index1)] = (long long) value.getDouble();
   // myfacts[index2].emplace_back(index1, assertion);
 }
 
@@ -487,12 +491,12 @@ std::vector<TNode> IdlExtension::detect_cycle()
                         long long sum_cycle = 0;
                         int current = j;
                         while (pre[current] != j) {
-                          result.emplace_back(myfacts.at(std::make_pair(pre[current], (size_t) current)));
-                          sum_cycle = sum_cycle + myvalues.at(std::make_pair(pre[current], (size_t) current));
+                          result.emplace_back(myfacts[std::make_pair(pre[current], (size_t) current)].get());
+                          sum_cycle = sum_cycle + myvalues[std::make_pair(pre[current], (size_t) current)].get();
                           current = pre[current];
                         }
-                        result.emplace_back(myfacts.at(std::make_pair(pre[current], (size_t) current)));
-                        sum_cycle = sum_cycle + myvalues.at(std::make_pair(pre[current], (size_t) current));
+                        result.emplace_back(myfacts[std::make_pair(pre[current], (size_t) current)].get());
+                        sum_cycle = sum_cycle + myvalues[std::make_pair(pre[current], (size_t) current)].get();
                         if (sum_cycle < 0) {
                             return result;
                         }
