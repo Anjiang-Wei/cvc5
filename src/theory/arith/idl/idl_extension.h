@@ -119,8 +119,10 @@ class IdlExtension : protected EnvObj
   // std::vector<std::pair<size_t, Rational>> adj[1000000];
   // std::vec
   context::CDHashMap<size_t, std::vector<std::pair<size_t, Rational>>> adj;
-  std::unordered_map<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
-  std::unordered_map<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
+  context::CDHashMap<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
+  context::CDHashMap<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
+  // std::unordered_map<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
+  // std::unordered_map<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
 
   std::vector<Rational> dis;
   std::vector<size_t> pre;
