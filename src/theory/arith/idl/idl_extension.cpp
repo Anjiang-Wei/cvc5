@@ -67,7 +67,10 @@ void IdlExtension::presolve()
   d_numVars = d_varMap.size();
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
-
+  std::vector<std::pair<size_t, Rational>> a;
+  adj.resize(d_numVars, a);
+  visited.resize(d_numVars, false);
+  on_stack.resize(d_numVars, false);
 }
 
 void IdlExtension::notifyFact(
@@ -281,7 +284,7 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
-  for (int i = 0; i < (m_spfa >= 0 && m_spfa < 1000000 - 2 ? m_spfa + 2 : 0); i++) {
+  for (int i = 0; i < adj.size(); i++) {
     adj[i].clear();
   }
   myfacts.clear();
@@ -411,12 +414,14 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
   std::vector<TNode> result;
-  for (int i = 0; i < n_spfa; i++) {
-    dis.emplace_back(Rational(0));
+  if (pre.size() < n_spfa) {
+    dis.resize(n_spfa, Rational(0));
+    pre.resize(n_spfa, -1);
+    in_queue.resize(n_spfa, true);
   }
-  // std::fill(dis, dis + n_spfa, 0);
-	std::fill(pre, pre + n_spfa, -1);
-	std::fill(in_queue, in_queue + n_spfa, true);
+  std::fill(dis.begin(), dis.end(), Rational(0));
+	std::fill(pre.begin(), pre.end(), -1);
+	std::fill(in_queue.begin(), in_queue.end(), true);
   Rational sum(0);
   num_on_stack = 0;
 	for (int i = 0; i < n_spfa; ++i)
@@ -470,8 +475,8 @@ std::vector<TNode> IdlExtension::detect_cycle()
 {
     std::vector<int> vec;
     std::vector<TNode> result;
-    std::fill(on_stack, on_stack + n_spfa, false);
-    std::fill(visited, visited + n_spfa, false);
+    std::fill(on_stack.begin(), on_stack.end(), false);
+    std::fill(visited.begin(), visited.end(), false);
     for (int i = 0; i < n_spfa; ++i)
     {
         if (!visited[i])

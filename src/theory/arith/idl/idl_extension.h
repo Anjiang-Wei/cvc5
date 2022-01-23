@@ -116,17 +116,21 @@ class IdlExtension : protected EnvObj
   //const int MAX_N = 1000000;
 
   int n_spfa, m_spfa;
-  std::vector<std::pair<size_t, Rational>> adj[1000000];
+  std::vector<std::vector<std::pair<size_t, Rational>>> adj;
+  // std::vector<std::pair<size_t, Rational>> adj[1000000];
   context::CDHashMap<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
   context::CDHashMap<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
   // std::unordered_map<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
   // std::unordered_map<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
 
   std::vector<Rational> dis;
-  size_t pre[1000000];
-  bool in_queue[1000000];
+  std::vector<size_t> pre;
+  std::vector<bool> in_queue;
+  // size_t pre[1000000];
+  // bool in_queue[1000000];
 
-  bool visited[1000000], on_stack[1000000];
+  std::vector<bool> visited, on_stack;
+  // bool visited[1000000], on_stack[1000000];
   std::vector<TNode> detect_cycle();
   std::vector<TNode> spfa_early_terminate();
   void spfa_init();
