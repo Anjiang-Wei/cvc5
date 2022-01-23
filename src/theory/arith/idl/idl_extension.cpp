@@ -38,9 +38,7 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_varList(context()),
       d_facts(context()),
       d_numVars(0),
-      pre_detect_cycle(context()),
-      myfacts(context()),
-      myvalues(context())
+      pre_detect_cycle(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -71,10 +69,14 @@ void IdlExtension::presolve()
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
+  myfacts = (int**) malloc(sizeof(int*) * d_numVars);
+  myvalues = (long long**) malloc(sizeof(long long*) * d_numVars);
   adj = (std::vector<std::pair<size_t, Rational>>**)
     malloc(sizeof(std::vector<std::pair<size_t, Rational>>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new std::vector<std::pair<size_t, Rational>>();
+    myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
+    myvalues[i] = (long long*) malloc(sizeof(long long) * d_numVars);
   }
 }
 
@@ -85,8 +87,12 @@ IdlExtension::~IdlExtension() {
   free(on_stack);
   for (int i = 0; i < d_numVars; i++) {
     delete adj[i];
+    free(myfacts[i]);
+    free(myvalues[i]);
   }
   free(adj);
+  free(myfacts);
+  free(myvalues);
 }
 
 void IdlExtension::notifyFact(
@@ -303,8 +309,6 @@ void IdlExtension::postCheck(Theory::Effort level)
   for (int i = 0; i < d_numVars; i++) {
     adj[i]->clear();
   }
-  myfacts.clear();
-  myvalues.clear();
   n_spfa = d_numVars;
   m_spfa = 0;
 
@@ -414,8 +418,8 @@ void IdlExtension::processAssertion(TNode assertion)
   }
 
   adj[index2]->emplace_back(index1, value);
-  myfacts.insert(std::make_pair(index2, index1), m_spfa);
-  myvalues.insert(std::make_pair(index2, index1), (long long) value.getDouble());
+  myfacts[index2][index1] = m_spfa;
+  myvalues[index2][index1] = (long long) value.getDouble();
   m_spfa++;
 }
 
@@ -509,12 +513,12 @@ std::vector<TNode> IdlExtension::detect_cycle()
                         long long sum_cycle = 0;
                         int current = j;
                         while (pre[current] != j) {
-                          result.emplace_back(d_facts[myfacts[std::make_pair(pre[current], (size_t) current)].get()]);
-                          sum_cycle = sum_cycle + myvalues[std::make_pair(pre[current], (size_t) current)].get();
+                          result.emplace_back(d_facts[myfacts[pre[current]][current]]);
+                          sum_cycle = sum_cycle + myvalues[pre[current]][current];
                           current = pre[current];
                         }
-                        result.emplace_back(d_facts[myfacts[std::make_pair(pre[current], (size_t) current)].get()]);
-                        sum_cycle = sum_cycle + myvalues[std::make_pair(pre[current], (size_t) current)].get();
+                        result.emplace_back(d_facts[myfacts[pre[current]][current]]);
+                        sum_cycle = sum_cycle + myvalues[pre[current]][current];
                         if (sum_cycle < 0) {
                             return result;
                         }

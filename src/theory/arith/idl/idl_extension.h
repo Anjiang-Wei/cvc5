@@ -104,8 +104,8 @@ class IdlExtension : protected EnvObj
 
   int n_spfa, m_spfa;
   std::vector<std::pair<size_t, Rational>>** adj;
-  context::CDHashMap<std::pair<size_t, size_t>, int, boost::hash<std::pair<size_t, size_t>>> myfacts;
-  context::CDHashMap<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
+  int** myfacts;
+  long long** myvalues;
 
   std::vector<Rational> dis;
   size_t* pre;
