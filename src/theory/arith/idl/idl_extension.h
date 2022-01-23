@@ -94,50 +94,32 @@ class IdlExtension : protected EnvObj
   /** Context-dependent list of asserted theory literals */
   context::CDList<TNode> d_facts;
 
-  /** i,jth entry is true iff there is an edge from i to j. */
-  // std::vector<std::vector<bool>> d_valid;
-
-  /** i,jth entry stores weight for edge from i to j. */
-  // std::vector<std::vector<Rational>> d_matrix;
-
   /** Number of variables in the graph */
   size_t d_numVars;
 
-  /** i, jth entry stores the weight for the edge from i to j in the graph (with addtional node) **/
-  std::vector<std::vector<Rational>> d_matrix_new;
-  std::vector<std::vector<bool>> d_valid_new;
-
-  /** Distance from the additional node **/
-  std::vector<Rational> d_dist_new;
-
   Node shift_node;
-  // std::deque<size_t> Q;
 
   //const int MAX_N = 1000000;
 
   int n_spfa, m_spfa;
-  std::vector<std::vector<std::pair<size_t, Rational>>> adj;
-  // std::vector<std::pair<size_t, Rational>> adj[1000000];
-  context::CDHashMap<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
+  std::vector<std::pair<size_t, Rational>> adj[1000000];
+  context::CDHashMap<std::pair<size_t, size_t>, int, boost::hash<std::pair<size_t, size_t>>> myfacts;
   context::CDHashMap<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
   // std::unordered_map<std::pair<size_t, size_t>, TNode, boost::hash<std::pair<size_t, size_t>>> myfacts;
   // std::unordered_map<std::pair<size_t, size_t>, long long, boost::hash<std::pair<size_t, size_t>>> myvalues;
 
   std::vector<Rational> dis;
-  std::vector<size_t> pre;
-  std::vector<bool> in_queue;
-  // size_t pre[1000000];
-  // bool in_queue[1000000];
+  size_t pre[1000000];
+  bool in_queue[1000000];
 
-  std::vector<bool> visited, on_stack;
-  // bool visited[1000000], on_stack[1000000];
+  bool visited[1000000], on_stack[1000000];
   std::vector<TNode> detect_cycle();
   std::vector<TNode> spfa_early_terminate();
   void spfa_init();
   int num_on_stack;
   std::deque<int> queue;
 
-  // context::CDList<TNode> pre_detect_cycle;
+  context::CDList<TNode> pre_detect_cycle;
 
   // bool debug = false;
 }; /* class IdlExtension */

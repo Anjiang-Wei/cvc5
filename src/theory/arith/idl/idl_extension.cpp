@@ -38,7 +38,7 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_varList(context()),
       d_facts(context()),
       d_numVars(0),
-      // pre_detect_cycle(context()),
+      pre_detect_cycle(context()),
       myfacts(context()),
       myvalues(context())
 {
@@ -67,10 +67,7 @@ void IdlExtension::presolve()
   d_numVars = d_varMap.size();
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
-  std::vector<std::pair<size_t, Rational>> a;
-  adj.resize(d_numVars, a);
-  visited.resize(d_numVars, false);
-  on_stack.resize(d_numVars, false);
+
 }
 
 void IdlExtension::notifyFact(
@@ -284,7 +281,7 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
-  for (int i = 0; i < adj.size(); i++) {
+  for (int i = 0; i < (m_spfa >= 0 && m_spfa < 1000000 - 2 ? m_spfa + 2 : 0); i++) {
     adj[i].clear();
   }
   myfacts.clear();
@@ -302,11 +299,11 @@ void IdlExtension::postCheck(Theory::Effort level)
     // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
-  // if (pre_detect_cycle.size() > 0) {
-  //   d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
-  //             InferenceId::ARITH_CONF_IDL_EXT);
-  //   return;
-  // }
+  if (pre_detect_cycle.size() > 0) {
+    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
+              InferenceId::ARITH_CONF_IDL_EXT);
+    return;
+  }
 
   auto result = spfa_early_terminate();
   if (result.size() > 0)
@@ -390,20 +387,17 @@ void IdlExtension::processAssertion(TNode assertion)
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
 
-  // if (index1 == index2) {
-  //   if (value < Rational(0)) { // already a negative cycle
-  //     pre_detect_cycle.push_back(assertion);
-  //     return;
-  //   }
-  // }
+  if (index1 == index2) {
+    if (value < Rational(0)) { // already a negative cycle
+      pre_detect_cycle.push_back(assertion);
+      return;
+    }
+  }
 
-  m_spfa++;
   adj[index2].emplace_back(index1, value);
-  myfacts.insert(std::make_pair(index2, index1), assertion);
+  myfacts.insert(std::make_pair(index2, index1), m_spfa);
   myvalues.insert(std::make_pair(index2, index1), (long long) value.getDouble());
-  // myfacts[std::make_pair(index2, index1)] = assertion;
-  // myvalues[std::make_pair(index2, index1)] = (long long) value.getDouble();
-  // myfacts[index2].emplace_back(index1, assertion);
+  m_spfa++;
 }
 
 
@@ -414,14 +408,12 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
   std::vector<TNode> result;
-  if (pre.size() < n_spfa) {
-    dis.resize(n_spfa, Rational(0));
-    pre.resize(n_spfa, -1);
-    in_queue.resize(n_spfa, true);
+  for (int i = 0; i < n_spfa; i++) {
+    dis.emplace_back(Rational(0));
   }
-  std::fill(dis.begin(), dis.end(), Rational(0));
-	std::fill(pre.begin(), pre.end(), -1);
-	std::fill(in_queue.begin(), in_queue.end(), true);
+  // std::fill(dis, dis + n_spfa, 0);
+	std::fill(pre, pre + n_spfa, -1);
+	std::fill(in_queue, in_queue + n_spfa, true);
   Rational sum(0);
   num_on_stack = 0;
 	for (int i = 0; i < n_spfa; ++i)
@@ -475,8 +467,8 @@ std::vector<TNode> IdlExtension::detect_cycle()
 {
     std::vector<int> vec;
     std::vector<TNode> result;
-    std::fill(on_stack.begin(), on_stack.end(), false);
-    std::fill(visited.begin(), visited.end(), false);
+    std::fill(on_stack, on_stack + n_spfa, false);
+    std::fill(visited, visited + n_spfa, false);
     for (int i = 0; i < n_spfa; ++i)
     {
         if (!visited[i])
@@ -496,11 +488,11 @@ std::vector<TNode> IdlExtension::detect_cycle()
                         long long sum_cycle = 0;
                         int current = j;
                         while (pre[current] != j) {
-                          result.emplace_back(myfacts[std::make_pair(pre[current], (size_t) current)].get());
+                          result.emplace_back(d_facts[myfacts[std::make_pair(pre[current], (size_t) current)].get()]);
                           sum_cycle = sum_cycle + myvalues[std::make_pair(pre[current], (size_t) current)].get();
                           current = pre[current];
                         }
-                        result.emplace_back(myfacts[std::make_pair(pre[current], (size_t) current)].get());
+                        result.emplace_back(d_facts[myfacts[std::make_pair(pre[current], (size_t) current)].get()]);
                         sum_cycle = sum_cycle + myvalues[std::make_pair(pre[current], (size_t) current)].get();
                         if (sum_cycle < 0) {
                             return result;
