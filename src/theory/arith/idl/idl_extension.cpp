@@ -67,7 +67,26 @@ void IdlExtension::presolve()
   d_numVars = d_varMap.size();
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
+  pre = (size_t*) malloc(sizeof(size_t) * d_numVars);
+  in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
+  visited = (bool*) malloc(sizeof(bool) * d_numVars);
+  on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
+  adj = (std::vector<std::pair<size_t, Rational>>**)
+    malloc(sizeof(std::vector<std::pair<size_t, Rational>>*) * d_numVars);
+  for (int i = 0; i < d_numVars; i++) {
+    adj[i] = new std::vector<std::pair<size_t, Rational>>();
+  }
+}
 
+IdlExtension::~IdlExtension() {
+  free(pre);
+  free(in_queue);
+  free(visited);
+  free(on_stack);
+  for (int i = 0; i < d_numVars; i++) {
+    delete adj[i];
+  }
+  free(adj);
 }
 
 void IdlExtension::notifyFact(
@@ -281,8 +300,8 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
-  for (int i = 0; i < (m_spfa >= 0 && m_spfa < 1000000 - 2 ? m_spfa + 2 : 0); i++) {
-    adj[i].clear();
+  for (int i = 0; i < d_numVars; i++) {
+    adj[i]->clear();
   }
   myfacts.clear();
   myvalues.clear();
@@ -394,7 +413,7 @@ void IdlExtension::processAssertion(TNode assertion)
     }
   }
 
-  adj[index2].emplace_back(index1, value);
+  adj[index2]->emplace_back(index1, value);
   myfacts.insert(std::make_pair(index2, index1), m_spfa);
   myvalues.insert(std::make_pair(index2, index1), (long long) value.getDouble());
   m_spfa++;
@@ -408,8 +427,10 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
   std::vector<TNode> result;
-  for (int i = 0; i < n_spfa; i++) {
-    dis.emplace_back(Rational(0));
+  if (dis.size() == 0) {
+    for (int i = 0; i < n_spfa; i++) {
+      dis.emplace_back(Rational(0));
+    }
   }
   // std::fill(dis, dis + n_spfa, 0);
 	std::fill(pre, pre + n_spfa, -1);
@@ -429,7 +450,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
     num_on_stack--;
     sum = sum - dis[u];
 		in_queue[u] = false;
-		for (auto [v, w] : adj[u])
+		for (auto [v, w] : *(adj[u]))
     {
 			if (dis[u] + w < dis[v])
 			{
