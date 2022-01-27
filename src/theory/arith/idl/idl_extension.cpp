@@ -465,20 +465,27 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
             iter = 0;
             result = detect_cycle();
             if (result.size() > 0)
-                return result;
+              return result;
         }
 				if (!in_queue[v])
-				{
-					queue.push_back(v);
-					in_queue[v] = true;
+        {
+          // queue.push_back(v);
+          in_queue[v] = true;
+          // SLF optimization
+          if (queue.size() > 0 && dis[queue.front()] > dis[v]) {
+            queue.push_front(v);
+          } else {
+            queue.push_back(v);
+          }
+
           /*
-          num_on_stack++;
-          sum = sum + dis[v];
-          while (dis[queue.front()] * num_on_stack > sum) {
+            num_on_stack++;
+            sum = sum + dis[v];
+            while (dis[queue.front()] * num_on_stack > sum) {
               int ufront = queue.front();
               queue.pop_front();
               queue.push_back(ufront);
-          }
+              }
           */
 				}
 			}
