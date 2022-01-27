@@ -460,7 +460,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 			{
 				pre[v] = u;
 				dis[v] = dis[u] + w;
-				if (++iter == n_spfa)
+				if (++iter == 30) // magic number
         {
             iter = 0;
             result = detect_cycle();
