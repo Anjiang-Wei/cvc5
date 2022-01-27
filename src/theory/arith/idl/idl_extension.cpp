@@ -471,6 +471,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 				{
 					queue.push_back(v);
 					in_queue[v] = true;
+          /*
           num_on_stack++;
           sum = sum + dis[v];
           while (dis[queue.front()] * num_on_stack > sum) {
@@ -478,6 +479,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
               queue.pop_front();
               queue.push_back(ufront);
           }
+          */
 				}
 			}
     }
