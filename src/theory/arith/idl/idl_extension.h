@@ -103,11 +103,11 @@ class IdlExtension : protected EnvObj
   //const int MAX_N = 1000000;
 
   int n_spfa, m_spfa;
-  std::vector<std::pair<size_t, Rational>>** adj;
+  std::vector<size_t>** adj;
   int** myfacts;
   long long** myvalues;
 
-  std::vector<Rational> dis;
+  std::vector<long long> dis;
   size_t* pre;
   bool* in_queue;
 

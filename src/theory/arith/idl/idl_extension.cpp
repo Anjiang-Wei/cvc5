@@ -71,10 +71,10 @@ void IdlExtension::presolve()
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   myfacts = (int**) malloc(sizeof(int*) * d_numVars);
   myvalues = (long long**) malloc(sizeof(long long*) * d_numVars);
-  adj = (std::vector<std::pair<size_t, Rational>>**)
-    malloc(sizeof(std::vector<std::pair<size_t, Rational>>*) * d_numVars);
+  adj = (std::vector<size_t>**)
+    malloc(sizeof(std::vector<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
-    adj[i] = new std::vector<std::pair<size_t, Rational>>();
+    adj[i] = new std::vector<size_t>();
     myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
     myvalues[i] = (long long*) malloc(sizeof(long long) * d_numVars);
   }
@@ -364,15 +364,15 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   // TODO: implement model generation by computing the single-source shortest
   // path from a node that has distance zero to all other nodes
   // ---------------------------------------------------------------------------
-  Rational shift = Rational(0);
+  long long shift = 0;
   if (d_varMap.count(shift_node)) {
-    shift = distance[d_varMap[shift_node]];
+    shift = dis[d_varMap[shift_node]];
     // std::cout << "shift = " << shift << std::endl;
   }
 
   for (size_t i = 0; i < d_numVars; i++)
   {
-    distance[i] = dis[i] - shift;
+    distance[i] = Rational((int)(dis[i] - shift));
   }
 
   NodeManager* nm = NodeManager::currentNM();
@@ -417,7 +417,8 @@ void IdlExtension::processAssertion(TNode assertion)
     }
   }
 
-  adj[index2]->emplace_back(index1, value);
+  adj[index2]->emplace_back(index1);
+  // adj[index2]->emplace_back(index1, value);
   myfacts[index2][index1] = m_spfa;
   myvalues[index2][index1] = (long long) value.getDouble();
   m_spfa++;
@@ -433,13 +434,13 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
   std::vector<TNode> result;
   if (dis.size() == 0) {
     for (int i = 0; i < n_spfa; i++) {
-      dis.emplace_back(Rational(0));
+      dis.emplace_back(0);
     }
   }
   // std::fill(dis, dis + n_spfa, 0);
 	std::fill(pre, pre + n_spfa, -1);
 	std::fill(in_queue, in_queue + n_spfa, true);
-  Rational sum(0);
+  // Rational sum(0);
   num_on_stack = 0;
 	for (int i = 0; i < n_spfa; ++i)
   {
@@ -452,15 +453,16 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 		int u = queue.front();
 		queue.pop_front();
     num_on_stack--;
-    sum = sum - dis[u];
+    // sum = sum - dis[u];
 		in_queue[u] = false;
-		for (auto [v, w] : *(adj[u]))
+		for (auto v : *(adj[u]))
     {
+      long long w = myvalues[u][v];
 			if (dis[u] + w < dis[v])
 			{
 				pre[v] = u;
 				dis[v] = dis[u] + w;
-				if (++iter == 30) // magic number
+				if (++iter == n_spfa)
         {
             iter = 0;
             result = detect_cycle();
@@ -469,16 +471,19 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
         }
 				if (!in_queue[v])
         {
-          // queue.push_back(v);
+          queue.push_back(v);
           in_queue[v] = true;
+          /*
           // SLF optimization
           if (queue.size() > 0 && dis[queue.front()] > dis[v]) {
             queue.push_front(v);
           } else {
             queue.push_back(v);
           }
+          */
 
           /*
+            // LLL optimization
             num_on_stack++;
             sum = sum + dis[v];
             while (dis[queue.front()] * num_on_stack > sum) {
