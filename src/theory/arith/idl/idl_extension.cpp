@@ -70,6 +70,7 @@ void IdlExtension::presolve()
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   myfacts = (int**) malloc(sizeof(int*) * d_numVars);
+  valid = (bool **) malloc(sizeof(bool*) * d_numVars);
   myvalues = (long long**) malloc(sizeof(long long*) * d_numVars);
   adj = (std::vector<size_t>**)
     malloc(sizeof(std::vector<size_t>*) * d_numVars);
@@ -77,7 +78,13 @@ void IdlExtension::presolve()
     adj[i] = new std::vector<size_t>();
     myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
     myvalues[i] = (long long*) malloc(sizeof(long long) * d_numVars);
+    valid[i] = (bool*) malloc(sizeof(bool) * d_numVars);
   }
+  for (int i = 0; i < d_numVars; i++) {
+    for (int j = 0; j < d_numVars; j++) {
+      valid[i][j] = false;
+    }
+   }
 }
 
 IdlExtension::~IdlExtension() {
@@ -89,7 +96,9 @@ IdlExtension::~IdlExtension() {
     delete adj[i];
     free(myfacts[i]);
     free(myvalues[i]);
+    free(valid[i]);
   }
+  free(valid);
   free(adj);
   free(myfacts);
   free(myvalues);
@@ -322,11 +331,26 @@ void IdlExtension::postCheck(Theory::Effort level)
     // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
+  for (int i = 0; i < d_numVars; i++) {
+    for (int j = 0; j < d_numVars; j++) {
+      valid[i][j] = false;
+    }
+  }
   if (pre_detect_cycle.size() > 0) {
     d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
               InferenceId::ARITH_CONF_IDL_EXT);
     return;
   }
+  /*
+  NodeBuilder conjunction0(kind::AND);
+  for (Node fact : d_facts)
+    {
+      conjunction0 << fact;
+    }
+  // std::cout << "end reporting" << std::endl;
+  Node conflict0 = conjunction0;
+  std::cout << "running " << conflict0 << std::endl;
+  */
 
   auto result = spfa_early_terminate();
   if (result.size() > 0)
@@ -417,10 +441,24 @@ void IdlExtension::processAssertion(TNode assertion)
     }
   }
 
-  adj[index2]->emplace_back(index1);
-  // adj[index2]->emplace_back(index1, value);
-  myfacts[index2][index1] = m_spfa;
-  myvalues[index2][index1] = (long long) value.getDouble();
+  if (valid[index2][index1] == false) {
+    myvalues[index2][index1] = (long long) value.getDouble();
+    valid[index2][index1] = true;
+    adj[index2]->emplace_back(index1);
+    // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
+    // adj[index2]->emplace_back(index1, value);
+    myfacts[index2][index1] = m_spfa;
+  } else {
+    long long new_val = (long long) value.getDouble();
+    long long old_val = myvalues[index2][index1];
+    if (new_val < old_val) {
+      myvalues[index2][index1] = new_val;
+      myfacts[index2][index1] = m_spfa;
+      // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
+    } else {
+      // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
+    }
+  }
   m_spfa++;
 }
 
@@ -533,6 +571,7 @@ std::vector<TNode> IdlExtension::detect_cycle()
                         }
                         result.emplace_back(d_facts[myfacts[pre[current]][current]]);
                         sum_cycle = sum_cycle + myvalues[pre[current]][current];
+                        Assert(sum_cycle < 0);
                         if (sum_cycle < 0) {
                             return result;
                         }

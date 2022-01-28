@@ -104,6 +104,7 @@ class IdlExtension : protected EnvObj
 
   int n_spfa, m_spfa;
   std::vector<size_t>** adj;
+  bool** valid;
   int** myfacts;
   long long** myvalues;
 
