@@ -71,13 +71,13 @@ void IdlExtension::presolve()
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   myfacts = (int**) malloc(sizeof(int*) * d_numVars);
   valid = (bool **) malloc(sizeof(bool*) * d_numVars);
-  myvalues = (long long**) malloc(sizeof(long long*) * d_numVars);
+  myvalues = (float**) malloc(sizeof(long long*) * d_numVars);
   adj = (std::vector<size_t>**)
     malloc(sizeof(std::vector<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new std::vector<size_t>();
     myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
-    myvalues[i] = (long long*) malloc(sizeof(long long) * d_numVars);
+    myvalues[i] = (float*) malloc(sizeof(float) * d_numVars);
     valid[i] = (bool*) malloc(sizeof(bool) * d_numVars);
   }
   for (int i = 0; i < d_numVars; i++) {
@@ -388,7 +388,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   // TODO: implement model generation by computing the single-source shortest
   // path from a node that has distance zero to all other nodes
   // ---------------------------------------------------------------------------
-  long long shift = 0;
+  float shift = 0;
   if (d_varMap.count(shift_node)) {
     shift = dis[d_varMap[shift_node]];
     // std::cout << "shift = " << shift << std::endl;
@@ -442,15 +442,15 @@ void IdlExtension::processAssertion(TNode assertion)
   }
 
   if (valid[index2][index1] == false) {
-    myvalues[index2][index1] = (long long) value.getDouble();
+    myvalues[index2][index1] = (float) value.getDouble();
     valid[index2][index1] = true;
     adj[index2]->emplace_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
     myfacts[index2][index1] = m_spfa;
   } else {
-    long long new_val = (long long) value.getDouble();
-    long long old_val = myvalues[index2][index1];
+    float new_val = (float) value.getDouble();
+    float old_val = myvalues[index2][index1];
     if (new_val < old_val) {
       myvalues[index2][index1] = new_val;
       myfacts[index2][index1] = m_spfa;
@@ -495,7 +495,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
     {
-      long long w = myvalues[u][v];
+      float w = myvalues[u][v];
 			if (dis[u] + w < dis[v])
 			{
 				pre[v] = u;
@@ -562,14 +562,16 @@ std::vector<TNode> IdlExtension::detect_cycle()
                 {
                     if (on_stack[j])
                     {
-                        long long sum_cycle = 0;
+                      // long long sum_cycle = 0;
                         int current = j;
                         while (pre[current] != j) {
                           result.emplace_back(d_facts[myfacts[pre[current]][current]]);
-                          sum_cycle = sum_cycle + myvalues[pre[current]][current];
+                          // sum_cycle = sum_cycle + myvalues[pre[current]][current];
                           current = pre[current];
                         }
                         result.emplace_back(d_facts[myfacts[pre[current]][current]]);
+                        return result;
+                        /*
                         sum_cycle = sum_cycle + myvalues[pre[current]][current];
                         Assert(sum_cycle < 0);
                         if (sum_cycle < 0) {
@@ -579,6 +581,7 @@ std::vector<TNode> IdlExtension::detect_cycle()
                           result.clear();
                             break;
                         }
+                        */
                     }
                     break;
                 }

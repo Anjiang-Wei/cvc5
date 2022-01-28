@@ -106,9 +106,9 @@ class IdlExtension : protected EnvObj
   std::vector<size_t>** adj;
   bool** valid;
   int** myfacts;
-  long long** myvalues;
+  float** myvalues;
 
-  std::vector<long long> dis;
+  std::vector<float> dis;
   size_t* pre;
   bool* in_queue;
 
