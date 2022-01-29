@@ -70,7 +70,6 @@ void IdlExtension::presolve()
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   myfacts = (int**) malloc(sizeof(int*) * d_numVars);
-  valid = (bool **) malloc(sizeof(bool*) * d_numVars);
   myvalues = (float**) malloc(sizeof(long long*) * d_numVars);
   adj = (std::vector<size_t>**)
     malloc(sizeof(std::vector<size_t>*) * d_numVars);
@@ -78,13 +77,7 @@ void IdlExtension::presolve()
     adj[i] = new std::vector<size_t>();
     myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
     myvalues[i] = (float*) malloc(sizeof(float) * d_numVars);
-    valid[i] = (bool*) malloc(sizeof(bool) * d_numVars);
   }
-  for (int i = 0; i < d_numVars; i++) {
-    for (int j = 0; j < d_numVars; j++) {
-      valid[i][j] = false;
-    }
-   }
 }
 
 IdlExtension::~IdlExtension() {
@@ -96,9 +89,7 @@ IdlExtension::~IdlExtension() {
     delete adj[i];
     free(myfacts[i]);
     free(myvalues[i]);
-    free(valid[i]);
   }
-  free(valid);
   free(adj);
   free(myfacts);
   free(myvalues);
@@ -331,11 +322,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
-  for (int i = 0; i < d_numVars; i++) {
-    for (int j = 0; j < d_numVars; j++) {
-      valid[i][j] = false;
-    }
-  }
+  valid.clear();
   if (pre_detect_cycle.size() > 0) {
     d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
               InferenceId::ARITH_CONF_IDL_EXT);
@@ -441,9 +428,11 @@ void IdlExtension::processAssertion(TNode assertion)
     }
   }
 
-  if (valid[index2][index1] == false) {
+  long long key = (((long long) index2) << 32) | ((long long) index1);
+
+  if (valid.count(key) == 0) {
     myvalues[index2][index1] = (float) value.getDouble();
-    valid[index2][index1] = true;
+    valid[key] = true;
     adj[index2]->emplace_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);

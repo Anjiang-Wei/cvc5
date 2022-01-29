@@ -25,7 +25,6 @@
 #include "theory/theory_model.h"
 #include <deque>
 #include <unordered_map>
-#include <boost/functional/hash.hpp>
 
 namespace cvc5 {
 namespace theory {
@@ -103,8 +102,8 @@ class IdlExtension : protected EnvObj
   //const int MAX_N = 1000000;
 
   int n_spfa, m_spfa;
+  std::unordered_map<long long, bool> valid;
   std::vector<size_t>** adj;
-  bool** valid;
   int** myfacts;
   float** myvalues;
 
