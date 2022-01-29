@@ -508,17 +508,6 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
             queue.push_back(v);
           }
           */
-
-          /*
-            // LLL optimization
-            num_on_stack++;
-            sum = sum + dis[v];
-            while (dis[queue.front()] * num_on_stack > sum) {
-              int ufront = queue.front();
-              queue.pop_front();
-              queue.push_back(ufront);
-              }
-          */
 				}
 			}
     }
@@ -551,26 +540,13 @@ std::vector<TNode> IdlExtension::detect_cycle()
                 {
                     if (on_stack[j])
                     {
-                      // long long sum_cycle = 0;
                         int current = j;
                         while (pre[current] != j) {
                           result.emplace_back(d_facts[myfacts[pre[current]][current]]);
-                          // sum_cycle = sum_cycle + myvalues[pre[current]][current];
                           current = pre[current];
                         }
                         result.emplace_back(d_facts[myfacts[pre[current]][current]]);
                         return result;
-                        /*
-                        sum_cycle = sum_cycle + myvalues[pre[current]][current];
-                        Assert(sum_cycle < 0);
-                        if (sum_cycle < 0) {
-                            return result;
-                        }
-                        else {
-                          result.clear();
-                            break;
-                        }
-                        */
                     }
                     break;
                 }
