@@ -35,13 +35,10 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
     : EnvObj(env),
       d_parent(parent),
       d_varMap(context()),
-      valid(context()),
       d_varList(context()),
       d_facts(context()),
       d_numVars(0),
-      pre_detect_cycle(context()),
-      myfacts(context()),
-      myvalues(context())
+      pre_detect_cycle(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -72,12 +69,15 @@ void IdlExtension::presolve()
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
-  adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
+  myfacts = (int**) malloc(sizeof(int*) * d_numVars);
+  myvalues = (float**) malloc(sizeof(long long*) * d_numVars);
+  adj = (std::vector<size_t>**)
+    malloc(sizeof(std::vector<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
-    adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
+    adj[i] = new std::vector<size_t>();
+    myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
+    myvalues[i] = (float*) malloc(sizeof(float) * d_numVars);
   }
-  // n_spfa = 0;
-  // m_spfa = 0;
 }
 
 IdlExtension::~IdlExtension() {
@@ -86,37 +86,13 @@ IdlExtension::~IdlExtension() {
   free(visited);
   free(on_stack);
   for (int i = 0; i < d_numVars; i++) {
-    adj[i]->deleteSelf();
+    delete adj[i];
+    free(myfacts[i]);
+    free(myvalues[i]);
   }
   free(adj);
-}
-
-void IdlExtension::report_cycle()
-{
-  if (pre_detect_cycle.size() > 0) {
-    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
-              InferenceId::ARITH_CONF_IDL_EXT);
-    return;
-  }
-  auto result = spfa_early_terminate();
-  if (result.size() > 0)
-  {
-    if (result.size() == 1) {
-        d_parent.getInferenceManager().conflict(result[0],
-                                            InferenceId::ARITH_CONF_IDL_EXT);
-        return;
-    }
-    NodeBuilder conjunction(kind::AND);
-    for (Node fact : result)
-    {
-      conjunction << fact;
-    }
-    // std::cout << "end reporting" << std::endl;
-    Node conflict = conjunction;
-    d_parent.getInferenceManager().conflict(conflict,
-                                            InferenceId::ARITH_CONF_IDL_EXT);
-    return;
-  }
+  free(myfacts);
+  free(myvalues);
 }
 
 void IdlExtension::notifyFact(
@@ -125,14 +101,6 @@ void IdlExtension::notifyFact(
   Trace("theory::arith::idl")
       << "IdlExtension::notifyFact(): processing " << fact << std::endl;
   d_facts.push_back(fact);
-  /*
-  n_spfa += 1;
-  if (n_spfa > d_numVars){
-    n_spfa = d_numVars;
-  }
-  */
-  processAssertion(fact);
-
 }
 
 Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
@@ -337,16 +305,65 @@ void IdlExtension::postCheck(Theory::Effort level)
       << "IdlExtension::postCheck(): number of facts = " << d_facts.size()
       << std::endl;
 
-  /*
+
   for (int i = 0; i < d_numVars; i++) {
     adj[i]->clear();
   }
-  */
   n_spfa = d_numVars;
   m_spfa = 0;
 
-  // valid.clear();
-  // report_cycle();
+  for (Node fact : d_facts)
+  {
+    // For simplicity, we reprocess all the literals that have been asserted to
+    // this theory solver. A better implementation would process facts in
+    // notifyFact().
+    Trace("theory::arith::idl")
+        << "IdlExtension::check(): processing " << fact << std::endl;
+    // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
+    processAssertion(fact);
+  }
+  valid.clear();
+  if (pre_detect_cycle.size() > 0) {
+    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
+              InferenceId::ARITH_CONF_IDL_EXT);
+    return;
+  }
+  /*
+  NodeBuilder conjunction0(kind::AND);
+  for (Node fact : d_facts)
+    {
+      conjunction0 << fact;
+    }
+  // std::cout << "end reporting" << std::endl;
+  Node conflict0 = conjunction0;
+  std::cout << "running " << conflict0 << std::endl;
+  */
+
+  auto result = spfa_early_terminate();
+  if (result.size() > 0)
+  {
+    // Return a conflict that includes all the literals that have been asserted
+    // to this theory solver. A better implementation would only include the
+    // literals involved in the conflict here.
+    if (result.size() == 1) {
+        d_parent.getInferenceManager().conflict(result[0],
+                                            InferenceId::ARITH_CONF_IDL_EXT);
+        return;
+    }
+    NodeBuilder conjunction(kind::AND);
+    for (Node fact : result)
+    {
+      conjunction << fact;
+    }
+    // std::cout << "end reporting" << std::endl;
+    Node conflict = conjunction;
+    // Send the conflict using the inference manager. Each conflict is assigned
+    // an ID. Here, we use  ARITH_CONF_IDL_EXT, which indicates a generic
+    // conflict detected by this extension
+    d_parent.getInferenceManager().conflict(conflict,
+                                            InferenceId::ARITH_CONF_IDL_EXT);
+    return;
+  }
 }
 
 bool IdlExtension::collectModelInfo(TheoryModel* m,
@@ -414,18 +431,18 @@ void IdlExtension::processAssertion(TNode assertion)
   long long key = (((long long) index2) << 32) | ((long long) index1);
 
   if (valid.count(key) == 0) {
-    myvalues[key] = (float) value.getDouble();
+    myvalues[index2][index1] = (float) value.getDouble();
     valid[key] = true;
     adj[index2]->emplace_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
-    myfacts[key] = m_spfa;
+    myfacts[index2][index1] = m_spfa;
   } else {
     float new_val = (float) value.getDouble();
-    float old_val = myvalues[key];
+    float old_val = myvalues[index2][index1];
     if (new_val < old_val) {
-      myvalues[key] = new_val;
-      myfacts[key] = m_spfa;
+      myvalues[index2][index1] = new_val;
+      myfacts[index2][index1] = m_spfa;
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
@@ -467,8 +484,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
     {
-      long long key = (((long long) u) << 32) | ((long long) v);
-      float w = myvalues[key];
+      float w = myvalues[u][v];
 			if (dis[u] + w < dis[v])
 			{
 				pre[v] = u;
@@ -525,12 +541,11 @@ std::vector<TNode> IdlExtension::detect_cycle()
                     if (on_stack[j])
                     {
                         int current = j;
-                        long long key = (((long long) pre[current]) << 32) | ((long long) current);
                         while (pre[current] != j) {
-                          result.emplace_back(d_facts[myfacts[key]]);
+                          result.emplace_back(d_facts[myfacts[pre[current]][current]]);
                           current = pre[current];
                         }
-                        result.emplace_back(d_facts[myfacts[key]]);
+                        result.emplace_back(d_facts[myfacts[pre[current]][current]]);
                         return result;
                     }
                     break;

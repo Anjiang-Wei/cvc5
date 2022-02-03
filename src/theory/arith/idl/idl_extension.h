@@ -66,8 +66,6 @@ class IdlExtension : protected EnvObj
   /** Process a new assertion */
   void processAssertion(TNode assertion);
 
-  void report_cycle();
-
   /** Return true iff the graph has a negative cycle */
   // bool negativeCycle();
 
@@ -104,10 +102,10 @@ class IdlExtension : protected EnvObj
   //const int MAX_N = 1000000;
 
   int n_spfa, m_spfa;
-  context::CDHashMap<long long, bool> valid;
-  context::CDList<size_t>** adj;
-  context::CDHashMap<long long, int> myfacts;
-  context::CDHashMap<long long, float> myvalues;
+  std::unordered_map<long long, bool> valid;
+  std::vector<size_t>** adj;
+  int** myfacts;
+  float** myvalues;
 
   std::vector<float> dis;
   size_t* pre;
