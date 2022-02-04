@@ -94,6 +94,7 @@ void IdlExtension::notifyFact(
 {
   Trace("theory::arith::idl")
       << "IdlExtension::notifyFact(): processing " << fact << std::endl;
+  processAssertion(fact);
   d_facts.push_back(fact);
 }
 
@@ -342,7 +343,6 @@ void IdlExtension::postCheck(Theory::Effort level)
   }
   */
   n_spfa = d_numVars;
-  m_spfa = 0;
 
   for (Node fact : d_facts)
   {
@@ -352,7 +352,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     Trace("theory::arith::idl")
         << "IdlExtension::check(): processing " << fact << std::endl;
     // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
-    processAssertion(fact);
+    // processAssertion(fact);
   }
   // valid.clear();
   report();
@@ -428,19 +428,18 @@ void IdlExtension::processAssertion(TNode assertion)
     (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
-    myfacts[key] = m_spfa;
+    myfacts[key] = d_facts.size();
   } else {
     float new_val = (float) value.getDouble();
     float old_val = myvalues[key];
     if (new_val < old_val) {
       myvalues[key] = new_val;
-      myfacts[key] = m_spfa;
+      myfacts[key] = d_facts.size();
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
     }
   }
-  m_spfa++;
 }
 
 

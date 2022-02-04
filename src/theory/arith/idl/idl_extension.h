@@ -103,7 +103,7 @@ class IdlExtension : protected EnvObj
 
   //const int MAX_N = 1000000;
 
-  int n_spfa, m_spfa;
+  int n_spfa;
   context::CDHashMap<long long, bool> valid;
   context::CDHashMap<size_t, context::CDList<size_t>*> adj;
   context::CDHashMap<long long, int> myfacts;
