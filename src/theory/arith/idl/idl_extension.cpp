@@ -42,7 +42,8 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       valid(context()),
       myfacts(context()),
       myvalues(context()),
-      adj(context())
+      adj(context()),
+      dis(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -77,6 +78,7 @@ void IdlExtension::presolve()
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
+    dis[i] = 0;
   }
 }
 
@@ -426,11 +428,6 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
   std::vector<TNode> result;
-  if (dis.size() == 0) {
-    for (int i = 0; i < n_spfa; i++) {
-      dis.emplace_back(0);
-    }
-  }
   // std::fill(dis, dis + n_spfa, 0);
 	std::fill(pre, pre + n_spfa, -1);
 	std::fill(in_queue, in_queue + n_spfa, true);

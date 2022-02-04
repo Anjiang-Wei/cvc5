@@ -109,7 +109,7 @@ class IdlExtension : protected EnvObj
   context::CDHashMap<long long, int> myfacts;
   context::CDHashMap<long long, float> myvalues;
 
-  std::vector<float> dis;
+  context::CDHashMap<size_t, float> dis;
   size_t* pre;
   bool* in_queue;
 
