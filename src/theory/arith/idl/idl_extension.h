@@ -118,7 +118,6 @@ class IdlExtension : protected EnvObj
   std::vector<TNode> detect_cycle();
   std::vector<TNode> spfa_early_terminate();
   void spfa_init();
-  int num_on_stack;
   std::deque<int> queue;
 
   context::CDList<TNode> pre_detect_cycle;

@@ -435,18 +435,15 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 	std::fill(pre, pre + n_spfa, -1);
 	std::fill(in_queue, in_queue + n_spfa, true);
   // Rational sum(0);
-  num_on_stack = 0;
 	for (int i = 0; i < n_spfa; ++i)
   {
 		queue.push_back(i);
-    num_on_stack++;
   }
   int iter = 0;
 	while (!queue.empty())
 	{
 		int u = queue.front();
 		queue.pop_front();
-    num_on_stack--;
     // sum = sum - dis[u];
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
