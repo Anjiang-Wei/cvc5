@@ -66,6 +66,8 @@ class IdlExtension : protected EnvObj
   /** Process a new assertion */
   void processAssertion(TNode assertion);
 
+  void report();
+
   /** Return true iff the graph has a negative cycle */
   // bool negativeCycle();
 

@@ -288,6 +288,42 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
   return atom;
 }
 
+void IdlExtension::report()
+{
+  if (pre_detect_cycle.size() > 0) {
+    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
+              InferenceId::ARITH_CONF_IDL_EXT);
+    return;
+  }
+
+  auto result = spfa_early_terminate();
+  if (result.size() > 0)
+  {
+    // Return a conflict that includes all the literals that have been asserted
+    // to this theory solver. A better implementation would only include the
+    // literals involved in the conflict here.
+    if (result.size() == 1) {
+        d_parent.getInferenceManager().conflict(result[0],
+                                            InferenceId::ARITH_CONF_IDL_EXT);
+        return;
+    }
+    NodeBuilder conjunction(kind::AND);
+    for (Node fact : result)
+    {
+      conjunction << fact;
+    }
+    // std::cout << "end reporting" << std::endl;
+    Node conflict = conjunction;
+    // Send the conflict using the inference manager. Each conflict is assigned
+    // an ID. Here, we use  ARITH_CONF_IDL_EXT, which indicates a generic
+    // conflict detected by this extension
+    d_parent.getInferenceManager().conflict(conflict,
+                                            InferenceId::ARITH_CONF_IDL_EXT);
+    return;
+  }
+}
+
+
 void IdlExtension::postCheck(Theory::Effort level)
 {
   if (!Theory::fullEffort(level))
@@ -319,47 +355,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     processAssertion(fact);
   }
   // valid.clear();
-  if (pre_detect_cycle.size() > 0) {
-    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
-              InferenceId::ARITH_CONF_IDL_EXT);
-    return;
-  }
-  /*
-  NodeBuilder conjunction0(kind::AND);
-  for (Node fact : d_facts)
-    {
-      conjunction0 << fact;
-    }
-  // std::cout << "end reporting" << std::endl;
-  Node conflict0 = conjunction0;
-  std::cout << "running " << conflict0 << std::endl;
-  */
-
-  auto result = spfa_early_terminate();
-  if (result.size() > 0)
-  {
-    // Return a conflict that includes all the literals that have been asserted
-    // to this theory solver. A better implementation would only include the
-    // literals involved in the conflict here.
-    if (result.size() == 1) {
-        d_parent.getInferenceManager().conflict(result[0],
-                                            InferenceId::ARITH_CONF_IDL_EXT);
-        return;
-    }
-    NodeBuilder conjunction(kind::AND);
-    for (Node fact : result)
-    {
-      conjunction << fact;
-    }
-    // std::cout << "end reporting" << std::endl;
-    Node conflict = conjunction;
-    // Send the conflict using the inference manager. Each conflict is assigned
-    // an ID. Here, we use  ARITH_CONF_IDL_EXT, which indicates a generic
-    // conflict detected by this extension
-    d_parent.getInferenceManager().conflict(conflict,
-                                            InferenceId::ARITH_CONF_IDL_EXT);
-    return;
-  }
+  report();
 }
 
 bool IdlExtension::collectModelInfo(TheoryModel* m,
