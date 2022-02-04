@@ -97,10 +97,10 @@ void IdlExtension::notifyFact(
 {
   Trace("theory::arith::idl")
       << "IdlExtension::notifyFact(): processing " << fact << std::endl;
-  size_t node1, node2;
-  processAssertion(fact, node1, node2);
+  size_t node1;
+  processAssertion(fact, node1);
   d_facts.push_back(fact);
-  report(node1, node2);
+  report(node1);
 }
 
 Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
@@ -294,7 +294,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
   return atom;
 }
 
-void IdlExtension::report(size_t node1, size_t node2)
+void IdlExtension::report(size_t node1)
 {
   if (pre_detect_cycle.size() > 0) {
     d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
@@ -302,7 +302,7 @@ void IdlExtension::report(size_t node1, size_t node2)
     return;
   }
 
-  auto result = spfa_early_terminate(node1, node2);
+  auto result = spfa_early_terminate(node1);
   if (result.size() > 0)
   {
     if (result.size() == 1) {
@@ -367,7 +367,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   return true;
 }
 
-void IdlExtension::processAssertion(TNode assertion, size_t& node1, size_t& node2)
+void IdlExtension::processAssertion(TNode assertion, size_t& node1)
 {
   bool polarity = assertion.getKind() != kind::NOT;
   TNode atom = polarity ? assertion : assertion[0];
@@ -391,8 +391,7 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1, size_t& node
 
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
-  node1 = index1;
-  node2 = index2;
+  node1 = index2;
 
   if (index1 == index2) {
     if (value < Rational(0)) { // already a negative cycle
@@ -424,7 +423,7 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1, size_t& node
 }
 
 
-std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1, size_t node2)
+std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
 {
 
    /* There are d_numVars+1 vertices in total
@@ -433,9 +432,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1, size_t node2
   std::vector<TNode> result;
 	std::fill(in_queue, in_queue + n_spfa, false);
   in_queue[node1] = true;
-  in_queue[node2] = true;
   queue.push_back(node1);
-  queue.push_back(node2);
 
   int iter = 0;
 	while (!queue.empty())
