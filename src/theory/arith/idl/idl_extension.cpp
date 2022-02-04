@@ -67,6 +67,7 @@ void IdlExtension::preRegisterTerm(TNode node)
 void IdlExtension::presolve()
 {
   d_numVars = d_varMap.size();
+  n_spfa = d_numVars;
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
   // std::cout << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
@@ -96,6 +97,7 @@ void IdlExtension::notifyFact(
       << "IdlExtension::notifyFact(): processing " << fact << std::endl;
   processAssertion(fact);
   d_facts.push_back(fact);
+  report();
 }
 
 Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
@@ -300,9 +302,6 @@ void IdlExtension::report()
   auto result = spfa_early_terminate();
   if (result.size() > 0)
   {
-    // Return a conflict that includes all the literals that have been asserted
-    // to this theory solver. A better implementation would only include the
-    // literals involved in the conflict here.
     if (result.size() == 1) {
         d_parent.getInferenceManager().conflict(result[0],
                                             InferenceId::ARITH_CONF_IDL_EXT);
@@ -315,9 +314,6 @@ void IdlExtension::report()
     }
     // std::cout << "end reporting" << std::endl;
     Node conflict = conjunction;
-    // Send the conflict using the inference manager. Each conflict is assigned
-    // an ID. Here, we use  ARITH_CONF_IDL_EXT, which indicates a generic
-    // conflict detected by this extension
     d_parent.getInferenceManager().conflict(conflict,
                                             InferenceId::ARITH_CONF_IDL_EXT);
     return;
@@ -335,26 +331,6 @@ void IdlExtension::postCheck(Theory::Effort level)
   Trace("theory::arith::idl")
       << "IdlExtension::postCheck(): number of facts = " << d_facts.size()
       << std::endl;
-
-
-  /*
-  for (int i = 0; i < d_numVars; i++) {
-    (*adj[i]).clear();
-  }
-  */
-  n_spfa = d_numVars;
-
-  for (Node fact : d_facts)
-  {
-    // For simplicity, we reprocess all the literals that have been asserted to
-    // this theory solver. A better implementation would process facts in
-    // notifyFact().
-    Trace("theory::arith::idl")
-        << "IdlExtension::check(): processing " << fact << std::endl;
-    // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
-    // processAssertion(fact);
-  }
-  // valid.clear();
   report();
 }
 
