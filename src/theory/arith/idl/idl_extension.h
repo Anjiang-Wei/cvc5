@@ -102,10 +102,10 @@ class IdlExtension : protected EnvObj
   //const int MAX_N = 1000000;
 
   int n_spfa, m_spfa;
-  std::unordered_map<long long, bool> valid;
+  context::CDHashMap<long long, bool> valid;
   std::vector<size_t>** adj;
-  int** myfacts;
-  float** myvalues;
+  context::CDHashMap<long long, int> myfacts;
+  context::CDHashMap<long long, float> myvalues;
 
   std::vector<float> dis;
   size_t* pre;

@@ -38,7 +38,10 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_varList(context()),
       d_facts(context()),
       d_numVars(0),
-      pre_detect_cycle(context())
+      pre_detect_cycle(context()),
+      valid(context()),
+      myfacts(context()),
+      myvalues(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -69,14 +72,10 @@ void IdlExtension::presolve()
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
-  myfacts = (int**) malloc(sizeof(int*) * d_numVars);
-  myvalues = (float**) malloc(sizeof(long long*) * d_numVars);
   adj = (std::vector<size_t>**)
     malloc(sizeof(std::vector<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new std::vector<size_t>();
-    myfacts[i] = (int*) malloc(sizeof(int) * d_numVars);
-    myvalues[i] = (float*) malloc(sizeof(float) * d_numVars);
   }
 }
 
@@ -87,12 +86,8 @@ IdlExtension::~IdlExtension() {
   free(on_stack);
   for (int i = 0; i < d_numVars; i++) {
     delete adj[i];
-    free(myfacts[i]);
-    free(myvalues[i]);
   }
   free(adj);
-  free(myfacts);
-  free(myvalues);
 }
 
 void IdlExtension::notifyFact(
@@ -431,18 +426,18 @@ void IdlExtension::processAssertion(TNode assertion)
   long long key = (((long long) index2) << 32) | ((long long) index1);
 
   if (valid.count(key) == 0) {
-    myvalues[index2][index1] = (float) value.getDouble();
+    myvalues[key] = (float) value.getDouble();
     valid[key] = true;
     adj[index2]->emplace_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
-    myfacts[index2][index1] = m_spfa;
+    myfacts[key] = m_spfa;
   } else {
     float new_val = (float) value.getDouble();
-    float old_val = myvalues[index2][index1];
+    float old_val = myvalues[key];
     if (new_val < old_val) {
-      myvalues[index2][index1] = new_val;
-      myfacts[index2][index1] = m_spfa;
+      myvalues[key] = new_val;
+      myfacts[key] = m_spfa;
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
@@ -484,7 +479,8 @@ std::vector<TNode> IdlExtension::spfa_early_terminate()
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
     {
-      float w = myvalues[u][v];
+      long long key = (((long long) u) << 32) | ((long long) v);
+      float w = myvalues[key];
 			if (dis[u] + w < dis[v])
 			{
 				pre[v] = u;
@@ -542,10 +538,12 @@ std::vector<TNode> IdlExtension::detect_cycle()
                     {
                         int current = j;
                         while (pre[current] != j) {
-                          result.emplace_back(d_facts[myfacts[pre[current]][current]]);
+                          long long key = (((long long) pre[current]) << 32) | ((long long) current);
+                          result.emplace_back(d_facts[myfacts[key]]);
                           current = pre[current];
                         }
-                        result.emplace_back(d_facts[myfacts[pre[current]][current]]);
+                        long long key = (((long long) pre[current]) << 32) | ((long long) current);
+                        result.emplace_back(d_facts[myfacts[key]]);
                         return result;
                     }
                     break;
