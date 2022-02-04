@@ -41,7 +41,8 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       pre_detect_cycle(context()),
       valid(context()),
       myfacts(context()),
-      myvalues(context())
+      myvalues(context()),
+      adj(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -72,8 +73,6 @@ void IdlExtension::presolve()
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
-  adj = (std::vector<size_t>**)
-    malloc(sizeof(std::vector<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new std::vector<size_t>();
   }
@@ -87,7 +86,6 @@ IdlExtension::~IdlExtension() {
   for (int i = 0; i < d_numVars; i++) {
     delete adj[i];
   }
-  free(adj);
 }
 
 void IdlExtension::notifyFact(
@@ -301,8 +299,9 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
+  
   for (int i = 0; i < d_numVars; i++) {
-    adj[i]->clear();
+    (*adj[i]).clear();
   }
   n_spfa = d_numVars;
   m_spfa = 0;
@@ -317,7 +316,7 @@ void IdlExtension::postCheck(Theory::Effort level)
     // std::cout << "IdlExtension::check(): processing " << fact << std::endl;
     processAssertion(fact);
   }
-  valid.clear();
+  // valid.clear();
   if (pre_detect_cycle.size() > 0) {
     d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
               InferenceId::ARITH_CONF_IDL_EXT);
@@ -428,7 +427,7 @@ void IdlExtension::processAssertion(TNode assertion)
   if (valid.count(key) == 0) {
     myvalues[key] = (float) value.getDouble();
     valid[key] = true;
-    adj[index2]->emplace_back(index1);
+    (*adj[index2]).emplace_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
     myfacts[key] = m_spfa;

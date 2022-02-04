@@ -103,7 +103,7 @@ class IdlExtension : protected EnvObj
 
   int n_spfa, m_spfa;
   context::CDHashMap<long long, bool> valid;
-  std::vector<size_t>** adj;
+  context::CDHashMap<size_t, std::vector<size_t>*> adj;
   context::CDHashMap<long long, int> myfacts;
   context::CDHashMap<long long, float> myvalues;
 
