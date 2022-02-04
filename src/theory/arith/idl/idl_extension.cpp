@@ -43,7 +43,8 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       myfacts(context()),
       myvalues(context()),
       adj(context()),
-      dis(context())
+      dis(context()),
+      pre(context())
 {
   NodeManager *nm = NodeManager::currentNM();
   SkolemManager *sm = nm->getSkolemManager();
@@ -72,18 +73,17 @@ void IdlExtension::presolve()
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
   // std::cout << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
-  pre = (size_t*) malloc(sizeof(size_t) * d_numVars);
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
     dis[i] = 0;
+    pre[i] = -1;
   }
 }
 
 IdlExtension::~IdlExtension() {
-  free(pre);
   free(in_queue);
   free(visited);
   free(on_stack);
@@ -97,9 +97,10 @@ void IdlExtension::notifyFact(
 {
   Trace("theory::arith::idl")
       << "IdlExtension::notifyFact(): processing " << fact << std::endl;
-  processAssertion(fact);
+  size_t node1, node2;
+  processAssertion(fact, node1, node2);
   d_facts.push_back(fact);
-  report();
+  report(node1, node2);
 }
 
 Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
@@ -293,7 +294,7 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
   return atom;
 }
 
-void IdlExtension::report()
+void IdlExtension::report(size_t node1, size_t node2)
 {
   if (pre_detect_cycle.size() > 0) {
     d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
@@ -301,7 +302,7 @@ void IdlExtension::report()
     return;
   }
 
-  auto result = spfa_early_terminate();
+  auto result = spfa_early_terminate(node1, node2);
   if (result.size() > 0)
   {
     if (result.size() == 1) {
@@ -333,7 +334,7 @@ void IdlExtension::postCheck(Theory::Effort level)
   Trace("theory::arith::idl")
       << "IdlExtension::postCheck(): number of facts = " << d_facts.size()
       << std::endl;
-  report();
+  // report();
 }
 
 bool IdlExtension::collectModelInfo(TheoryModel* m,
@@ -366,7 +367,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   return true;
 }
 
-void IdlExtension::processAssertion(TNode assertion)
+void IdlExtension::processAssertion(TNode assertion, size_t& node1, size_t& node2)
 {
   bool polarity = assertion.getKind() != kind::NOT;
   TNode atom = polarity ? assertion : assertion[0];
@@ -390,6 +391,8 @@ void IdlExtension::processAssertion(TNode assertion)
 
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
+  node1 = index1;
+  node2 = index2;
 
   if (index1 == index2) {
     if (value < Rational(0)) { // already a negative cycle
@@ -421,21 +424,19 @@ void IdlExtension::processAssertion(TNode assertion)
 }
 
 
-std::vector<TNode> IdlExtension::spfa_early_terminate()
+std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1, size_t node2)
 {
 
    /* There are d_numVars+1 vertices in total
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
   std::vector<TNode> result;
-  // std::fill(dis, dis + n_spfa, 0);
-	std::fill(pre, pre + n_spfa, -1);
-	std::fill(in_queue, in_queue + n_spfa, true);
-  // Rational sum(0);
-	for (int i = 0; i < n_spfa; ++i)
-  {
-		queue.push_back(i);
-  }
+	std::fill(in_queue, in_queue + n_spfa, false);
+  in_queue[node1] = true;
+  in_queue[node2] = true;
+  queue.push_back(node1);
+  queue.push_back(node2);
+
   int iter = 0;
 	while (!queue.empty())
 	{

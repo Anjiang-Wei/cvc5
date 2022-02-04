@@ -64,9 +64,9 @@ class IdlExtension : protected EnvObj
 
  private:
   /** Process a new assertion */
-  void processAssertion(TNode assertion);
+  void processAssertion(TNode assertion, size_t& node1, size_t& node2);
 
-  void report();
+  void report(size_t node1, size_t node2);
 
   /** Return true iff the graph has a negative cycle */
   // bool negativeCycle();
@@ -110,13 +110,13 @@ class IdlExtension : protected EnvObj
   context::CDHashMap<long long, float> myvalues;
 
   context::CDHashMap<size_t, float> dis;
-  size_t* pre;
+  context::CDHashMap<size_t, size_t> pre;
   bool* in_queue;
 
   bool* visited;
   bool* on_stack;
   std::vector<TNode> detect_cycle();
-  std::vector<TNode> spfa_early_terminate();
+  std::vector<TNode> spfa_early_terminate(size_t node1, size_t node2);
   void spfa_init();
   std::deque<int> queue;
 
