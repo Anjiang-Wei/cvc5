@@ -69,12 +69,13 @@ void IdlExtension::presolve()
   d_numVars = d_varMap.size();
   Trace("theory::arith::idl")
       << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
+  // std::cout << "IdlExtension::preSolve(): d_numVars = " << d_numVars << std::endl;
   pre = (size_t*) malloc(sizeof(size_t) * d_numVars);
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
-    adj[i] = new std::vector<size_t>();
+    adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
   }
 }
 
@@ -299,10 +300,11 @@ void IdlExtension::postCheck(Theory::Effort level)
       << std::endl;
 
 
-  
+  /*
   for (int i = 0; i < d_numVars; i++) {
     (*adj[i]).clear();
   }
+  */
   n_spfa = d_numVars;
   m_spfa = 0;
 
@@ -427,7 +429,7 @@ void IdlExtension::processAssertion(TNode assertion)
   if (valid.count(key) == 0) {
     myvalues[key] = (float) value.getDouble();
     valid[key] = true;
-    (*adj[index2]).emplace_back(index1);
+    (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
     myfacts[key] = m_spfa;
