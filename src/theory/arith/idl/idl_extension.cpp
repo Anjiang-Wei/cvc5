@@ -42,7 +42,6 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       valid(context()),
       myfacts(context()),
       myvalues(context()),
-      adj(context()),
       dis(context()),
       pre(context())
 {
@@ -76,6 +75,7 @@ void IdlExtension::presolve()
   in_queue = (bool*) malloc(sizeof(bool) * d_numVars);
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
+  adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
     dis[i] = 0;
@@ -87,9 +87,12 @@ IdlExtension::~IdlExtension() {
   free(in_queue);
   free(visited);
   free(on_stack);
+  /*
   for (int i = 0; i < d_numVars; i++) {
     delete adj[i];
   }
+  */
+  free(adj);
 }
 
 void IdlExtension::notifyFact(
