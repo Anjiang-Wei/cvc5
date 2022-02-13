@@ -40,8 +40,6 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_numVars(0),
       pre_detect_cycle(context()),
       valid(context()),
-      myfacts(context()),
-      myvalues(context()),
       dis(context()),
       pre(context())
 {
@@ -76,8 +74,12 @@ void IdlExtension::presolve()
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
+  myfacts_values = (context::CDO<std::pair<int, float>> ***)
+    malloc(sizeof(context::CDO<std::pair<int, float>> **) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
+    myfacts_values[i] = (context::CDO<std::pair<int, float>>**)
+      malloc(sizeof(context::CDO<std::pair<int, float>>) * d_numVars);
     dis[i] = 0;
     pre[i] = -1;
   }
@@ -87,12 +89,12 @@ IdlExtension::~IdlExtension() {
   free(in_queue);
   free(visited);
   free(on_stack);
-  /*
   for (int i = 0; i < d_numVars; i++) {
-    delete adj[i];
+    // delete adj[i];
+    free(myfacts_values[i]);
   }
-  */
   free(adj);
+  free(myfacts_values);
 }
 
 void IdlExtension::notifyFact(
@@ -406,18 +408,22 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   long long key = (((long long) index2) << 32) | ((long long) index1);
 
   if (valid.count(key) == 0) {
-    myvalues[key] = (float) value.getDouble();
+    // myvalues[key] = (float) value.getDouble();
     valid[key] = true;
     (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
-    myfacts[key] = d_facts.size();
+    // myfacts[key] = d_facts.size();
+    myfacts_values[index2][index1] = new(context()->getCMM()) context::CDO<std::pair<int, float>>(context(),
+                                      {d_facts.size(), (float) value.getDouble()});
   } else {
     float new_val = (float) value.getDouble();
-    float old_val = myvalues[key];
+    // float old_val = myvalues[key];
+    float old_val = myfacts_values[index2][index1]->get().second;
     if (new_val < old_val) {
-      myvalues[key] = new_val;
-      myfacts[key] = d_facts.size();
+      // myvalues[key] = new_val;
+      // myfacts[key] = d_facts.size();
+      myfacts_values[index2][index1]->set({d_facts.size(), (float) value.getDouble()});
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
@@ -446,8 +452,9 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
     {
-      long long key = (((long long) u) << 32) | ((long long) v);
-      float w = myvalues[key];
+      // long long key = (((long long) u) << 32) | ((long long) v);
+      // float w = myvalues[key];
+      float w = myfacts_values[u][v]->get().second;
 			if (dis[u] + w < dis[v])
 			{
 				pre[v] = u;
@@ -505,12 +512,14 @@ std::vector<TNode> IdlExtension::detect_cycle()
                     {
                         int current = j;
                         while (pre[current] != j) {
-                          long long key = (((long long) pre[current]) << 32) | ((long long) current);
-                          result.emplace_back(d_facts[myfacts[key]]);
+                          // long long key = (((long long) pre[current]) << 32) | ((long long) current);
+                          int myfacts_key = myfacts_values[pre[current]][current]->get().first;
+                          result.emplace_back(d_facts[myfacts_key]);
                           current = pre[current];
                         }
-                        long long key = (((long long) pre[current]) << 32) | ((long long) current);
-                        result.emplace_back(d_facts[myfacts[key]]);
+                        // long long key = (((long long) pre[current]) << 32) | ((long long) current);
+                        int myfacts_key = myfacts_values[pre[current]][current]->get().first;
+                        result.emplace_back(d_facts[myfacts_key]);
                         return result;
                     }
                     break;
