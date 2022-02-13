@@ -74,12 +74,13 @@ void IdlExtension::presolve()
   visited = (bool*) malloc(sizeof(bool) * d_numVars);
   on_stack = (bool*) malloc(sizeof(bool) * d_numVars);
   adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
-  myfacts_values = (context::CDO<std::pair<int, float>> ***)
-    malloc(sizeof(context::CDO<std::pair<int, float>> **) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
-    myfacts_values[i] = (context::CDO<std::pair<int, float>>**)
-      malloc(sizeof(context::CDO<std::pair<int, float>>) * d_numVars);
+    myfacts_values.emplace_back(std::vector<context::CDO<std::pair<int, float>>* >());
+    for (int j = 0; j < d_numVars; j++) {
+      myfacts_values[i].emplace_back(new(context()->getCMM())
+                                     context::CDO<std::pair<int, float>>(context(), {0, 0.0}));
+    }
     dis[i] = 0;
     pre[i] = -1;
   }
@@ -89,12 +90,14 @@ IdlExtension::~IdlExtension() {
   free(in_queue);
   free(visited);
   free(on_stack);
+  /*
   for (int i = 0; i < d_numVars; i++) {
     // delete adj[i];
     // free(myfacts_values[i]);
   }
+  */
   free(adj);
-  free(myfacts_values);
+  // free(myfacts_values);
 }
 
 void IdlExtension::notifyFact(
@@ -414,8 +417,7 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
     // myfacts[key] = d_facts.size();
-    myfacts_values[index2][index1] = new(context()->getCMM()) context::CDO<std::pair<int, float>>(context(),
-                                      {d_facts.size(), (float) value.getDouble()});
+    myfacts_values[index2][index1]->set({d_facts.size(), (float) value.getDouble()});
   } else {
     float new_val = (float) value.getDouble();
     // float old_val = myvalues[key];
