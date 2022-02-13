@@ -456,7 +456,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
 			{
 				pre[v] = u;
 				dis[v] = dis[u] + w;
-				if (++iter == n_spfa)
+				if (++iter == 32)
         {
             iter = 0;
             result = detect_cycle();
