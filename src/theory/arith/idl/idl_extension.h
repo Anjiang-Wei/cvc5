@@ -106,10 +106,8 @@ class IdlExtension : protected EnvObj
   int n_spfa;
   context::CDHashMap<long long, bool> valid;
   context::CDList<size_t>** adj;
-  context::CDHashMap<size_t, int>** myfacts;
-  context::CDHashMap<size_t, float>** myvalues;
-  // context::CDHashMap<long long, int> myfacts;
-  // context::CDHashMap<long long, float> myvalues;
+  context::CDHashMap<long long, int> myfacts;
+  context::CDHashMap<long long, float> myvalues;
 
   context::CDHashMap<size_t, float> dis;
   context::CDHashMap<size_t, size_t> pre;
