@@ -583,3 +583,4 @@ void IdlExtension::printMatrix(const std::vector<std::vector<Rational>>& matrix,
 }  // namespace arith
 }  // namespace theory
 }  // namespace cvc5
+
