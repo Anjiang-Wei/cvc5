@@ -78,7 +78,7 @@ void IdlExtension::presolve()
   adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
-    dis[i] = 0;
+    dis[i].set(Integer(0));
     pre[i] = -1;
   }
 }
@@ -343,13 +343,13 @@ void IdlExtension::postCheck(Theory::Effort level)
 bool IdlExtension::collectModelInfo(TheoryModel* m,
                                     const std::set<Node>& termSet)
 {
-  std::vector<Rational> distance(d_numVars, Rational(0));
+  std::vector<Rational> distance(d_numVars, Integer(0));
 
   // ---------------------------------------------------------------------------
   // TODO: implement model generation by computing the single-source shortest
   // path from a node that has distance zero to all other nodes
   // ---------------------------------------------------------------------------
-  float shift = 0;
+  Integer shift = 0;
   if (d_varMap.count(shift_node)) {
     shift = dis[d_varMap[shift_node]];
     // std::cout << "shift = " << shift << std::endl;
@@ -357,7 +357,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
 
   for (size_t i = 0; i < d_numVars; i++)
   {
-    distance[i] = Rational((int)(dis[i] - shift));
+    distance[i] = dis[i].get() - shift;
   }
 
   NodeManager* nm = NodeManager::currentNM();
@@ -382,14 +382,14 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   TNode var1 = atom[0][0];
   TNode var2 = atom[0][1];
 
-  Rational value = (atom[1].getKind() == kind::UMINUS)
-                       ? -atom[1][0].getConst<Rational>()
-                       : atom[1].getConst<Rational>();
+  Integer value = (atom[1].getKind() == kind::UMINUS)
+    ? -atom[1][0].getConst<Rational>().getNumerator()
+    : atom[1].getConst<Rational>().getNumerator();
 
   if (!polarity)
   {
     std::swap(var1, var2);
-    value = -value - Rational(1);
+    value = -value - Integer(1);
   }
 
   size_t index1 = d_varMap[var1];
@@ -397,7 +397,7 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   node1 = index2;
 
   if (index1 == index2) {
-    if (value < Rational(0)) { // already a negative cycle
+    if (value < Integer(0)) { // already a negative cycle
       pre_detect_cycle.push_back(assertion);
       return;
     }
@@ -406,17 +406,16 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   long long key = (((long long) index2) << 32) | ((long long) index1);
 
   if (valid.count(key) == 0) {
-    myvalues[key] = (float) value.getDouble();
+    myvalues[key].set(value);
     valid[key] = true;
     (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
     myfacts[key] = d_facts.size();
   } else {
-    float new_val = (float) value.getDouble();
-    float old_val = myvalues[key];
-    if (new_val < old_val) {
-      myvalues[key] = new_val;
+    Integer old_val = myvalues[key].get();
+    if (value < old_val) {
+      myvalues[key].set(value);
       myfacts[key] = d_facts.size();
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
@@ -447,11 +446,11 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
 		for (auto v : *(adj[u]))
     {
       long long key = (((long long) u) << 32) | ((long long) v);
-      float w = myvalues[key];
-			if (dis[u] + w < dis[v])
+      Integer w = myvalues[key].get();
+			if (dis[u].get() + w < dis[v].get())
 			{
 				pre[v] = u;
-				dis[v] = dis[u] + w;
+				dis[v].set(dis[u].get() + w);
 				if (++iter == n_spfa)
         {
             iter = 0;
@@ -463,12 +462,14 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
         {
           queue.push_back(v);
           in_queue[v] = true;
+          /*
           // SLF optimization
           if (queue.size() > 0 && dis[queue.front()] > dis[v]) {
             queue.push_front(v);
           } else {
             queue.push_back(v);
           }
+          */
 				}
 			}
     }

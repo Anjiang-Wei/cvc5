@@ -25,6 +25,7 @@
 #include "theory/theory_model.h"
 #include <deque>
 #include <unordered_map>
+#include "util/integer.h"
 
 namespace cvc5 {
 namespace theory {
@@ -107,9 +108,9 @@ class IdlExtension : protected EnvObj
   context::CDHashMap<long long, bool> valid;
   context::CDList<size_t>** adj;
   context::CDHashMap<long long, int> myfacts;
-  context::CDHashMap<long long, float> myvalues;
+  context::CDHashMap<long long, Integer> myvalues;
 
-  context::CDHashMap<size_t, float> dis;
+  context::CDHashMap<size_t, Integer> dis;
   context::CDHashMap<size_t, size_t> pre;
   bool* in_queue;
 
