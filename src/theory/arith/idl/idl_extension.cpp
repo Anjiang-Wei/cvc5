@@ -39,7 +39,6 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_facts(context()),
       d_numVars(0),
       pre_detect_cycle(context()),
-      valid(context()),
       myfacts(context()),
       myvalues(context()),
       dis(context()),
@@ -78,7 +77,7 @@ void IdlExtension::presolve()
   adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
-    dis[i].set(Integer(0));
+    dis[i].set(0);
     pre[i] = -1;
   }
 }
@@ -343,21 +342,21 @@ void IdlExtension::postCheck(Theory::Effort level)
 bool IdlExtension::collectModelInfo(TheoryModel* m,
                                     const std::set<Node>& termSet)
 {
-  std::vector<Rational> distance(d_numVars, Integer(0));
+  std::vector<Rational> distance(d_numVars, Rational(0));
 
   // ---------------------------------------------------------------------------
   // TODO: implement model generation by computing the single-source shortest
   // path from a node that has distance zero to all other nodes
   // ---------------------------------------------------------------------------
-  Integer shift = 0;
+  float shift = 0;
   if (d_varMap.count(shift_node)) {
-    shift = dis[d_varMap[shift_node]];
+    shift = dis[d_varMap[shift_node]].get();
     // std::cout << "shift = " << shift << std::endl;
   }
 
   for (size_t i = 0; i < d_numVars; i++)
   {
-    distance[i] = dis[i].get() - shift;
+    distance[i] = Rational((int)(dis[i] - shift));
   }
 
   NodeManager* nm = NodeManager::currentNM();
@@ -382,14 +381,14 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   TNode var1 = atom[0][0];
   TNode var2 = atom[0][1];
 
-  Integer value = (atom[1].getKind() == kind::UMINUS)
-    ? -atom[1][0].getConst<Rational>().getNumerator()
-    : atom[1].getConst<Rational>().getNumerator();
+  Rational value = (atom[1].getKind() == kind::UMINUS)
+    ? -atom[1][0].getConst<Rational>()
+    : atom[1].getConst<Rational>();
 
   if (!polarity)
   {
     std::swap(var1, var2);
-    value = -value - Integer(1);
+    value = -value - Rational(1);
   }
 
   size_t index1 = d_varMap[var1];
@@ -397,26 +396,26 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   node1 = index2;
 
   if (index1 == index2) {
-    if (value < Integer(0)) { // already a negative cycle
+    if (value < Rational(0)) { // already a negative cycle
       pre_detect_cycle.push_back(assertion);
       return;
     }
   }
 
-  long long key = (((long long) index2) << 32) | ((long long) index1);
+  std::pair<size_t, size_t> key = std::make_pair(index2, index1);
+  float new_val = value.getDouble();
 
-  if (valid.count(key) == 0) {
-    myvalues[key].set(value);
-    valid[key] = true;
+  if (myvalues.count(key) == 0) {
+    myvalues[key].set(new_val);
     (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
-    myfacts[key] = d_facts.size();
+    myfacts[key].set(d_facts.size());
   } else {
-    Integer old_val = myvalues[key].get();
-    if (value < old_val) {
-      myvalues[key].set(value);
-      myfacts[key] = d_facts.size();
+    float old_val = myvalues[key].get();
+    if (new_val < old_val) {
+      myvalues[key].set(new_val);
+      myfacts[key].set(d_facts.size());
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
@@ -445,8 +444,7 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
     {
-      long long key = (((long long) u) << 32) | ((long long) v);
-      Integer w = myvalues[key].get();
+      float w = myvalues[std::make_pair(u, v)].get();
 			if (dis[u].get() + w < dis[v].get())
 			{
 				pre[v] = u;
@@ -504,12 +502,10 @@ std::vector<TNode> IdlExtension::detect_cycle()
                     {
                         int current = j;
                         while (pre[current] != j) {
-                          long long key = (((long long) pre[current]) << 32) | ((long long) current);
-                          result.emplace_back(d_facts[myfacts[key]]);
+                          result.emplace_back(d_facts[myfacts[std::make_pair((size_t)pre[current], (size_t)current)].get()]);
                           current = pre[current];
                         }
-                        long long key = (((long long) pre[current]) << 32) | ((long long) current);
-                        result.emplace_back(d_facts[myfacts[key]]);
+                        result.emplace_back(d_facts[myfacts[std::make_pair((size_t)pre[current], (size_t)current)].get()]);
                         return result;
                     }
                     break;

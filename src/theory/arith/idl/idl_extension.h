@@ -26,6 +26,7 @@
 #include <deque>
 #include <unordered_map>
 #include "util/integer.h"
+#include <boost/functional/hash.hpp>
 
 namespace cvc5 {
 namespace theory {
@@ -105,12 +106,11 @@ class IdlExtension : protected EnvObj
   //const int MAX_N = 1000000;
 
   int n_spfa;
-  context::CDHashMap<long long, bool> valid;
   context::CDList<size_t>** adj;
-  context::CDHashMap<long long, int> myfacts;
-  context::CDHashMap<long long, Integer> myvalues;
+  context::CDHashMap<std::pair<size_t, size_t>, int, boost::hash<std::pair<size_t, size_t>>> myfacts;
+  context::CDHashMap<std::pair<size_t, size_t>, float, boost::hash<std::pair<size_t, size_t>>> myvalues;
 
-  context::CDHashMap<size_t, Integer> dis;
+  context::CDHashMap<size_t, float> dis;
   context::CDHashMap<size_t, size_t> pre;
   bool* in_queue;
 
