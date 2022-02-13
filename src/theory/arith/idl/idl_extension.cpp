@@ -91,7 +91,7 @@ IdlExtension::~IdlExtension() {
   free(on_stack);
   for (int i = 0; i < d_numVars; i++) {
     // delete adj[i];
-    free(myfacts_values[i]);
+    // free(myfacts_values[i]);
   }
   free(adj);
   free(myfacts_values);
