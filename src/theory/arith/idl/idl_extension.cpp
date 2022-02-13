@@ -39,6 +39,7 @@ IdlExtension::IdlExtension(Env& env, TheoryArith& parent)
       d_facts(context()),
       d_numVars(0),
       pre_detect_cycle(context()),
+      valid(context()),
       myfacts(context()),
       myvalues(context()),
       dis(context()),
@@ -77,7 +78,7 @@ void IdlExtension::presolve()
   adj = (context::CDList<size_t>**) malloc(sizeof(context::CDList<size_t>*) * d_numVars);
   for (int i = 0; i < d_numVars; i++) {
     adj[i] = new(true) context::CDList<size_t>(d_env.getContext());
-    dis[i].set(0);
+    dis[i] = 0;
     pre[i] = -1;
   }
 }
@@ -350,7 +351,7 @@ bool IdlExtension::collectModelInfo(TheoryModel* m,
   // ---------------------------------------------------------------------------
   float shift = 0;
   if (d_varMap.count(shift_node)) {
-    shift = dis[d_varMap[shift_node]].get();
+    shift = dis[d_varMap[shift_node]];
     // std::cout << "shift = " << shift << std::endl;
   }
 
@@ -382,8 +383,8 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   TNode var2 = atom[0][1];
 
   Rational value = (atom[1].getKind() == kind::UMINUS)
-    ? -atom[1][0].getConst<Rational>()
-    : atom[1].getConst<Rational>();
+                       ? -atom[1][0].getConst<Rational>()
+                       : atom[1].getConst<Rational>();
 
   if (!polarity)
   {
@@ -402,20 +403,21 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
     }
   }
 
-  std::pair<size_t, size_t> key = std::make_pair(index2, index1);
-  float new_val = value.getDouble();
+  long long key = (((long long) index2) << 32) | ((long long) index1);
 
-  if (myvalues.count(key) == 0) {
-    myvalues[key].set(new_val);
+  if (valid.count(key) == 0) {
+    myvalues[key] = (float) value.getDouble();
+    valid[key] = true;
     (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
-    myfacts[key].set(d_facts.size());
+    myfacts[key] = d_facts.size();
   } else {
-    float old_val = myvalues[key].get();
+    float new_val = (float) value.getDouble();
+    float old_val = myvalues[key];
     if (new_val < old_val) {
-      myvalues[key].set(new_val);
-      myfacts[key].set(d_facts.size());
+      myvalues[key] = new_val;
+      myfacts[key] = d_facts.size();
       // std::cout << index2 << " -> " << index1 << " == " << (long long) value.getDouble() << std::endl;
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
@@ -444,11 +446,12 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
 		in_queue[u] = false;
 		for (auto v : *(adj[u]))
     {
-      float w = myvalues[std::make_pair(u, v)].get();
-			if (dis[u].get() + w < dis[v].get())
+      long long key = (((long long) u) << 32) | ((long long) v);
+      float w = myvalues[key];
+			if (dis[u] + w < dis[v])
 			{
 				pre[v] = u;
-				dis[v].set(dis[u].get() + w);
+				dis[v] = dis[u] + w;
 				if (++iter == n_spfa)
         {
             iter = 0;
@@ -502,10 +505,12 @@ std::vector<TNode> IdlExtension::detect_cycle()
                     {
                         int current = j;
                         while (pre[current] != j) {
-                          result.emplace_back(d_facts[myfacts[std::make_pair((size_t)pre[current], (size_t)current)].get()]);
+                          long long key = (((long long) pre[current]) << 32) | ((long long) current);
+                          result.emplace_back(d_facts[myfacts[key]]);
                           current = pre[current];
                         }
-                        result.emplace_back(d_facts[myfacts[std::make_pair((size_t)pre[current], (size_t)current)].get()]);
+                        long long key = (((long long) pre[current]) << 32) | ((long long) current);
+                        result.emplace_back(d_facts[myfacts[key]]);
                         return result;
                     }
                     break;
