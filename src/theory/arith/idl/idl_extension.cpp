@@ -463,14 +463,12 @@ std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
         {
           queue.push_back(v);
           in_queue[v] = true;
-          /*
           // SLF optimization
           if (queue.size() > 0 && dis[queue.front()] > dis[v]) {
             queue.push_front(v);
           } else {
             queue.push_back(v);
           }
-          */
 				}
 			}
     }
