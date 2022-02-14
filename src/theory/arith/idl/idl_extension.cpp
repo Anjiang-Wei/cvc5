@@ -103,7 +103,14 @@ void IdlExtension::notifyFact(
   size_t node1;
   processAssertion(fact, node1);
   d_facts.push_back(fact);
-  report(node1);
+  if (pre_detect_cycle.size() > 0) {
+    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
+                                            InferenceId::ARITH_CONF_IDL_EXT);
+    return;
+  }
+  if (node1 != -1) {
+    report(node1);
+  }
 }
 
 Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
@@ -299,12 +306,6 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
 
 void IdlExtension::report(size_t node1)
 {
-  if (pre_detect_cycle.size() > 0) {
-    d_parent.getInferenceManager().conflict(pre_detect_cycle[0],
-              InferenceId::ARITH_CONF_IDL_EXT);
-    return;
-  }
-
   auto result = spfa_early_terminate(node1);
   if (result.size() > 0)
   {
@@ -394,7 +395,7 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
 
   size_t index1 = d_varMap[var1];
   size_t index2 = d_varMap[var2];
-  node1 = index2;
+  node1 = -1;
 
   if (index1 == index2) {
     if (value < Rational(0)) { // already a negative cycle
@@ -404,16 +405,16 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
   }
 
   long long key = (((long long) index2) << 32) | ((long long) index1);
+  float new_val = (float) value.getDouble();
 
   if (valid.count(key) == 0) {
-    myvalues[key] = (float) value.getDouble();
+    myvalues[key] = new_val;
     valid[key] = true;
     (*adj[index2]).push_back(index1);
     // std::cout << index2 << " -> " << index1 << " = " << (long long) value.getDouble() << std::endl;
     // adj[index2]->emplace_back(index1, value);
     myfacts[key] = d_facts.size();
   } else {
-    float new_val = (float) value.getDouble();
     float old_val = myvalues[key];
     if (new_val < old_val) {
       myvalues[key] = new_val;
@@ -422,6 +423,11 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
     } else {
       // std::cout << index2 << " -> " << index1 << " != " << (long long) value.getDouble() << std::endl;
     }
+  }
+  if (dis[index2] + new_val < dis[index1]) {
+    pre[index1] = index2;
+    dis[index1] = dis[index2] + new_val;
+    node1 = index1;
   }
 }
 
