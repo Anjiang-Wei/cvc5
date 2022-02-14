@@ -108,7 +108,7 @@ void IdlExtension::notifyFact(
                                             InferenceId::ARITH_CONF_IDL_EXT);
     return;
   }
-  if (node1 != -1 && (d_facts.size() & 0x1111 == 0)) {
+  if (node1 != -1 && ((d_facts.size() & 0x1111) == 0)) {
     report(node1, false);
   }
 }
