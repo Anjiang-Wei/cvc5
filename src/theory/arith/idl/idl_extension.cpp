@@ -108,8 +108,8 @@ void IdlExtension::notifyFact(
                                             InferenceId::ARITH_CONF_IDL_EXT);
     return;
   }
-  if (node1 != -1) {
-    report(node1);
+  if (node1 != -1 && (d_facts.size() & 0x1111 == 0)) {
+    report(node1, false);
   }
 }
 
@@ -304,9 +304,9 @@ Node IdlExtension::ppRewrite(TNode atom, std::vector<SkolemLemma>& lems)
   return atom;
 }
 
-void IdlExtension::report(size_t node1)
+  void IdlExtension::report(size_t node1, bool final)
 {
-  auto result = spfa_early_terminate(node1);
+  auto result = spfa_early_terminate(node1, final);
   if (result.size() > 0)
   {
     if (result.size() == 1) {
@@ -338,7 +338,7 @@ void IdlExtension::postCheck(Theory::Effort level)
   Trace("theory::arith::idl")
       << "IdlExtension::postCheck(): number of facts = " << d_facts.size()
       << std::endl;
-  // report();
+  report(1, true);
 }
 
 bool IdlExtension::collectModelInfo(TheoryModel* m,
@@ -432,16 +432,24 @@ void IdlExtension::processAssertion(TNode assertion, size_t& node1)
 }
 
 
-std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1)
+std::vector<TNode> IdlExtension::spfa_early_terminate(size_t node1, bool final)
 {
 
    /* There are d_numVars+1 vertices in total
     [0, d_numVars) are original matrix, d_numVars is the additional one */
   // https://konaeakira.github.io/assets/code-snippets/cycle-detection-with-spfa.cpp
   std::vector<TNode> result;
-	std::fill(in_queue, in_queue + n_spfa, false);
-  in_queue[node1] = true;
-  queue.push_back(node1);
+  if (final)
+  {
+    std::fill(in_queue, in_queue + n_spfa, true);
+    for (size_t i = 0; i < n_spfa; i++)
+      queue.push_back(i);
+  } else
+  {
+    std::fill(in_queue, in_queue + n_spfa, false);
+    in_queue[node1] = true;
+    queue.push_back(node1);
+  }
 
   int iter = 0;
 	while (!queue.empty())
