@@ -66,7 +66,7 @@ class IdlExtension : protected EnvObj
   /** Process a new assertion */
   void processAssertion(TNode assertion, size_t& node1);
 
-  void report(size_t node1, bool final);
+  void report(size_t node1);
 
   /** Return true iff the graph has a negative cycle */
   // bool negativeCycle();
@@ -116,7 +116,7 @@ class IdlExtension : protected EnvObj
   bool* visited;
   bool* on_stack;
   std::vector<TNode> detect_cycle();
-  std::vector<TNode> spfa_early_terminate(size_t node1, bool final);
+  std::vector<TNode> spfa_early_terminate(size_t node1);
   void spfa_init();
   std::deque<int> queue;
 
